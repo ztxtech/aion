@@ -29,6 +29,7 @@
   <a href="https://github.com/ztxtech/aion"><img src="https://img.shields.io/github/forks/ztxtech/aion?style=social" alt="GitHub forks"></a>
   <a href="https://github.com/ztxtech/aion/issues"><img src="https://img.shields.io/github/issues/ztxtech/aion" alt="Issues"></a>
   <img src="https://img.shields.io/github/last-commit/ztxtech/aion?color=orange" alt="Last Commit">
+  <a href="https://deepwiki.com/ztxtech/aion"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
 </p>
 
 ---
@@ -427,11 +428,13 @@ AION 是时间序列 harness 研究生态的一部分：
 如果你在研究中使用 AION，请引用：
 
 ```bibtex
-@article{zhan2026aion,
-  title={AION: Next-Generation Tasks and Practical Harness for Time Series},
-  author={Zhan, Tianxiang and Song, Xiaobao and Guan, Tong and Pan, Shirui and Jin, Ming},
-  journal={arXiv preprint},
-  year={2026}
+@misc{zhan2026aion,
+      title={AION: Next-Generation Tasks and Practical Harness for Time Series},
+      author={Tianxiang Zhan and Xiaobao Song and Tong Guan and Shirui Pan and Ming Jin},
+      year={2026},
+      eprint={2605.25045},
+      archivePrefix={arXiv},
+      url={https://arxiv.org/abs/2605.25045},
 }
 ```
 
