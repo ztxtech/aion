@@ -172,7 +172,7 @@ nix run nixpkgs#opencode           # or github:anomalyco/opencode for latest dev
 ### 2. Configure OpenCode
 
 ```bash
-opencode setup    # interactive setup — pick a provider and authenticate
+opencode    # launch the TUI, then pick a provider and authenticate when prompted
 ```
 
 Supports **Claude / OpenAI / Codex / Copilot / Gemini** and any compatible endpoint.
