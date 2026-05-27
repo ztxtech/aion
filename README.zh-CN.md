@@ -172,7 +172,7 @@ nix run nixpkgs#opencode           # 或 github:anomalyco/opencode（最新开�
 ### 2. 配置 OpenCode
 
 ```bash
-opencode setup    # 交互式向导 — 选择 provider 并认证
+opencode    # 启动 TUI，然后按提示选择 provider 并认证
 ```
 
 支持 **Claude / OpenAI / Codex / Copilot / Gemini** 及任何兼容端点。
