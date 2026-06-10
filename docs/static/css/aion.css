@@ -37,12 +37,12 @@ body {
 
 /* Logo */
 .logo-container {
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
 }
 
 .aion-logo {
-  width: 80px;
-  height: 80px;
+  width: 60px;
+  height: 60px;
   filter: drop-shadow(0 4px 6px rgba(124, 58, 237, 0.3));
   transition: var(--transition);
 }
@@ -96,7 +96,7 @@ body {
 }
 
 .hero-body {
-  padding: 4rem 1.5rem;
+  padding: 2rem 1.5rem;
 }
 
 /* Publication */
@@ -104,14 +104,14 @@ body {
     font-family: 'Inter', sans-serif !important;
     font-weight: 800 !important;
     color: var(--text-primary) !important;
-    margin-bottom: 2rem !important;
+    margin-bottom: 1rem !important;
     line-height: 1.2 !important;
 }
 
 .publication-authors {
     font-family: 'Inter', sans-serif !important;
     font-weight: 500;
-    margin-bottom: 1.5rem;
+    margin-bottom: 0.75rem;
 }
 
 .publication-venue {
@@ -119,10 +119,11 @@ body {
     width: fit-content;
     font-weight: 600;
     background: var(--background-accent);
-    padding: 0.5rem 1rem;
+    padding: 0.25rem 0.75rem;
     border-radius: var(--border-radius);
-    margin-top: 1rem;
+    margin-top: 0.5rem;
     display: inline-block;
+    font-size: 0.9rem;
 }
 
 .publication-authors a {
