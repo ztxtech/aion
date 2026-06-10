@@ -247,7 +247,7 @@ git clone https://github.com/ztxtech/aion.git .opencode</code></pre>
         
         <div class="mermaid-container">
           <pre class="mermaid">
-%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#ffffff', 'primaryTextColor': '#1e293b', 'primaryBorderColor': '#7C3AED', 'lineColor': '#94a3b8', 'secondaryColor': '#f8fafc', 'tertiaryColor': '#f1f5f9', 'fontFamily': 'Inter, sans-serif', 'fontSize': '14px' }}}%%
+%%{init: {'theme': 'base', 'flowchart': { 'useMaxWidth': true, 'htmlLabels': false, 'curve': 'basis', 'nodeSpacing': 80, 'rankSpacing': 90, 'padding': 20 }, 'themeVariables': { 'primaryColor': '#ffffff', 'primaryTextColor': '#1e293b', 'primaryBorderColor': '#7C3AED', 'lineColor': '#94a3b8', 'secondaryColor': '#f8fafc', 'tertiaryColor': '#f1f5f9', 'fontFamily': 'Inter, sans-serif', 'fontSize': '15px' }}}%%
 flowchart LR
     classDef default fill:#ffffff,stroke:#7C3AED,stroke-width:2px,color:#1e293b,rx:6px,ry:6px
     classDef task fill:#ffffff,stroke:#7C3AED,stroke-width:3px,color:#1e293b
@@ -257,14 +257,14 @@ flowchart LR
     classDef rebuttal fill:#fff7ed,stroke:#f97316,stroke-width:2px,color:#c2410c
     classDef loop fill:#f8fafc,stroke:#8B5CF6,stroke-width:2px,color:#7C3AED,stroke-dasharray: 5 5
 
-    A["<b>01</b> Task Analysis<br/><small>Goals, inputs, constraints</small>"] --> B["<b>02</b> Information<br/><small>Evidence and domain context</small>"]
-    B --> C["<b>03</b> Experiment<br/><small>Implementation and tests</small>"]
-    C --> D{"<b>04</b> Dual Review<br/><small>ts-critic and c-critic gates</small>"}
+    A["01 Task"] --> B["02 Info"]
+    B --> C["03 Run"]
+    C --> D{"04 Review"}
     
-    D -->|PASS| E["Finalize<br/><small>Deliver output, trace, memory sync</small>"]
-    D -->|FAIL| F["Rebuttal<br/><small>Challenge blocker or route</small>"]
+    D -->|PASS| E["Done"]
+    D -->|FAIL| F["Fix"]
     
-    F -->|Loop Back| G["Loop Back<br/><small>Return to Information or Experiment</small>"]
+    F --> G["Loop"]
     G -.-> B
     G -.-> C
     
@@ -273,6 +273,14 @@ flowchart LR
     class E pass
     class F fail
     class G loop
+    
+    style A width:90px
+    style B width:90px
+    style C width:90px
+    style D width:120px
+    style E width:80px
+    style F width:80px
+    style G width:80px
           </pre>
         </div>
         
