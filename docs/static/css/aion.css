@@ -571,11 +571,24 @@ code {
   border-top: 3px solid var(--primary-color);
 }
 
-.fsm-state.dual-review {
-  border-color: #fecaca;
-  border-top: 3px solid #ef4444;
-  background: #fffafa;
-}
+  .fsm-state.dual-review {
+    border-color: #fcd34d;
+    border-top: 3px solid #f59e0b;
+    background: #fffbeb;
+  }
+
+  .fsm-state.dual-review::before {
+    content: '';
+    position: absolute;
+    bottom: -12px;
+    left: 50%;
+    width: 8px;
+    height: 8px;
+    background: #f59e0b;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 3;
+  }
 
 .fsm-index {
   color: var(--primary-color);
@@ -623,33 +636,48 @@ code {
   background: var(--background-secondary);
 }
 
-.fsm-state.dual-review::after {
-  content: '';
-  position: absolute;
-  bottom: -6px;
-  left: 50%;
-  width: 2px;
-  height: 6px;
-  background: #cbd5e1;
-  transform: translateX(-50%);
-  z-index: 2;
-}
+  .fsm-state.dual-review::after {
+    content: '';
+    position: absolute;
+    bottom: -12px;
+    left: 50%;
+    width: 2px;
+    height: 12px;
+    background: #f59e0b;
+    transform: translateX(-50%);
+    z-index: 2;
+  }
 
 .fsm-branches {
   position: relative;
-  margin-top: 0;
+  margin-top: 6px;
+  display: grid;
+  grid-template-columns: 1fr 1.65fr;
+  gap: 0.75rem;
+  align-items: stretch;
 }
 
-.fsm-branches::before {
-  content: '';
-  position: absolute;
-  top: -6px;
-  left: 15%;
-  right: 15%;
-  height: 2px;
-  background: linear-gradient(90deg, #10b981 0%, #10b981 50%, #ef4444 50%, #ef4444 100%);
-  z-index: 1;
-}
+  .fsm-branches::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 37.74%;
+    right: 11.1%;
+    height: 2px;
+    background: #10b981;
+    z-index: 1;
+  }
+
+  .fsm-branches::after {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 88.9%;
+    right: 0;
+    height: 2px;
+    background: #ef4444;
+    z-index: 1;
+  }
 
 .branch-label {
   position: relative;
@@ -675,13 +703,6 @@ code {
   background: #ef4444;
 }
 
-.fsm-branches {
-  display: grid;
-  grid-template-columns: 1fr 1.65fr;
-  gap: 0.75rem;
-  align-items: stretch;
-}
-
 .fsm-branch {
   display: grid;
   align-items: center;
@@ -699,6 +720,11 @@ code {
 
 .fail-branch {
   grid-template-columns: auto 32px minmax(0, 1fr) 32px minmax(0, 1fr);
+}
+
+.pass-branch .branch-label,
+.fail-branch .branch-label {
+  align-self: start;
 }
 
 .branch-label {
@@ -761,6 +787,85 @@ code {
 
 .workflow-fail {
   color: #dc2626;
+}
+
+/* Mermaid Workflow */
+.mermaid-container {
+  max-width: 960px;
+  margin: 1.5rem auto 2rem;
+  background: var(--background-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  padding: 2rem;
+  box-shadow: var(--shadow-md);
+}
+
+.mermaid-container .mermaid {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: 'Inter', sans-serif;
+}
+
+.mermaid-container .mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Mermaid node styling overrides */
+.mermaid-container .mermaid .node rect,
+.mermaid-container .mermaid .node circle,
+.mermaid-container .mermaid .node ellipse,
+.mermaid-container .mermaid .node polygon,
+.mermaid-container .mermaid .node path {
+  transition: all 0.3s ease;
+}
+
+.mermaid-container .mermaid .node:hover rect,
+.mermaid-container .mermaid .node:hover circle,
+.mermaid-container .mermaid .node:hover ellipse,
+.mermaid-container .mermaid .node:hover polygon,
+.mermaid-container .mermaid .node:hover path {
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+  transform: translateY(-2px);
+}
+
+.mermaid-container .mermaid .edgeLabel {
+  background-color: var(--background-primary);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.mermaid-container .mermaid .edgeLabel:contains("PASS") {
+  color: #047857;
+  background-color: #ecfdf5;
+}
+
+.mermaid-container .mermaid .edgeLabel:contains("FAIL") {
+  color: #dc2626;
+  background-color: #fef2f2;
+}
+
+.mermaid-container .mermaid .edgeLabel:contains("Loop Back") {
+  color: #7C3AED;
+  background-color: #f8fafc;
+}
+
+/* Mermaid arrow styling */
+.mermaid-container .mermaid .arrowheadPath {
+  fill: #94a3b8;
+}
+
+.mermaid-container .mermaid .flowchart-link {
+  stroke: #94a3b8;
+  stroke-width: 2px;
+}
+
+.mermaid-container .mermaid .flowchart-link.loop {
+  stroke-dasharray: 5 5;
+  stroke: #8B5CF6;
 }
 
 @media screen and (max-width: 768px) {

@@ -77,6 +77,23 @@
   <script defer src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
   <script defer src="static/js/fontawesome.all.min.js"></script>
   <script defer src="static/js/bulma-carousel.min.js"></script>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'base',
+      themeVariables: {
+        fontFamily: 'Inter, sans-serif',
+        fontSize: '14px',
+        primaryColor: '#ffffff',
+        primaryTextColor: '#1e293b',
+        primaryBorderColor: '#7C3AED',
+        lineColor: '#94a3b8',
+        secondaryColor: '#f8fafc',
+        tertiaryColor: '#f1f5f9'
+      }
+    });
+  </script>
   <script defer src="static/js/aion.js"></script>
   
   <script type="application/ld+json">
@@ -228,63 +245,35 @@ git clone https://github.com/ztxtech/aion.git .opencode</code></pre>
         <h2 class="title is-3 has-text-centered">AION Workflow</h2>
         <p class="workflow-kicker has-text-centered">Finite-state execution with iterative refinement and dual-review gates</p>
         
-        <div class="fsm-workflow" aria-label="AION finite-state workflow">
-          <div class="fsm-track">
-            <div class="fsm-state task">
-              <div class="fsm-index">01</div>
-              <div class="fsm-label">Task Analysis</div>
-              <div class="fsm-desc">Goals, inputs, constraints</div>
-            </div>
-            
-            <div class="fsm-connector" aria-hidden="true"></div>
-            
-            <div class="fsm-state info">
-              <div class="fsm-index">02</div>
-              <div class="fsm-label">Information</div>
-              <div class="fsm-desc">Evidence and domain context</div>
-            </div>
-            
-            <div class="fsm-connector" aria-hidden="true"></div>
-            
-            <div class="fsm-state experiment">
-              <div class="fsm-index">03</div>
-              <div class="fsm-label">Experiment</div>
-              <div class="fsm-desc">Implementation and tests</div>
-            </div>
-            
-            <div class="fsm-connector" aria-hidden="true"></div>
-            
-            <div class="fsm-state dual-review">
-              <div class="fsm-index">04</div>
-              <div class="fsm-label">Dual Review</div>
-              <div class="fsm-desc">ts-critic and c-critic gates</div>
-            </div>
-          </div>
-          
-          <div class="fsm-branches">
-            <div class="fsm-branch pass-branch">
-              <div class="branch-label pass">Pass</div>
-              <div class="branch-connector" aria-hidden="true"></div>
-              <div class="fsm-state final">
-                <div class="fsm-label">Finalize</div>
-                <div class="fsm-desc">Deliver output, trace, memory sync</div>
-              </div>
-            </div>
-            
-            <div class="fsm-branch fail-branch">
-              <div class="branch-label fail">Fail</div>
-              <div class="branch-connector" aria-hidden="true"></div>
-              <div class="fsm-state rebuttal">
-                <div class="fsm-label">Rebuttal</div>
-                <div class="fsm-desc">Challenge blocker or route</div>
-              </div>
-              <div class="branch-connector loop" aria-hidden="true"></div>
-              <div class="fsm-loop-back">
-                <span class="fsm-label">Loop Back</span>
-                <span class="fsm-desc">Return to Information or Experiment</span>
-              </div>
-            </div>
-          </div>
+        <div class="mermaid-container">
+          <pre class="mermaid">
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#ffffff', 'primaryTextColor': '#1e293b', 'primaryBorderColor': '#7C3AED', 'lineColor': '#94a3b8', 'secondaryColor': '#f8fafc', 'tertiaryColor': '#f1f5f9', 'fontFamily': 'Inter, sans-serif', 'fontSize': '14px' }}}%%
+flowchart LR
+    classDef default fill:#ffffff,stroke:#7C3AED,stroke-width:2px,color:#1e293b,rx:6px,ry:6px
+    classDef task fill:#ffffff,stroke:#7C3AED,stroke-width:3px,color:#1e293b
+    classDef review fill:#fffbeb,stroke:#f59e0b,stroke-width:3px,color:#1e293b
+    classDef pass fill:#ecfdf5,stroke:#10b981,stroke-width:2px,color:#047857
+    classDef fail fill:#fef2f2,stroke:#ef4444,stroke-width:2px,color:#dc2626
+    classDef rebuttal fill:#fff7ed,stroke:#f97316,stroke-width:2px,color:#c2410c
+    classDef loop fill:#f8fafc,stroke:#8B5CF6,stroke-width:2px,color:#7C3AED,stroke-dasharray: 5 5
+
+    A["<b>01</b> Task Analysis<br/><small>Goals, inputs, constraints</small>"] --> B["<b>02</b> Information<br/><small>Evidence and domain context</small>"]
+    B --> C["<b>03</b> Experiment<br/><small>Implementation and tests</small>"]
+    C --> D{"<b>04</b> Dual Review<br/><small>ts-critic and c-critic gates</small>"}
+    
+    D -->|PASS| E["Finalize<br/><small>Deliver output, trace, memory sync</small>"]
+    D -->|FAIL| F["Rebuttal<br/><small>Challenge blocker or route</small>"]
+    
+    F -->|Loop Back| G["Loop Back<br/><small>Return to Information or Experiment</small>"]
+    G -.-> B
+    G -.-> C
+    
+    class A,B,C task
+    class D review
+    class E pass
+    class F fail
+    class G loop
+          </pre>
         </div>
         
         <div class="columns is-centered has-text-centered">
