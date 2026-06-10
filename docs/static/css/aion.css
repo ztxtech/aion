@@ -623,32 +623,56 @@ code {
   background: var(--background-secondary);
 }
 
-.decision-split {
-  align-self: flex-end;
-  height: 26px;
-  margin-right: 106px;
-  position: relative;
-  width: 372px;
-}
-
-.decision-split::before {
+.fsm-state.dual-review::after {
   content: '';
   position: absolute;
-  top: 0;
-  right: 82px;
+  bottom: -6px;
+  left: 50%;
   width: 2px;
-  height: 18px;
+  height: 6px;
   background: #cbd5e1;
+  transform: translateX(-50%);
+  z-index: 2;
 }
 
-.decision-split::after {
+.fsm-branches {
+  position: relative;
+  margin-top: 0;
+}
+
+.fsm-branches::before {
   content: '';
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 8px;
+  top: -6px;
+  left: 15%;
+  right: 15%;
   height: 2px;
-  background: linear-gradient(90deg, #10b981 0%, #10b981 42%, #cbd5e1 42%, #cbd5e1 58%, #ef4444 58%, #ef4444 100%);
+  background: linear-gradient(90deg, #10b981 0%, #10b981 50%, #ef4444 50%, #ef4444 100%);
+  z-index: 1;
+}
+
+.branch-label {
+  position: relative;
+  z-index: 2;
+}
+
+.branch-label::before {
+  content: '';
+  position: absolute;
+  top: calc(-0.75rem - 6px);
+  left: 50%;
+  width: 2px;
+  height: calc(0.75rem + 6px);
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+.pass-branch .branch-label::before {
+  background: #10b981;
+}
+
+.fail-branch .branch-label::before {
+  background: #ef4444;
 }
 
 .fsm-branches {
@@ -745,10 +769,6 @@ code {
   .pass-branch,
   .fail-branch {
     grid-template-columns: 1fr;
-  }
-
-  .decision-split {
-    display: none;
   }
 
   .fsm-track,
