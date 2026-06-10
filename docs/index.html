@@ -222,44 +222,107 @@ git clone https://github.com/ztxtech/aion.git .opencode</code></pre>
     </div>
   </section>
 
+  <section class="hero is-small is-light">
+    <div class="hero-body">
+      <div class="container is-max-desktop">
+        <h2 class="title is-3 has-text-centered">AION Workflow</h2>
+        <p class="workflow-kicker has-text-centered">Finite-state execution with iterative refinement and dual-review gates</p>
+        
+        <div class="fsm-workflow" aria-label="AION finite-state workflow">
+          <div class="fsm-track">
+            <div class="fsm-state task">
+              <div class="fsm-index">01</div>
+              <div class="fsm-label">Task Analysis</div>
+              <div class="fsm-desc">Goals, inputs, constraints</div>
+            </div>
+            
+            <div class="fsm-connector" aria-hidden="true"></div>
+            
+            <div class="fsm-state info">
+              <div class="fsm-index">02</div>
+              <div class="fsm-label">Information</div>
+              <div class="fsm-desc">Evidence and domain context</div>
+            </div>
+            
+            <div class="fsm-connector" aria-hidden="true"></div>
+            
+            <div class="fsm-state experiment">
+              <div class="fsm-index">03</div>
+              <div class="fsm-label">Experiment</div>
+              <div class="fsm-desc">Implementation and tests</div>
+            </div>
+            
+            <div class="fsm-connector" aria-hidden="true"></div>
+            
+            <div class="fsm-state dual-review">
+              <div class="fsm-index">04</div>
+              <div class="fsm-label">Dual Review</div>
+              <div class="fsm-desc">ts-critic and c-critic gates</div>
+            </div>
+          </div>
+          
+          <div class="decision-split" aria-hidden="true"></div>
+          
+          <div class="fsm-branches">
+            <div class="fsm-branch pass-branch">
+              <div class="branch-label pass">Pass</div>
+              <div class="branch-connector" aria-hidden="true"></div>
+              <div class="fsm-state final">
+                <div class="fsm-label">Finalize</div>
+                <div class="fsm-desc">Deliver output, trace, memory sync</div>
+              </div>
+            </div>
+            
+            <div class="fsm-branch fail-branch">
+              <div class="branch-label fail">Fail</div>
+              <div class="branch-connector" aria-hidden="true"></div>
+              <div class="fsm-state rebuttal">
+                <div class="fsm-label">Rebuttal</div>
+                <div class="fsm-desc">Challenge blocker or route</div>
+              </div>
+              <div class="branch-connector loop" aria-hidden="true"></div>
+              <div class="fsm-loop-back">
+                <span class="fsm-label">Loop Back</span>
+                <span class="fsm-desc">Return to Information or Experiment</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="columns is-centered has-text-centered">
+          <div class="column is-four-fifths">
+            <div class="content has-text-justified">
+              <p>
+                The <strong>AION workflow</strong> operates as a finite-state machine with mandatory dual-review gates. After <strong>Task Analysis</strong> and <strong>Information</strong> collection, the <strong>coder</strong> runs experiments. Every output must pass both <strong>ts-critic</strong> (time-series expert + Pareto governance) and <strong>c-critic</strong> (final minimal-context cold-start critique). On <span class="workflow-pass"><strong>Pass</strong></span>, the system finalizes with memory sync and trace logging. On <span class="workflow-fail"><strong>Fail</strong></span>, the <strong>rebuttal protocol</strong> triggers, and the system loops back to gather more evidence or refine the experiment. No output leaves the system without passing layered critics.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- Architecture Overview -->
   <section class="hero is-small">
     <div class="hero-body">
       <div class="container is-max-desktop">
         <h2 class="title is-3 has-text-centered">Four-Layer Architecture</h2>
         
-        <div class="architecture-diagram">
-          <div class="layer review-layer">
+        <div class="architecture-diagram horizontal-diagram">
+          <div class="layer task-layer">
             <div class="layer-header">
-              <span class="layer-icon"><i class="fas fa-shield-alt"></i></span>
-              <span class="layer-title">Review Layer</span>
+              <span class="layer-title">Task Layer</span>
             </div>
             <div class="layer-content">
-              <span class="layer-item">ts-critic</span>
-              <span class="layer-item">c-critic</span>
-              <span class="layer-desc">Validity, temporal & completeness checks</span>
+              <span class="layer-item">requirements-analyst</span>
+              <span class="layer-desc">Task specification & requirement extraction</span>
             </div>
           </div>
           
-          <div class="layer-arrow"><i class="fas fa-arrow-down"></i></div>
-          
-          <div class="layer execution-layer">
-            <div class="layer-header">
-              <span class="layer-icon"><i class="fas fa-cogs"></i></span>
-              <span class="layer-title">Execution Layer</span>
-            </div>
-            <div class="layer-content">
-              <span class="layer-item">agent</span>
-              <span class="layer-item">coder</span>
-              <span class="layer-desc">8 protocols, governance hierarchy</span>
-            </div>
-          </div>
-          
-          <div class="layer-arrow"><i class="fas fa-arrow-down"></i></div>
+          <div class="layer-arrow"><i class="fas fa-arrow-right"></i></div>
           
           <div class="layer workspace-layer">
             <div class="layer-header">
-              <span class="layer-icon"><i class="fas fa-database"></i></span>
               <span class="layer-title">Workspace Layer</span>
             </div>
             <div class="layer-content">
@@ -269,16 +332,29 @@ git clone https://github.com/ztxtech/aion.git .opencode</code></pre>
             </div>
           </div>
           
-          <div class="layer-arrow"><i class="fas fa-arrow-down"></i></div>
+          <div class="layer-arrow"><i class="fas fa-arrow-right"></i></div>
           
-          <div class="layer task-layer">
+          <div class="layer execution-layer">
             <div class="layer-header">
-              <span class="layer-icon"><i class="fas fa-tasks"></i></span>
-              <span class="layer-title">Task Layer</span>
+              <span class="layer-title">Execution Layer</span>
             </div>
             <div class="layer-content">
-              <span class="layer-item">requirements-analyst</span>
-              <span class="layer-desc">Task specification & requirement extraction</span>
+              <span class="layer-item">agent</span>
+              <span class="layer-item">coder</span>
+              <span class="layer-desc">8 protocols, governance hierarchy</span>
+            </div>
+          </div>
+          
+          <div class="layer-arrow"><i class="fas fa-arrow-right"></i></div>
+          
+          <div class="layer review-layer">
+            <div class="layer-header">
+              <span class="layer-title">Review Layer</span>
+            </div>
+            <div class="layer-content">
+              <span class="layer-item">ts-critic</span>
+              <span class="layer-item">c-critic</span>
+              <span class="layer-desc">Validity, temporal & completeness checks</span>
             </div>
           </div>
         </div>
@@ -373,23 +449,23 @@ git clone https://github.com/ztxtech/aion.git .opencode</code></pre>
       <div class="container is-max-desktop">
         <h2 class="title is-3 has-text-centered">Governance Hierarchy</h2>
         <div class="columns is-centered">
-          <div class="column is-four-fifths">
-            <div class="governance-hierarchy">
+          <div class="column is-full">
+            <div class="governance-hierarchy horizontal-diagram">
               <div class="governance-level">
                 <span class="governance-label">c-critic</span>
                 <span class="governance-desc">Final minimal-context cold-start critique — ultimate authority</span>
               </div>
-              <div class="governance-arrow"><i class="fas fa-arrow-down"></i></div>
+              <div class="governance-arrow"><i class="fas fa-arrow-right"></i></div>
               <div class="governance-level">
                 <span class="governance-label">ts-critic</span>
                 <span class="governance-desc">Time-series expert + Pareto governance — highest gate</span>
               </div>
-              <div class="governance-arrow"><i class="fas fa-arrow-down"></i></div>
+              <div class="governance-arrow"><i class="fas fa-arrow-right"></i></div>
               <div class="governance-level">
                 <span class="governance-label">Main Agent</span>
                 <span class="governance-desc">Orchestration and dispatch — no closeout authority above critics</span>
               </div>
-              <div class="governance-arrow"><i class="fas fa-arrow-down"></i></div>
+              <div class="governance-arrow"><i class="fas fa-arrow-right"></i></div>
               <div class="governance-level">
                 <span class="governance-label">Other Subagents</span>
                 <span class="governance-desc">Requirements analyst, information collector, coder</span>

@@ -193,41 +193,47 @@ body {
 
 /* Architecture Diagram */
 .architecture-diagram {
-  max-width: 600px;
-  margin: 2rem auto;
-  padding: 1rem;
+  max-width: 980px;
+  margin: 1.5rem auto 2rem;
+}
+
+.horizontal-diagram {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px minmax(0, 1fr) 28px minmax(0, 1fr) 28px minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0;
 }
 
 .layer {
   background: var(--background-primary);
-  border: 2px solid var(--border-color);
-  border-radius: var(--border-radius-lg);
-  padding: 1.5rem;
-  margin-bottom: 0.5rem;
-  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-sm);
+  min-height: 130px;
+  padding: 1rem;
   transition: var(--transition);
 }
 
 .layer:hover {
-  transform: translateX(8px);
-  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
   border-color: var(--primary-color);
 }
 
 .review-layer {
-  border-left: 4px solid #ef4444;
+  border-top: 3px solid #ef4444;
 }
 
 .execution-layer {
-  border-left: 4px solid #f59e0b;
+  border-top: 3px solid #f59e0b;
 }
 
 .workspace-layer {
-  border-left: 4px solid #10b981;
+  border-top: 3px solid #10b981;
 }
 
 .task-layer {
-  border-left: 4px solid #3b82f6;
+  border-top: 3px solid #3b82f6;
 }
 
 .layer-header {
@@ -238,20 +244,12 @@ body {
 }
 
 .layer-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--gradient-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 0.9rem;
+  display: none;
 }
 
 .layer-title {
   font-weight: 700;
-  font-size: 1.2rem;
+  font-size: 1rem;
   color: var(--text-primary);
 }
 
@@ -279,10 +277,12 @@ body {
 }
 
 .layer-arrow {
-  text-align: center;
-  color: var(--text-light);
-  font-size: 1.2rem;
-  margin: 0.25rem 0;
+  align-items: center;
+  color: #94a3b8;
+  display: flex;
+  font-size: 1rem;
+  justify-content: center;
+  min-height: 130px;
 }
 
 /* Component Cards */
@@ -361,25 +361,28 @@ body {
 
 /* Governance */
 .governance-hierarchy {
-  max-width: 500px;
-  margin: 2rem auto;
+  max-width: 980px;
+  margin: 1.5rem auto 2rem;
 }
 
 .governance-level {
   background: var(--background-primary);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
+  border-top: 3px solid var(--primary-color);
   border-radius: var(--border-radius);
-  padding: 1rem 1.5rem;
+  padding: 1rem;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-sm);
   transition: var(--transition);
+  min-height: 112px;
 }
 
 .governance-level:hover {
   border-color: var(--primary-color);
-  transform: translateX(4px);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 .governance-label {
@@ -394,9 +397,11 @@ body {
 }
 
 .governance-arrow {
-  text-align: center;
-  color: var(--text-light);
-  margin: 0.5rem 0;
+  align-items: center;
+  color: #94a3b8;
+  display: flex;
+  justify-content: center;
+  min-height: 112px;
 }
 
 /* BibTeX */
@@ -523,6 +528,263 @@ code {
   text-decoration: underline;
 }
 
+.workflow-kicker {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  margin: -1rem 0 1.5rem;
+}
+
+.fsm-workflow {
+  max-width: 960px;
+  margin: 1.5rem auto 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.fsm-track {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px minmax(0, 1fr) 36px minmax(0, 1fr) 36px minmax(0, 1fr);
+  align-items: center;
+}
+
+.fsm-state {
+  background: var(--background-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  min-height: 112px;
+  padding: 1rem;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+  position: relative;
+}
+
+.fsm-state:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary-color);
+}
+
+.fsm-state.task,
+.fsm-state.info,
+.fsm-state.experiment {
+  border-top: 3px solid var(--primary-color);
+}
+
+.fsm-state.dual-review {
+  border-color: #fecaca;
+  border-top: 3px solid #ef4444;
+  background: #fffafa;
+}
+
+.fsm-index {
+  color: var(--primary-color);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.45rem;
+  text-transform: uppercase;
+}
+
+.fsm-label {
+  color: var(--text-primary);
+  display: block;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 0.25rem;
+}
+
+.fsm-desc {
+  color: var(--text-secondary);
+  display: block;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.fsm-connector,
+.branch-connector {
+  background: #cbd5e1;
+  height: 2px;
+  position: relative;
+}
+
+.fsm-connector::after,
+.branch-connector::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -1px;
+  width: 9px;
+  height: 9px;
+  border-top: 2px solid #cbd5e1;
+  border-right: 2px solid #cbd5e1;
+  transform: translateY(-50%) rotate(45deg);
+  background: var(--background-secondary);
+}
+
+.decision-split {
+  align-self: flex-end;
+  height: 26px;
+  margin-right: 106px;
+  position: relative;
+  width: 372px;
+}
+
+.decision-split::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 82px;
+  width: 2px;
+  height: 18px;
+  background: #cbd5e1;
+}
+
+.decision-split::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 8px;
+  height: 2px;
+  background: linear-gradient(90deg, #10b981 0%, #10b981 42%, #cbd5e1 42%, #cbd5e1 58%, #ef4444 58%, #ef4444 100%);
+}
+
+.fsm-branches {
+  display: grid;
+  grid-template-columns: 1fr 1.65fr;
+  gap: 0.75rem;
+  align-items: stretch;
+}
+
+.fsm-branch {
+  display: grid;
+  align-items: center;
+  min-height: 92px;
+  background: var(--background-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-sm);
+  padding: 0.75rem;
+}
+
+.pass-branch {
+  grid-template-columns: auto 32px minmax(0, 1fr);
+}
+
+.fail-branch {
+  grid-template-columns: auto 32px minmax(0, 1fr) 32px minmax(0, 1fr);
+}
+
+.branch-label {
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  min-width: 60px;
+  padding: 0.4rem 0.7rem;
+  text-transform: uppercase;
+}
+
+.branch-label.pass {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.branch-label.fail {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.fsm-state.final {
+  border-color: #a7f3d0;
+  border-top: 3px solid #10b981;
+  min-height: 76px;
+}
+
+.fsm-state.rebuttal {
+  border-color: #fed7aa;
+  border-top: 3px solid #f97316;
+  min-height: 76px;
+}
+
+.fsm-loop-back {
+  min-height: 76px;
+  padding: 1rem;
+  border: 1px dashed var(--primary-color);
+  border-radius: var(--border-radius);
+  background: var(--background-accent);
+}
+
+.branch-connector.loop {
+  border-top: 2px dashed var(--primary-color);
+  background: transparent;
+}
+
+.branch-connector.loop::after {
+  border-color: var(--primary-color);
+}
+
+.workflow-pass {
+  color: #047857;
+}
+
+.workflow-fail {
+  color: #dc2626;
+}
+
+@media screen and (max-width: 768px) {
+  .fsm-track,
+  .fsm-branches,
+  .pass-branch,
+  .fail-branch {
+    grid-template-columns: 1fr;
+  }
+
+  .decision-split {
+    display: none;
+  }
+
+  .fsm-track,
+  .fsm-branches {
+    gap: 0.75rem;
+  }
+
+  .fsm-connector,
+  .branch-connector {
+    width: 1px;
+    height: 22px;
+    justify-self: center;
+  }
+
+  .fsm-connector::after,
+  .branch-connector::after {
+    top: auto;
+    right: 50%;
+    bottom: -1px;
+    transform: translateX(50%) rotate(135deg);
+  }
+
+  .branch-connector.loop {
+    border-left: 1px dashed var(--primary-color);
+    border-top: 0;
+  }
+
+  .fsm-state,
+  .fsm-state.final,
+  .fsm-state.rebuttal,
+  .fsm-loop-back,
+  .fsm-branch {
+    min-height: auto;
+  }
+}
+
 /* Animation */
 @keyframes fadeInUp {
   from {
@@ -562,7 +824,7 @@ code {
   }
   
   .layer:hover {
-    transform: translateX(4px);
+    transform: translateY(-2px);
   }
   
   .component-card {
@@ -590,7 +852,25 @@ code {
   }
   
   .architecture-diagram {
-    padding: 0.5rem;
+    padding: 0;
+  }
+}
+
+@media screen and (max-width: 900px) {
+  .horizontal-diagram {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .layer,
+  .governance-level {
+    min-height: auto;
+  }
+
+  .layer-arrow,
+  .governance-arrow {
+    min-height: auto;
+    transform: rotate(90deg);
   }
 }
 
