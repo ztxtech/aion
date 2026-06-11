@@ -4,6 +4,32 @@
 
 ---
 
+## How to Start
+
+**Every AION session MUST begin with the `context-init` skill.** This is the bootstrap entry point that reads the harness contract before any task work begins.
+
+If you use `cli.sh`, the default initial prompt already includes `context-init`:
+
+```bash
+bash cli.sh
+```
+
+If you run OpenCode manually, your prompt MUST start with:
+
+```
+Start the project with the context-init skill.
+```
+
+> Without `context-init`, the harness never loads its rules, agents, or protocols — the session runs as a bare OpenCode instance, not as AION.
+
+After context-init completes, it will:
+1. Read this file (`.opencode/readme.md`) for the structure index
+2. Load `rules/core.md` and `agents/agent.md` unconditionally
+3. Conditionally load other rules/protocols/skills based on the task type (see Read Rules below)
+4. Proceed directly to task execution — do not stop at summary or plan restatement
+
+---
+
 ## Directory Layout
 
 ```
@@ -84,6 +110,7 @@
 | `.opencode/readme.md` (this file) | Structure index & conditional routing |
 | `.opencode/rules/core.md` | Boundaries, trace protocol, placeholder rules |
 | `.opencode/agents/agent.md` | Main orchestrator role definition |
+| `.opencode/skills/context-init/SKILL.md` | Bootstrap flow — always the first skill loaded |
 
 ### Read IF task involves multi-agent / multi-stage / subagent dispatch
 
@@ -153,6 +180,45 @@
 
 ---
 
+## Prompt Templates
+
+These are the canonical prompts used by `cli.sh`. The initial prompt is the system entry point; the continue prompt drives each auto-continue round.
+
+### Initial Prompt (first round)
+
+```
+Start the project with the context-init skill. Read the root task files
+and the .opencode contract first. Treat this run as run plus autonomous:
+keep the workflow human-free, prefer local detection over upfront questions,
+and only stop when no skill and no agent can propose any further action,
+defect, or rollback point.
+```
+
+### Continue Prompt (auto-continue rounds)
+
+```
+Continue the current session in run plus autonomous mode. Keep following
+the existing TODOs and evidence chain, stay human-free unless truly blocked
+on user-only information, and only stop when no skill and no agent can
+propose any further action, defect, or rollback point.
+```
+
+### Writing Custom Prompts
+
+If you write your own prompt instead of using `cli.sh` defaults, the first line
+MUST invoke context-init and declare the execution strategy:
+
+| Scenario | Prompt Prefix |
+|----------|---------------|
+| Autonomous (cli.sh) | `Start the project with the context-init skill. Read the root task files and the .opencode contract first. Treat this run as run plus autonomous: ...` |
+| Autonomous (manual) | `Start the project with the context-init skill. Run this in run plus autonomous mode. ...` |
+| Interactive (TUI) | `Start the project with the context-init skill. Run this in tui plus interactive mode. ...` |
+| Custom domain task | `Start the project with the context-init skill. Analyze the dataset in data/. Treat this run as run plus autonomous: ...` |
+
+> **See root `README.md` § "Prompting For Autonomous vs Interactive Use" for full prompt customization guidance.**
+
+---
+
 ## Runtime File Locations (created by workspace-init)
 
 These do NOT exist at startup. They are created at runtime by `workspace-init` skill or its `init.sh` script:
@@ -180,4 +246,5 @@ These do NOT exist at startup. They are created at runtime by `workspace-init` s
 
 | Script | Purpose |
 |--------|---------|
-| `.opencode/skills/workspace-init/init.sh` | Initialize all runtime memory/trace files from templates. Cross-platform (bash). |
+| `cli.sh` | CLI entry point for AION. Launches OpenCode with `context-init` prompt + auto-continue loop. Supports `run` / `tui` modes, custom models, debug, and session export. See `bash cli.sh --help`. |
+| `.opencode/skills/workspace-init/init.sh` | Initialize all runtime memory/trace files from templates. Cross-platform (bash). Called automatically by `workspace-init` skill. |

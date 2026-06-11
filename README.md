@@ -248,24 +248,26 @@ bash cli.sh --max-continues 10
 
 ### Prompting For Autonomous vs Interactive Use
 
-If you write your own prompt instead of using the default `cli.sh` prompt, make the intended execution strategy explicit so the agent does not have to guess.
+`cli.sh` already includes a default prompt that starts with `context-init` — the harness bootstrap entry point. If you run `bash cli.sh`, you get the full harness initialized automatically.
 
-- For non-interactive autonomous execution, say it directly:
+If you write your own prompt instead of using the default `cli.sh` prompt, make the intended execution strategy explicit AND start with `context-init` so the agent does not have to guess either:
+
+- For non-interactive autonomous execution, include `context-init` and declare the mode:
 
 ```text
-Run this in run plus autonomous mode. Keep it human-free, prefer local detection over upfront questions, and only ask if you truly need information that only I can provide.
+Start the project with the context-init skill. Read the root task files and the .opencode contract first. Treat this run as run plus autonomous: keep the workflow human-free, prefer local detection over upfront questions, and only stop when no skill and no agent can propose any further action, defect, or rollback point.
 ```
 
 - For interactive TUI collaboration, say that the user wants to participate only in real forks:
 
 ```text
-Run this in tui plus interactive mode. Do local detection first, keep routine decisions autonomous, and only ask me when there are multiple equally reasonable options that would materially change the later path.
+Start the project with the context-init skill. Run this in tui plus interactive mode. Do local detection first, keep routine decisions autonomous, and only ask me when there are multiple equally reasonable options that would materially change the later path.
 ```
 
 - For interactive TUI with minimal interruption, make that explicit too:
 
 ```text
-Run this in tui plus autonomous mode. I want to watch the session, but I do not want routine environment or workflow questions unless there is a real decision fork.
+Start the project with the context-init skill. Run this in tui plus autonomous mode. I want to watch the session, but I do not want routine environment or workflow questions unless there is a real decision fork.
 ```
 
 For Python environments, a good interactive prompt should ask the agent to detect first and only escalate real ambiguity, for example:
