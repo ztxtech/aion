@@ -26,8 +26,6 @@
   <img src="https://img.shields.io/badge/评测-5道门禁-EC4899?style=flat" alt="Evals">
   <img src="https://img.shields.io/badge/时间序列-Harness-7C3AED?style=flat" alt="Time Series">
   <a href="https://github.com/ztxtech/aion"><img src="https://img.shields.io/github/stars/ztxtech/aion?style=social" alt="GitHub stars"></a>
-  <a href="https://github.com/ztxtech/aion"><img src="https://img.shields.io/github/forks/ztxtech/aion?style=social" alt="GitHub forks"></a>
-  <a href="https://github.com/ztxtech/aion/issues"><img src="https://img.shields.io/github/issues/ztxtech/aion" alt="Issues"></a>
   <img src="https://img.shields.io/github/last-commit/ztxtech/aion?color=orange" alt="Last Commit">
   <a href="https://deepwiki.com/ztxtech/aion"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
 </p>
