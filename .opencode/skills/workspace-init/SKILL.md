@@ -12,12 +12,14 @@ description: Align project background, initialize runtime trace / memory files, 
 
 ## Flow
 
+- **Run the init script first** to initialize all runtime files in one shot:
+  ```bash
+  bash .opencode/skills/workspace-init/init.sh
+  ```
+  This handles git init, trace file creation, and all memory file creation from templates. It never overwrites existing files. Cross-platform: works on macOS (bash/zsh), Linux (bash/zsh), and Windows (Git Bash).
 - Read possible project-note files in the root directory, such as `README.md`, task notes, and existing `.opencode/trace.md`, to align project background and context.
 - Infer the user interaction language from the current task, and reply in that language by default, unless the task contract requires another delivery language.
 - Separate `interface mode` from `execution strategy`: `run` / `tui` are interface modes, while `autonomous` / `interactive` are execution strategies. If there is no stronger signal, the default execution strategy is `autonomous`; `run + interactive` is not a supported default path.
-- Check whether the host-project root is already inside a git repository. If one exists, record and reuse it. If not, initialize a local-only `.git` for later checkpoint commits. Do not configure remotes for that repository, and do not treat it as a replacement for memory.
-- If `.opencode/trace.md` does not exist, initialize it with `.opencode/memory/template/trace.md`.
-- If `.opencode/memory/memory.md`, `.opencode/memory/positive.md`, `.opencode/memory/negative.md`, `.opencode/memory/relation.md`, `.opencode/memory/progress.md`, `.opencode/memory/features.md`, `.opencode/memory/decisions.md`, `.opencode/memory/todo-map.md`, `.opencode/memory/completion-gate.md`, `.opencode/memory/initial-prompt.md`, or `.opencode/memory/context-snapshot.md` does not exist, copy the matching template from `.opencode/memory/template/`.
 - If `.opencode/trace.md` or any `.opencode/memory/*.md` already exists, read its current contents before any later write, append, or overwrite. Do not treat runtime files like empty templates that may be rebuilt blindly.
 - After `.opencode/memory/initial-prompt.md` is initialized, the main agent must write the original user prompt, earliest task goal, explicit metrics, and non-goals for this round into it at once as an append-only baseline. Later it may only append clarifications, not overwrite the original prompt block.
 - After `.opencode/memory/context-snapshot.md` is initialized, the main agent must refresh the first snapshot before `workspace-init` closes: at minimum it should write task anchors, current phase, explicit constraints, the most obvious gaps, and the default next-dispatch focus. This is not an optional summary. It is the canonical entry point for later multi-agent compaction.
