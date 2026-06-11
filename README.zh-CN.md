@@ -278,6 +278,14 @@ bash cli.sh --max-continues 10
 
 ---
 
+## 📦 示例
+
+[`example/`](example/) 目录包含可直接运行的工作空间，用于端到端演示 AION。
+
+第一个示例是一个**本地 Kaggle 风格的预测竞赛**。真实的 Kaggle 比赛有每日提交次数限制（通常每天 5 次），这使得快速迭代不切实际。为了解决这个问题，我们构建了一个轻量级的本地评估服务器，模拟 Kaggle 的提交和评分 API — agent 通过相同的 HTTP 接口下载数据、训练模型并提交预测，但可以获得即时反馈，没有每日上限。详见 [`example/kaggle/README.md`](example/kaggle/README.md)。
+
+---
+
 ## 🤝 Agent 角色
 
 Agent 横跨全部四层 — 从任务解析到执行编排再到分层审查：
