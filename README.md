@@ -278,6 +278,14 @@ If Python is needed, first check whether the workspace already has a usable .ven
 
 ---
 
+## 📦 Examples
+
+The [`example/`](example/) directory contains ready-to-run workspaces that demonstrate AION end-to-end.
+
+The first example is a **local Kaggle-like forecasting competition**. Real Kaggle competitions impose a daily submission limit (typically 5 per day), which makes rapid iteration impractical. To work around this, we built a lightweight local evaluation server that mimics the Kaggle submission and scoring API — the agent downloads data, trains models, and submits predictions through the same HTTP interface, but gets instant feedback with no daily cap. See [`example/kaggle/README.md`](example/kaggle/README.md) for details.
+
+---
+
 ## 🤝 Agent Roles
 
 Agents span all four layers — from task parsing through execution orchestration to layered review:

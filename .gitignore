@@ -12,3 +12,5 @@ Icon
 .Trashes
 .fseventsd
 tmp/
+# Example runtime state
+example/kaggle/server/runtime/

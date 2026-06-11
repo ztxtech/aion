@@ -1,0 +1,25 @@
+{
+  "competition_slug": "store-sales-time-series-forecasting",
+  "description": "Local Kaggle-like holdout for fast offline iteration.",
+  "metric": "rmsle",
+  "public_train_end": "2017-07-30",
+  "hidden_test_start": "2017-07-31",
+  "hidden_test_end": "2017-08-15",
+  "stores": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "all_families": true,
+  "rows": {
+    "train_rows": 275220,
+    "test_rows": 2640,
+    "stores_rows": 5,
+    "transactions_rows": 8302,
+    "oil_rows": 1206,
+    "holidays_rows": 327,
+    "official_test_reference_rows": 2640
+  }
+}
