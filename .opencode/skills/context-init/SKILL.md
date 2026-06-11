@@ -16,9 +16,10 @@ description: Manual start skill: read `.opencode/` first, then read the task fil
 
 ## Flow
 
-1. Read `.opencode/agents/` and align the role boundaries of the main agent and subagents.
-2. Read `.opencode/rules/opencode.md` first and treat it as the OpenCode docs entry, then read other shared rules, gates, and stop logic.
-3. Read `.opencode/skills/` and `.opencode/memory/` / `.opencode/trace.md` (if they exist) to align high-frequency skills, memory, and trace constraints.
+1. **Read `.opencode/readme.md` FIRST** as the cached structure index. It contains conditional read rules — only pull in files that the current task requires. Do NOT read every file blindly.
+2. Read `.opencode/rules/core.md` and `.opencode/agents/agent.md` (always required).
+3. Follow the conditional read rules in `readme.md` to load only the relevant rules, protocols, skills, and evals for the current task type.
+4. Read `.opencode/memory/` / `.opencode/trace.md` (if they exist) to align memory and trace constraints.
 4. Read task and note files in the project root, such as `README.md`, `task.md`, and task attachment notes.
 5. From that context, judge at once whether the task is light execution, complex multi-stage work, experiment / comparison, formal report work, or mixed mode, and give the first batch of **non-summary actions** that must move forward.
 6. After context is built, go directly into task execution. Do not stop at summary, plan restatement, directory intro, writing-prep talk, or `I understand the task now`.
