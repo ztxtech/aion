@@ -280,9 +280,25 @@ If Python is needed, first check whether the workspace already has a usable .ven
 
 ## 📦 Examples
 
-The [`example/`](example/) directory contains ready-to-run workspaces that demonstrate AION end-to-end.
+The [`example/`](example/) directory contains ready-to-run workspaces that demonstrate AION end-to-end on concrete time-series tasks.
 
-The first example is a **local Kaggle-like forecasting competition**. Real Kaggle competitions impose a daily submission limit (typically 5 per day), which makes rapid iteration impractical. To work around this, we built a lightweight local evaluation server that mimics the Kaggle submission and scoring API — the agent downloads data, trains models, and submits predictions through the same HTTP interface, but gets instant feedback with no daily cap. See [`example/kaggle/README.md`](example/kaggle/README.md) for details.
+> **⚠️ Clinical disclaimer — `example/aion-medical-demo/` is a DEMONSTRATION only.** The case under [`example/aion-medical-demo/`](example/aion-medical-demo/) is a self-contained demo of the AION harness on a clinical-style problem, plus a wrapper that exists only to record the AION demo video. The ECG data is real but tiny (3 patients from PhysioNet PTB); the ICU vitals are synthetic. Models, metrics, and reports produced by the agent are demo artefacts — they are **not validated for clinical use** and must not inform any real medical decision. See [`example/aion-medical-demo/README.md`](example/aion-medical-demo/README.md) for the full disclaimer and recording instructions.
+
+### Medical Time-Series Case — ECG Diagnosis & ICU Sepsis Onset (Demo)
+
+[`example/aion-medical-demo/`](example/aion-medical-demo/) wraps a clinical case in a recording-specific scaffold. The goal is to make every AION harness feature fire in a single run, for the YouTube recording titled *"AION: A Time-Series AI Harness (Full Clinical Demo)"*.
+
+```bash
+cd example/aion-medical-demo/medical
+opencode
+> introduce yourself by completing this task, AION
+```
+
+See [`example/aion-medical-demo/README.md`](example/aion-medical-demo/README.md) for the wrapper purpose, the 22-feature trigger map, and the design notes on why a real AION project does not need to trigger every feature.
+
+### Local Kaggle-Like Forecasting Competition
+
+[`example/kaggle/`](example/kaggle/) is a local replica of the Kaggle **Store Sales - Time Series Forecasting** competition (Corporación Favorita), adapted for fast offline iteration. A lightweight local evaluation server mimics the Kaggle submission and scoring API — the agent downloads data, trains models, and submits predictions through the same HTTP interface, but gets instant feedback with no daily submission cap. See [`example/kaggle/README.md`](example/kaggle/README.md) for details.
 
 ---
 

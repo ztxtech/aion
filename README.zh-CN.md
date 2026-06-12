@@ -280,9 +280,25 @@ bash cli.sh --max-continues 10
 
 ## 📦 示例
 
-[`example/`](example/) 目录包含可直接运行的工作空间，用于端到端演示 AION。
+[`example/`](example/) 目录包含可直接运行的工作空间，用于在具体时序任务上演示 AION 的端到端能力。
 
-第一个示例是一个**本地 Kaggle 风格的预测竞赛**。真实的 Kaggle 比赛有每日提交次数限制（通常每天 5 次），这使得快速迭代不切实际。为了解决这个问题，我们构建了一个轻量级的本地评估服务器，模拟 Kaggle 的提交和评分 API — agent 通过相同的 HTTP 接口下载数据、训练模型并提交预测，但可以获得即时反馈，没有每日上限。详见 [`example/kaggle/README.md`](example/kaggle/README.md)。
+> **⚠️ 临床免责声明 — `example/aion-medical-demo/` 仅为演示案例。** [`example/aion-medical-demo/`](example/aion-medical-demo/) 是 AION 在医疗风格问题上的一次自包含演示，外层 wrapper 仅为录制 AION 演示视频而存在。心电图数据虽来自真实的 PhysioNet PTB 数据库，但样本量极小（仅 3 名患者）；ICU 生命体征数据为合成数据。Agent 生成的模型、指标和报告仅供演示 —— **未经验证，不可用于任何临床决策**。详见 [`example/aion-medical-demo/README.md`](example/aion-medical-demo/README.md) 完整免责声明与录制说明。
+
+### 医疗时序案例 — 心电图诊断与 ICU 败血症预测（演示）
+
+[`example/aion-medical-demo/`](example/aion-medical-demo/) 在临床案例外层包裹了录制专用脚手架。目标是让 AION 的全部特性在一次运行中触发，专为 YouTube 视频 *"AION: A Time-Series AI Harness (Full Clinical Demo)"* 录制。
+
+```bash
+cd example/aion-medical-demo/medical
+opencode
+> introduce yourself by completing this task, AION
+```
+
+详见 [`example/aion-medical-demo/README.md`](example/aion-medical-demo/README.md) 获取 wrapper 用途、22 特性触发地图，以及"真实 AION 项目并不需要触发全部特性"的设计说明。
+
+### 本地 Kaggle 风格预测竞赛
+
+[`example/kaggle/`](example/kaggle/) 是 Kaggle **Store Sales - Time Series Forecasting** 比赛（Corporación Favorita）的本地复刻版本，为离线快速迭代而改造。轻量级的本地评估服务器模拟 Kaggle 的提交和评分 API —— agent 通过相同的 HTTP 接口下载数据、训练模型并提交预测，但可获得即时反馈且没有每日提交上限。详见 [`example/kaggle/README.md`](example/kaggle/README.md)。
 
 ---
 
