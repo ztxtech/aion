@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AION Medical Demo — One-Page Overview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary:        #7C3AED;
+    --primary-hover:  #6D28D9;
+    --secondary:      #8B5CF6;
+    --accent:         #A78BFA;
+    --accent-light:   #C4B5FD;
+    --slate-50:       #F8FAFC;
+    --slate-200:      #E2E8F0;
+    --slate-300:      #CBD5E1;
+    --slate-400:      #94A3B8;
+    --slate-500:      #64748B;
+    --slate-700:      #334155;
+    --slate-800:      #1E293B;
+    --slate-900:      #0F172A;
+    --slate-950:      #020617;
+    --amber:          #F59E0B;
+    --red:            #EF4444;
+    --green:          #10B981;
+    --gradient:       linear-gradient(135deg, #7C3AED 0%, #8B5CF6 100%);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 1600px; height: 1000px;
+    background: #0a0a0a;
+    color: var(--slate-50);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-feature-settings: 'cv11', 'ss01';
+    -webkit-font-smoothing: antialiased;
+  }
+  .frame {
+    position: relative;
+    width: 1600px; height: 1000px;
+    padding: 56px 72px 64px 72px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto 1fr 1fr 1fr;
+    gap: 24px;
+  }
+  .frame::before {
+    content: '';
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(800px 500px at 12% 0%, rgba(124,58,237,0.18), transparent 60%),
+      radial-gradient(700px 400px at 100% 100%, rgba(139,92,246,0.12), transparent 60%);
+    pointer-events: none;
+  }
+
+  /* ----- Header spans both columns ----- */
+  header {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(124,58,237,0.25);
+    padding-bottom: 18px;
+  }
+  header .left { display: flex; align-items: center; gap: 18px; }
+  header .logo {
+    width: 56px; height: 56px;
+    flex: 0 0 56px;
+  }
+  header h1 {
+    font-size: 36px; font-weight: 800; line-height: 1.1;
+    letter-spacing: -0.01em;
+    background: var(--gradient);
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent;
+  }
+  header .sub {
+    font-size: 14px; font-weight: 500;
+    color: var(--slate-400);
+    letter-spacing: 0.18em; text-transform: uppercase;
+  }
+  header .pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 7px 14px;
+    background: rgba(239,68,68,0.08);
+    border: 1px solid rgba(239,68,68,0.4);
+    color: #FCA5A5;
+    font-size: 12px; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    border-radius: 999px;
+  }
+  header .pill::before {
+    content: '⚠'; color: var(--red);
+  }
+
+  /* ----- Cards ----- */
+  .card {
+    position: relative;
+    background: linear-gradient(180deg, rgba(124,58,237,0.07) 0%, rgba(15,23,42,0.55) 100%);
+    border: 1px solid rgba(124,58,237,0.22);
+    border-radius: 14px;
+    padding: 20px 22px 18px 22px;
+    overflow: hidden;
+  }
+  .card h2 {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 14px; font-weight: 700;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--accent-light);
+    margin-bottom: 12px;
+  }
+  .card h2 .num {
+    width: 26px; height: 26px; border-radius: 7px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--gradient); color: white;
+    font-size: 12px; font-weight: 700; letter-spacing: 0;
+  }
+  .card p {
+    font-size: 14.5px; line-height: 1.55;
+    color: var(--slate-300);
+  }
+  .card ul {
+    list-style: none;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .card li {
+    font-size: 14px; line-height: 1.5;
+    color: var(--slate-300);
+    padding-left: 18px;
+    position: relative;
+  }
+  .card li::before {
+    content: '▸';
+    position: absolute; left: 0; top: 0;
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .card code {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 12.5px;
+    padding: 1px 6px;
+    background: var(--slate-800);
+    border: 1px solid var(--slate-700);
+    border-radius: 4px;
+    color: var(--accent-light);
+  }
+
+  /* ----- Full-width spanning cards ----- */
+  .span2 { grid-column: 1 / -1; }
+
+  /* ----- Footer ----- */
+  footer {
+    grid-column: 1 / -1;
+    display: flex; align-items: center; justify-content: space-between;
+    border-top: 1px solid rgba(124,58,237,0.2);
+    padding-top: 14px;
+    font-size: 12px;
+    color: var(--slate-500);
+  }
+  footer .left { display: flex; align-items: center; gap: 12px; }
+  footer .badge {
+    display: inline-block; padding: 4px 10px;
+    background: rgba(124,58,237,0.12);
+    border: 1px solid rgba(124,58,237,0.3);
+    border-radius: 6px;
+    color: var(--accent-light);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+  footer .tag {
+    color: var(--slate-400);
+    letter-spacing: 0.06em;
+  }
+  footer .right { color: var(--slate-500); }
+  footer .right strong { color: var(--slate-300); }
+
+  /* ----- Specific card tweaks ----- */
+  .card.task p { font-size: 15px; }
+  .card.input ul li code { font-size: 12px; }
+  .card.requirements li { color: var(--slate-200); }
+  .card.challenges li::before { color: var(--amber); }
+  .card.outputs li code { font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="frame">
+
+  <header>
+    <div class="left">
+      <svg class="logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#7C3AED"/>
+            <stop offset="100%" style="stop-color:#8B5CF6"/>
+          </linearGradient>
+        </defs>
+        <circle cx="50" cy="45" r="35" fill="url(#g)"/>
+        <path d="M 35,45 C 35,38 42,38 50,42 C 58,38 65,38 65,45 C 65,52 58,52 50,48 C 42,52 35,52 35,45Z"
+              fill="none" stroke="white" stroke-width="6" stroke-linecap="round"/>
+        <rect x="42" y="82" width="16" height="12" rx="4" fill="url(#g)"/>
+        <path d="M 38 88 L 30 92" fill="none" stroke="url(#g)" stroke-width="3" stroke-linecap="round"/>
+        <path d="M 62 88 L 70 92" fill="none" stroke="url(#g)" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+      <div>
+        <div class="sub">One-page overview · recording briefing</div>
+        <h1>AION Medical Demo — Case at a Glance</h1>
+      </div>
+    </div>
+    <div class="pill">Demonstration · not for clinical use</div>
+  </header>
+
+  <section class="card task span2">
+    <h2><span class="num">1</span>Task setting</h2>
+    <p>
+      A clinical time-series investigation with two coupled sub-tasks sharing one evaluation philosophy:
+      <strong style="color:var(--slate-100)">12-lead ECG diagnosis</strong> of myocardial infarction from 250 Hz strips
+      (PhysioNet PTB Diagnostic DB, 3 patients: 2 acute infero-lateral MI + 1 healthy control) and
+      <strong style="color:var(--slate-100)">ICU sepsis onset prediction</strong> 2–6 hours before clinical recognition
+      from continuous vital signs over a 48-hour window (PhysioNet CinC Challenge 2019 reference structure).
+      The agent must demonstrate the full AION harness — planning, multi-agent review, governance gates, retrospective plots, sealed report — on this case.
+    </p>
+  </section>
+
+  <section class="card input">
+    <h2><span class="num">2</span>Inputs</h2>
+    <ul>
+      <li><code>ecg_signals.csv</code> · 12 leads × 5s @ 250 Hz, 3 patients (real PTB)</li>
+      <li><code>ptb_ecg/patient*/</code> · raw WFDB <code>.dat/.hea/.xyz</code></li>
+      <li><code>icu_vitals.csv</code> · 48h @ 1-min, 7 channels + sparse lactate</li>
+      <li><code>old_ecg_format.edf</code> · legacy EDF, different gain &amp; lead order</li>
+      <li><code>manual_corrections.json</code> · 8 cardiologist beat annotations</li>
+      <li><code>docs/reference/</code> · 7 clinician-provided PNGs + rubric PDF</li>
+    </ul>
+  </section>
+
+  <section class="card requirements">
+    <h2><span class="num">3</span>Requirements</h2>
+    <ul>
+      <li>Unify 4 input formats into one data contract (<code>data/interface.py</code>)</li>
+      <li>Compare ≥3 statistical + 3 classical ML + 3 deep / TFM routes per track</li>
+      <li>Foundation-model precheck: zero-shot / few-shot / frozen / light-adapt</li>
+      <li>Honour the 2h / 4h / 6h horizon — no future-vitals leakage</li>
+      <li>SHAP / IG attribution that localises to the right leads</li>
+      <li>Document failure modes — missed MI / sepsis cost is asymmetric</li>
+    </ul>
+  </section>
+
+  <section class="card outputs">
+    <h2><span class="num">4</span>Expected outputs</h2>
+    <ul>
+      <li><code>outputs/ecg_submission.csv</code> · 3 rows, <code>top_3_leads ⊂ {II, III, aVF, V5, V6}</code></li>
+      <li><code>outputs/icu_submission.csv</code> · 2h/4h/6h horizons, monotonic rise at h18–22, ECE &lt; 0.05</li>
+      <li><code>docs/images/</code> · 4 plots consumed in the report</li>
+      <li><code>docs/report.md</code> · disclaimer, provenance, method table, failure modes</li>
+      <li><code>REBUTTAL.md</code> · <code>trace.jsonl</code> · <code>memory/</code> for c-critic sign-off</li>
+    </ul>
+  </section>
+
+  <section class="card challenges">
+    <h2><span class="num">5</span>Challenges for the agent</h2>
+    <ul>
+      <li>Tiny cohort (n=2 vs n=1 ECG) — downgrade claims, demonstrate structure</li>
+      <li>Synthetic ICU vs real ECG — provenance must travel with the data</li>
+      <li>Sparse lactate (16 / 48h) — irregular sampling, not uniform 1-min</li>
+      <li>Non-stationary regimes — stable → onset → shock → resuscitation</li>
+      <li>Asymmetric clinical cost — missed MI &gt; false alarm, encode it</li>
+      <li>Legacy EDF gain mismatch — silent nonsense if adapter is sloppy</li>
+    </ul>
+  </section>
+
+  <footer>
+    <div class="left">
+      <span class="badge">AION</span>
+      <span class="tag">Next-Generation Tasks and Practical Harness for Time Series</span>
+    </div>
+    <div class="right">
+      arXiv <strong>2605.25045</strong> · <strong>2026</strong> · Zhan, Song, Guan, Pan, Jin
+    </div>
+  </footer>
+
+</div>
+</body>
+</html>
