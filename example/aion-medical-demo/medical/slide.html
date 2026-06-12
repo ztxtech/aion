@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AION Medical Demo — Briefing</title>
+
+  <!-- Inter font, same as docs/index.html -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    /* ------------------------------------------------------------------
+       Design tokens — identical to docs/static/css/aion.css so the
+       closing slide is a dark-mode twin of the GitHub Pages hero.
+       ------------------------------------------------------------------ */
+    :root {
+      --primary:        #7C3AED;
+      --primary-hover:  #6D28D9;
+      --secondary:      #8B5CF6;
+      --accent:         #A78BFA;
+      --accent-light:   #C4B5FD;
+      --slate-50:       #F8FAFC;
+      --slate-100:      #F1F5F9;
+      --slate-200:      #E2E8F0;
+      --slate-300:      #CBD5E1;
+      --slate-400:      #94A3B8;
+      --slate-500:      #64748B;
+      --slate-700:      #334155;
+      --slate-800:      #1E293B;
+      --slate-900:      #0F172A;
+      --slate-950:      #020617;
+      --green:          #10B981;
+      --amber:          #F59E0B;
+      --red:            #EF4444;
+      --orange:         #F97316;
+      --pink:           #EC4899;
+      --gradient:       linear-gradient(135deg, #7C3AED 0%, #8B5CF6 100%);
+      --transition:     all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #0a0a0a;
+      color: var(--slate-50);
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-feature-settings: 'cv11', 'ss01';
+    }
+
+    /* ------------------------------------------------------------------
+       Stage: full-viewport slides, one at a time, fade-swap.
+       ------------------------------------------------------------------ */
+    .stage {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 6vh 6vw 9vh;     /* extra bottom room for HUD */
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity 0.45s ease, transform 0.45s ease;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .slide.active {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    /* ------------------------------------------------------------------
+       Typography
+       ------------------------------------------------------------------ */
+    .eyebrow {
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 1rem;
+    }
+    h1 {
+      font-size: clamp(2.4rem, 5vw, 4.4rem);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -0.025em;
+      margin-bottom: 1.2rem;
+    }
+    h2 {
+      font-size: clamp(1.8rem, 3.4vw, 3rem);
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.9rem;
+    }
+    h3 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--slate-50);
+      margin-bottom: 0.4rem;
+      letter-spacing: -0.01em;
+    }
+    p.lead {
+      font-size: clamp(1.05rem, 1.4vw, 1.35rem);
+      font-weight: 400;
+      line-height: 1.55;
+      color: var(--slate-300);
+      max-width: 62ch;
+    }
+    p.lead em {
+      font-style: normal;
+      color: var(--accent-light);
+      font-weight: 500;
+    }
+    p.lead strong {
+      font-weight: 600;
+      color: var(--slate-50);
+    }
+
+    /* ------------------------------------------------------------------
+       Layout helpers
+       ------------------------------------------------------------------ */
+    .center { text-align: center; }
+    .gradient-text {
+      background: var(--gradient);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    /* ------------------------------------------------------------------
+       Tree (file layout)
+       ------------------------------------------------------------------ */
+    .tree-wrap {
+      width: 100%;
+      max-width: 1080px;
+      margin: 0 auto;
+    }
+    .tree {
+      font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.88rem;
+      line-height: 1.65;
+      background: var(--slate-900);
+      border: 1px solid rgba(124,58,237,0.25);
+      border-radius: 14px;
+      padding: 1.4rem 1.6rem;
+      color: var(--slate-200);
+    }
+    .tree .root       { color: var(--slate-50); font-weight: 600; }
+    .tree .dir        { color: var(--accent-light); }
+    .tree .file       { color: var(--slate-300); }
+    .tree .file-img   { color: var(--green); }
+    .tree .file-data  { color: var(--amber); }
+    .tree .file-aux   { color: var(--slate-400); font-style: italic; }
+    .tree .comment    { color: var(--slate-500); font-family: 'Inter', sans-serif; font-size: 0.78rem; }
+    .tree .comment a  { color: var(--accent); text-decoration: none; }
+
+    /* ------------------------------------------------------------------
+       Two-column image+text rows
+       ------------------------------------------------------------------ */
+    .row {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap: 2.2rem;
+      width: 100%;
+      max-width: 1200px;
+      align-items: center;
+    }
+    .row.flip { grid-template-columns: 1fr 1.1fr; }
+    .row.flip .copy { order: -1; }
+
+    .copy h2 { text-align: left; }
+    .copy p  { text-align: left; }
+    .copy ul { margin-top: 0.6rem; padding-left: 1.1rem; color: var(--slate-300); font-size: 0.95rem; line-height: 1.55; }
+    .copy ul li { margin-bottom: 0.25rem; }
+    .copy .icon {
+      display: inline-block;
+      width: 22px; height: 22px;
+      border-radius: 6px;
+      background: var(--gradient);
+      vertical-align: -5px;
+      margin-right: 0.6rem;
+    }
+    .copy code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.84rem;
+      padding: 0.1rem 0.45rem;
+      background: var(--slate-800);
+      border: 1px solid var(--slate-700);
+      border-radius: 4px;
+      color: var(--accent-light);
+    }
+
+    .img-frame {
+      background: var(--slate-900);
+      border: 1px solid rgba(124,58,237,0.25);
+      border-radius: 14px;
+      padding: 0.5rem;
+      overflow: hidden;
+    }
+    .img-frame img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 8px;
+    }
+    .img-caption {
+      margin-top: 0.5rem;
+      padding: 0 0.3rem;
+      font-size: 0.78rem;
+      color: var(--slate-500);
+      line-height: 1.4;
+    }
+    .img-caption strong { color: var(--slate-300); }
+
+    /* ------------------------------------------------------------------
+       Output grid (4 deliverables)
+       ------------------------------------------------------------------ */
+    .outputs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.2rem;
+      width: 100%;
+      max-width: 1180px;
+      margin-top: 1.6rem;
+    }
+    .output {
+      background: linear-gradient(180deg, rgba(124,58,237,0.08) 0%, rgba(15,23,42,0.6) 100%);
+      border: 1px solid rgba(124,58,237,0.25);
+      border-radius: 14px;
+      padding: 1.1rem 1rem;
+    }
+    .output .glyph {
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 0.95rem;
+      background: var(--gradient);
+      color: white;
+      margin-bottom: 0.7rem;
+    }
+    .output h3 { font-size: 0.95rem; }
+    .output p  { font-size: 0.82rem; line-height: 1.5; color: var(--slate-400); }
+
+    /* ------------------------------------------------------------------
+       Stat strip
+       ------------------------------------------------------------------ */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.2rem;
+      width: 100%;
+      max-width: 980px;
+      margin-top: 1.6rem;
+    }
+    .stat {
+      text-align: center;
+      background: rgba(15,23,42,0.5);
+      border: 1px solid rgba(124,58,237,0.2);
+      border-radius: 12px;
+      padding: 1rem;
+    }
+    .stat .num {
+      font-size: clamp(1.8rem, 3vw, 2.6rem);
+      font-weight: 800;
+      background: var(--gradient);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      line-height: 1;
+      margin-bottom: 0.4rem;
+    }
+    .stat .lbl { font-size: 0.8rem; color: var(--slate-400); }
+
+    /* ------------------------------------------------------------------
+       Cover
+       ------------------------------------------------------------------ */
+    .cover {
+      text-align: center;
+    }
+    .cover h1 { max-width: 20ch; margin: 0 auto 1.2rem; }
+    .cover .tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--slate-400);
+      padding: 0.4rem 0.9rem;
+      border: 1px solid rgba(148,163,184,0.25);
+      border-radius: 999px;
+      margin-bottom: 1.6rem;
+    }
+    .cover-meta {
+      margin-top: 1.8rem;
+      font-size: 0.85rem;
+      color: var(--slate-500);
+    }
+    .cover-meta span { margin: 0 0.6rem; }
+
+    /* ------------------------------------------------------------------
+       Closing — dark twin of docs/index.html hero
+       ------------------------------------------------------------------ */
+    .closing {
+      text-align: center;
+    }
+    .closing-logo {
+      width: 100px; height: 100px;
+      margin: 0 auto 1.6rem;
+    }
+    .closing h1 {
+      font-size: clamp(1.8rem, 3.4vw, 2.8rem);
+      font-weight: 700;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      max-width: 22ch;
+      margin: 0 auto 1rem;
+    }
+    .closing .authors {
+      font-size: 0.95rem;
+      color: var(--slate-400);
+      max-width: 60ch;
+      margin: 0 auto 0.5rem;
+    }
+    .closing .venue {
+      font-size: 0.85rem;
+      color: var(--slate-500);
+      margin-bottom: 2rem;
+    }
+    .btn-row {
+      display: flex;
+      gap: 0.7rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1.2rem;
+      background: var(--slate-800);
+      color: var(--slate-50);
+      border: 1px solid var(--slate-700);
+      border-radius: 999px;
+      font-family: inherit;
+      font-size: 0.9rem;
+      font-weight: 500;
+      text-decoration: none;
+      transition: var(--transition);
+    }
+    .btn:hover { background: var(--slate-700); border-color: var(--primary); transform: translateY(-1px); }
+    .btn .icon { width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; }
+
+    .closing .next-cue {
+      margin-top: 2rem;
+      font-size: 0.85rem;
+      color: var(--slate-500);
+    }
+    .closing .next-cue em { font-style: normal; color: var(--accent); font-weight: 600; }
+
+    /* ------------------------------------------------------------------
+       HUD
+       ------------------------------------------------------------------ */
+    .hud {
+      position: fixed;
+      bottom: 1rem;
+      left: 1.4rem;
+      right: 1.4rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.74rem;
+      color: var(--slate-500);
+      letter-spacing: 0.05em;
+      pointer-events: none;
+      z-index: 50;
+    }
+    .hud .page { font-variant-numeric: tabular-nums; }
+    .hud .nav kbd {
+      display: inline-block;
+      padding: 0.12rem 0.45rem;
+      margin: 0 0.12rem;
+      background: var(--slate-800);
+      border: 1px solid var(--slate-700);
+      border-radius: 4px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.68rem;
+      color: var(--slate-300);
+    }
+
+    /* Entry animations */
+    .slide.active .anim-up   { animation: slideUp 0.6s 0.1s  cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+    .slide.active .anim-up-2 { animation: slideUp 0.6s 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+    .slide.active .anim-up-3 { animation: slideUp 0.6s 0.4s  cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="stage" id="stage">
+
+  <!-- ============================================================== -->
+  <!-- 1. Cover                                                         -->
+  <!-- ============================================================== -->
+  <section class="slide cover active" data-slide="0">
+    <div class="tag anim-up">AION · Clinical Time-Series Demo</div>
+    <h1 class="anim-up-2">
+      <span class="gradient-text">Reading a heart,</span><br>
+      <span class="gradient-text">listening to an ICU.</span>
+    </h1>
+    <p class="lead anim-up-3">
+      A real clinical time-series case — built on the PhysioNet PTB Diagnostic Database and the CinC Challenge 2019 reference structure — for AION to investigate end-to-end.
+    </p>
+    <div class="cover-meta anim-up-3">
+      <span>PTB Diagnostic ECG</span>·
+      <span>ICU Sepsis 48&nbsp;h</span>·
+      <span>2,880 min × 9 channels + 12 leads × 250&nbsp;Hz</span>
+    </div>
+  </section>
+
+  <!-- ============================================================== -->
+  <!-- 2. Background — why this case exists                             -->
+  <!-- ============================================================== -->
+  <section class="slide" data-slide="1">
+    <div class="center anim-up" style="max-width: 80ch;">
+      <div class="eyebrow">Background</div>
+      <h2>Two of the hardest time-series problems in medicine.</h2>
+    </div>
+
+    <div class="outputs anim-up-2" style="margin-top: 2rem;">
+      <div class="output">
+        <div class="glyph" style="background: var(--red);">♥</div>
+        <h3>12-lead ECG diagnosis</h3>
+        <p>A 5-second, 12-channel voltage trace of the heart's electrical activity. A trained cardiologist reads ST-elevation in seconds — but the pattern is 12 simultaneous signals at 250&nbsp;Hz, and missing it changes everything.</p>
+      </div>
+      <div class="output">
+        <div class="glyph" style="background: var(--amber);">◉</div>
+        <h3>ICU sepsis early warning</h3>
+        <p>48 hours of continuous vital signs (HR, BP, SpO₂, RR, temperature) plus <em>sparse</em> lactate draws. Sepsis onset hides in slow drifts that no bedside monitor aggregates.</p>
+      </div>
+      <div class="output">
+        <div class="glyph" style="background: var(--pink);">⏱</div>
+        <h3>Time is the dimension</h3>
+        <p>Both problems are fundamentally <em>about time</em> — ST changes unfold over minutes, septic shock develops over hours. Static classifiers fail; sequential models are required.</p>
+      </div>
+      <div class="output">
+        <div class="glyph" style="background: var(--green);">$</div>
+        <h3>Asymmetric clinical cost</h3>
+        <p>A missed MI or a 4-hour-delayed antibiotic in septic shock costs a life; a false alarm costs a few minutes of attention. Evaluation must reflect that asymmetry.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================== -->
+  <!-- 3. Inputs — file tree + what each file is                        -->
+  <!-- ============================================================== -->
+  <section class="slide" data-slide="2">
+    <div class="center anim-up" style="max-width: 80ch;">
+      <div class="eyebrow">Inputs · the workspace</div>
+      <h2>Four formats, two public datasets, one workspace.</h2>
+    </div>
+
+    <div class="tree-wrap anim-up-2" style="margin-top: 1.4rem;">
+<pre class="tree">
+<span class="root">example/aion-medical-demo/medical/</span>
+├── <span class="file-aux">case.md</span>                  <span class="comment"># workspace context, deliverables, run instructions</span>
+├── <span class="file-aux">task.md</span>                  <span class="comment"># the clinical task the agent must solve</span>
+├── <span class="file-aux">FEATURE_TRIGGER_MAP.md</span>   <span class="comment"># which task lines fire which AION feature</span>
+├── <span class="file-aux">PLAYWRIGHT_AND_GUI.md</span>    <span class="comment"># visual handling &amp; cross-platform notes</span>
+├── <span class="file-aux">slide.html</span>              <span class="comment"># this deck</span>
+├── <span class="dir">data/</span>
+│   ├── <span class="dir">raw_external/</span>          <span class="comment"># what the agent ingests as-is</span>
+│   │   ├── <span class="file-data">ecg_signals.csv</span>          <span class="comment"># 2.3 MB · 12 leads × 5s × 250 Hz × 3 patients</span>
+│   │   ├── <span class="file-data">icu_vitals.csv</span>           <span class="comment"># 352 KB · 2,880 min × 9 channels × 1 patient</span>
+│   │   └── <span class="dir">ptb_ecg/</span>                  <span class="comment"># raw WFDB binary (PhysioNet PTB Diagnostic DB)</span>
+│   │       ├── <span class="file-data">patient001/</span>              <span class="comment"># acute infero-lateral MI</span>
+│   │       ├── <span class="file-data">patient019/</span>              <span class="comment"># acute infero-lateral MI</span>
+│   │       └── <span class="file-data">patient136/</span>              <span class="comment"># healthy control</span>
+│   └── <span class="dir">raw_legacy/</span>             <span class="comment"># deliberately inconsistent formats (data-interface skill)</span>
+│       ├── <span class="file-data">old_ecg_format.edf</span>       <span class="comment"># legacy EDF, different gain / lead order</span>
+│       └── <span class="file-data">manual_corrections.json</span>  <span class="comment"># 8 cardiologist beat annotations</span>
+└── <span class="dir">docs/reference/</span>          <span class="comment"># clinician-provided visual evidence (the next slides)</span>
+    ├── <span class="file-img">patient001_ecg_12lead.png</span>      <span class="comment"># MI: 12 leads with ST↑ annotations</span>
+    ├── <span class="file-img">patient136_ecg_normal.png</span>      <span class="comment"># control: 12 leads, clean baseline</span>
+    ├── <span class="file-img">mi_vs_normal_comparison.png</span>   <span class="comment"># side-by-side: where the diagnosis is</span>
+    ├── <span class="file-img">icu_vitals_full_48h.png</span>       <span class="comment"># sepsis trajectory across HR/MAP/SpO₂/RR/lactate</span>
+    ├── <span class="file-img">icu_vitals_zoom_sepsis.png</span>    <span class="comment"># hours 4–32 zoomed onto the transition</span>
+    ├── <span class="file-img">forecast_vs_actual.png</span>       <span class="comment"># model output vs ground truth (post-run)</span>
+    ├── <span class="file-img">shap_feature_importance.png</span>  <span class="comment"># interpretability (post-run)</span>
+    └── <span class="file-img">evaluation_criteria.pdf</span>      <span class="comment"># 4-page clinical rubric for grading</span>
+</pre>
+    </div>
+  </section>
+
+  <!-- ============================================================== -->
+  <!-- 4. ECG input — what the data looks like                         -->
+  <!-- ============================================================== -->
+  <section class="slide" data-slide="3">
+    <div class="row anim-up">
+      <div class="img-frame">
+        <img src="docs/reference/mi_vs_normal_comparison.png" alt="MI vs Normal ECG">
+        <div class="img-caption">
+          <strong>mi_vs_normal_comparison.png</strong> — 5-second strip, 12 leads, MI on the left (red, with ST↑ annotations) vs. healthy control on the right (green).
+        </div>
+      </div>
+      <div class="copy">
+        <div class="eyebrow">Input · 12-lead ECG</div>
+        <h2>Diagnose MI from 12 channels of voltage.</h2>
+        <p class="lead">
+          Each patient is a <strong>5-second, 12-lead, 250 Hz recording</strong> — 15,000 numbers per strip. The diagnosis is essentially visual: ST-elevation in the inferior / lateral leads, abnormal Q waves, T-wave inversion. The agent must learn these morphological signatures from a handful of labeled patients.
+        </p>
+        <ul>
+          <li><strong>Lead II, V5, V6</strong> — lateral wall (red <code>ST↑</code> markers on the left)</li>
+          <li><strong>Lead V1–V3</strong> — septal / anterior wall</li>
+          <li>Patient 136's green baseline is what "normal" looks like — a model has to learn the gap</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================== -->
+  <!-- 5. ICU input — what the data looks like                          -->
+  <!-- ============================================================== -->
+  <section class="slide" data-slide="4">
+    <div class="row flip anim-up">
+      <div class="copy">
+        <div class="eyebrow">Input · 48-hour ICU vitals</div>
+        <h2>Predict shock 2–6 hours before it lands.</h2>
+        <p class="lead">
+          A single ICU patient generates <strong>2,880 minutes × 9 channels</strong> of continuous monitoring — heart rate, blood pressure (SBP/DBP/MAP), SpO₂, respiratory rate, temperature — plus <strong>sparse, asynchronous lactate</strong> draws (~16 measurements over 48 h). The agent must fuse dense and sparse streams and fire an early warning before the patient crashes.
+        </p>
+        <ul>
+          <li><strong>Orange dashed</strong> line: <em>sepsis onset at h20</em> — the moment the patient tipped</li>
+          <li><strong>Red dashed</strong> line: <em>septic shock at h28</em> — MAP crossing the 65 mmHg shock threshold</li>
+          <li>SpO₂ dips below the 92% hypoxemia line for 10 hours around the crisis</li>
+          <li>Lactate climbs past the 2.0 mmol/L <em>early-warning boundary</em> ~2 hours before sepsis onset — a flag no bedside monitor aggregates</li>
+        </ul>
+      </div>
+      <div class="img-frame">
+        <img src="docs/reference/icu_vitals_full_48h.png" alt="ICU Sepsis Trajectory 48h">
+        <div class="img-caption">
+          <strong>icu_vitals_full_48h.png</strong> — five panels (HR · MAP · SpO₂ · RR · Lactate) across the full 48-hour admission, with clinical thresholds overlaid.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================== -->
+  <!-- 6. Outputs — what the agent must produce                         -->
+  <!-- ============================================================== -->
+  <section class="slide" data-slide="5">
+    <div class="center anim-up" style="max-width: 80ch;">
+      <div class="eyebrow">Outputs · what the agent must deliver</div>
+      <h2>From raw signal to sealed report.</h2>
+      <p class="lead">The case is scored on four artefacts — predictions, model, interpretability, and a report the agent must defend in front of a reviewer.</p>
+    </div>
+
+    <div class="outputs anim-up-2">
+      <div class="output">
+        <div class="glyph">1</div>
+        <h3>Per-patient predictions</h3>
+        <p>ECG: per-patient MI probability (3 patients). ICU: hourly sepsis probability over 48 h (2,880 timestamps). One submission CSV per task.</p>
+      </div>
+      <div class="output">
+        <div class="glyph">2</div>
+        <h3>Models &amp; metrics</h3>
+        <p>Trained classifiers + evaluation module: F1, AUROC, sensitivity @ specificity, calibration, plus failure-mode analysis. Scored against <code>evaluation_criteria.pdf</code>.</p>
+      </div>
+      <div class="output">
+        <div class="glyph">3</div>
+        <h3>Interpretability</h3>
+        <p>SHAP feature importance and a <code>forecast_vs_actual.png</code> plot showing the model's signal vs. ground truth — required for clinical defensibility.</p>
+      </div>
+      <div class="output">
+        <div class="glyph">4</div>
+        <h3>Sealed report</h3>
+        <p><code>docs/report.md</code> embedding every figure, every metric, every governance verdict. The report is the agent's final deliverable and must be self-contained.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================== -->
+  <!-- 7. Why it's hard + why it matters                                -->
+  <!-- ============================================================== -->
+  <section class="slide" data-slide="6">
+    <div class="center anim-up" style="max-width: 80ch;">
+      <div class="eyebrow">Stakes</div>
+      <h2>Hard for a model. Costly to fail. Ready for AION.</h2>
+      <p class="lead">A cardiologist cannot watch 48 hours of ICU vitals. An intensivist cannot read 12-lead ECG at 250 samples per second. The data sits across four incompatible formats, three public datasets, and a sparse-lab clinical reality — and the cost of missing a single early warning is a life.</p>
+    </div>
+
+    <div class="stats anim-up-2">
+      <div class="stat">
+        <div class="num">12</div>
+        <div class="lbl">ECG leads sampled<br>at 250 Hz</div>
+      </div>
+      <div class="stat">
+        <div class="num">48<span style="font-size:0.5em">h</span></div>
+        <div class="lbl">continuous ICU<br>vitals per patient</div>
+      </div>
+      <div class="stat">
+        <div class="num">4</div>
+        <div class="lbl">incompatible data<br>formats (CSV · WFDB · EDF · JSON)</div>
+      </div>
+      <div class="stat">
+        <div class="num">~7–18%</div>
+        <div class="lbl">STEMI mortality rise<br>per hour of delay</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================== -->
+  <!-- 8. AION handoff — dark twin of docs/index.html hero              -->
+  <!-- ============================================================== -->
+  <section class="slide closing" data-slide="7">
+    <svg class="closing-logo anim-up" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#7C3AED" />
+          <stop offset="100%" style="stop-color:#8B5CF6" />
+        </linearGradient>
+      </defs>
+      <circle cx="50" cy="45" r="35" fill="url(#g)" />
+      <path d="M 35,45 C 35,38 42,38 50,42 C 58,38 65,38 65,45 C 65,52 58,52 50,48 C 42,52 35,52 35,45Z"
+            fill="none" stroke="white" stroke-width="6" stroke-linecap="round" />
+      <rect x="42" y="82" width="16" height="12" rx="4" fill="url(#g)" />
+      <path d="M 38 88 L 30 92" fill="none" stroke="url(#g)" stroke-width="3" stroke-linecap="round" />
+      <path d="M 62 88 L 70 92" fill="none" stroke="url(#g)" stroke-width="3" stroke-linecap="round" />
+    </svg>
+
+    <h1 class="anim-up-2">AION: Next-Generation Tasks and Practical Harness for Time Series</h1>
+    <div class="authors anim-up-3">Tianxiang Zhan · Xiaobao Song · Tong Guan · Shirui Pan · Ming Jin</div>
+    <div class="venue anim-up-3">Griffith University · Shenzhen University · Zhejiang University · arXiv preprint, 2026</div>
+
+    <div class="btn-row anim-up-3">
+      <a class="btn" href="https://arxiv.org/pdf/2605.25045.pdf" target="_blank" rel="noopener"><span class="icon">📄</span><span>Paper</span></a>
+      <a class="btn" href="https://github.com/ztxtech/aion" target="_blank" rel="noopener"><span class="icon">⌥</span><span>Code</span></a>
+      <a class="btn" href="https://arxiv.org/abs/2605.25045" target="_blank" rel="noopener"><span class="icon">✕</span><span>arXiv</span></a>
+      <a class="btn" href="https://ztxtech.github.io/aion/" target="_blank" rel="noopener"><span class="icon">☷</span><span>Docs</span></a>
+    </div>
+
+    <div class="next-cue anim-up-3">The harness is about to take over. <em>Press → to begin the demo.</em></div>
+  </section>
+
+</div>
+
+<!-- Page number + nav hint -->
+<div class="hud">
+  <div class="page" id="page-num">1 / 8</div>
+  <div class="nav">
+    <kbd>←</kbd> <kbd>→</kbd> navigate ·
+    <kbd>1</kbd>–<kbd>8</kbd> jump ·
+    <kbd>F</kbd> fullscreen ·
+    <kbd>Home</kbd>/<kbd>End</kbd> first/last
+  </div>
+</div>
+
+<script>
+(() => {
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const total  = slides.length;
+  const pageEl = document.getElementById('page-num');
+  let idx = 0;
+
+  function show(n) {
+    idx = Math.max(0, Math.min(total - 1, n));
+    slides.forEach((s, i) => s.classList.toggle('active', i === idx));
+    pageEl.textContent = (idx + 1) + ' / ' + total;
+  }
+
+  function next() { if (idx < total - 1) show(idx + 1); }
+  function prev() { if (idx > 0)        show(idx - 1); }
+
+  document.addEventListener('keydown', (e) => {
+    switch (e.key) {
+      case 'ArrowRight':
+      case 'ArrowDown':
+      case 'PageDown':
+      case ' ':
+      case 'Enter':
+        e.preventDefault(); next(); break;
+      case 'ArrowLeft':
+      case 'ArrowUp':
+      case 'PageUp':
+        e.preventDefault(); prev(); break;
+      case 'Home':
+        e.preventDefault(); show(0); break;
+      case 'End':
+        e.preventDefault(); show(total - 1); break;
+      case 'f':
+      case 'F':
+        e.preventDefault();
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen?.();
+        } else {
+          document.exitFullscreen?.();
+        }
+        break;
+      default:
+        if (/^[1-9]$/.test(e.key)) {
+          const n = parseInt(e.key, 10) - 1;
+          if (n < total) { e.preventDefault(); show(n); }
+        }
+    }
+  });
+
+  // Click left/right half fallback (skip on links/buttons)
+  document.getElementById('stage').addEventListener('click', (e) => {
+    if (e.target.closest('a, button')) return;
+    const x = e.clientX;
+    (x > window.innerWidth / 2 ? next : prev)();
+  });
+
+  // Touch swipe
+  let touchX = null;
+  document.addEventListener('touchstart', (e) => { touchX = e.touches[0].clientX; }, { passive: true });
+  document.addEventListener('touchend',   (e) => {
+    if (touchX === null) return;
+    const dx = e.changedTouches[0].clientX - touchX;
+    if (Math.abs(dx) > 50) (dx < 0 ? next() : prev());
+    touchX = null;
+  }, { passive: true });
+
+  show(0);
+})();
+</script>
+</body>
+</html>
