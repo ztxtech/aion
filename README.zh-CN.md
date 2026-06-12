@@ -16,6 +16,7 @@
   <a href="#-四层架构"><img src="https://img.shields.io/badge/层级-4层-10B981?style=for-the-badge" alt="Layers"></a>
   <a href="#-技能清单"><img src="https://img.shields.io/badge/技能-17个-8B5CF6?style=for-the-badge" alt="Skills"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/许可证-MIT-yellow?style=for-the-badge" alt="License"></a>
+  <a href="https://arxiv.org/abs/2605.25045"><img src="https://img.shields.io/badge/arXiv-2605.25045-B31B1B?style=for-the-badge&logo=arxiv&logoColor=white" alt="arXiv"></a>
 </p>
 
 <p align="center">

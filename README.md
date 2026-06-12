@@ -16,6 +16,7 @@ Time-series research is moving beyond fixed forecasting benchmarks toward tasks 
   <a href="#-four-layer-architecture"><img src="https://img.shields.io/badge/Layers-4-10B981?style=for-the-badge" alt="Layers"></a>
   <a href="#-skills"><img src="https://img.shields.io/badge/Skills-17-8B5CF6?style=for-the-badge" alt="Skills"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" alt="License"></a>
+  <a href="https://arxiv.org/abs/2605.25045"><img src="https://img.shields.io/badge/arXiv-2605.25045-B31B1B?style=for-the-badge&logo=arxiv&logoColor=white" alt="arXiv"></a>
 </p>
 
 <p align="center">
