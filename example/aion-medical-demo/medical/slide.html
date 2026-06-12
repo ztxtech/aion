@@ -596,9 +596,43 @@
   </section>
 
   <!-- ============================================================== -->
-  <!-- 7. Why it's hard + why it matters                                -->
+  <!-- 7. Acceptance criteria — what 'done' actually means              -->
   <!-- ============================================================== -->
   <section class="slide" data-slide="6">
+    <div class="center anim-up" style="max-width: 80ch;">
+      <div class="eyebrow">Acceptance · what the agent must produce</div>
+      <h2>"Done" means every one of these lands.</h2>
+      <p class="lead">The numeric thresholds are calibrated to the tiny cohort (n=2 vs n=1 ECG, one synthetic ICU patient) — they're reachable. The real bar is structural: the pipeline ran end-to-end with the right shape, provenance travelled with the data, and the interpretability check landed on the clinically-correct leads.</p>
+    </div>
+
+    <div class="outputs anim-up-2">
+      <div class="output">
+        <div class="glyph">A</div>
+        <h3>ECG submission CSV</h3>
+        <p><code>outputs/ecg_submission.csv</code> — one row per patient, columns <code>patient_id, predicted_class, confidence, top_3_leads_affected</code>. For the two MI patients, <code>top_3_leads_affected</code> must be a subset of <code>{II, III, aVF, V5, V6}</code>. The healthy control's <code>predicted_class</code> is <code>healthy</code>. Header row carries <code># real_provenance: PhysioNet PTB</code>.</p>
+      </div>
+      <div class="output">
+        <div class="glyph">B</div>
+        <h3>ICU submission CSV</h3>
+        <p><code>outputs/icu_submission.csv</code> — per-minute <code>sepsis_prob</code> for horizons 2h / 4h / 6h. Probability rises monotonically across hours 18–22 (the pre-onset window) and crosses 0.8 by hour 22. ECE &lt; 0.05 across the 48h window. Header row carries <code># synthetic_provenance: Sepsis-3/SSC setpoints</code>.</p>
+      </div>
+      <div class="output">
+        <div class="glyph">C</div>
+        <h3>Four output plots</h3>
+        <p><code>docs/images/</code> — <code>ecg_diagnostic.png</code> (12-lead with MI localisation overlay), <code>mi_vs_normal_attribution.png</code> (SHAP on II/V5/V6), <code>icu_sepsis_forecast.png</code> (48h HR/MAP/SpO2 with shock markers), <code>sepsis_zoom_2h_pre_onset.png</code> (hours 16–22, model flagging elevated risk pre-onset). All four are <em>consumed</em> in <code>docs/report.md</code>, not just listed.</p>
+      </div>
+      <div class="output">
+        <div class="glyph">D</div>
+        <h3>Sealed report + governance</h3>
+        <p><code>docs/report.md</code> opens with the DEMONSTRATION disclaimer, has a provenance section, a method comparison table, results with cohort caveats, an interpretability section with clinical cross-check, and a failure-mode analysis. <code>outputs/main/REBUTTAL.md</code>, <code>trace.jsonl</code>, and <code>memory/</code> must all exist for <code>c-critic</code> to sign off.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================== -->
+  <!-- 8. Stakes — hard for a model, costly to fail                      -->
+  <!-- ============================================================== -->
+  <section class="slide" data-slide="7">
     <div class="center anim-up" style="max-width: 80ch;">
       <div class="eyebrow">Stakes</div>
       <h2>Hard for a model. Costly to fail. Ready for AION.</h2>
@@ -626,9 +660,9 @@
   </section>
 
   <!-- ============================================================== -->
-  <!-- 8. AION handoff — dark twin of docs/index.html hero              -->
+  <!-- 9. AION handoff — dark twin of docs/index.html hero              -->
   <!-- ============================================================== -->
-  <section class="slide closing" data-slide="7">
+  <section class="slide closing" data-slide="8">
     <svg class="closing-logo anim-up" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -662,10 +696,10 @@
 
 <!-- Page number + nav hint -->
 <div class="hud">
-  <div class="page" id="page-num">1 / 8</div>
+  <div class="page" id="page-num">1 / 9</div>
   <div class="nav">
     <kbd>←</kbd> <kbd>→</kbd> navigate ·
-    <kbd>1</kbd>–<kbd>8</kbd> jump ·
+    <kbd>1</kbd>–<kbd>9</kbd> jump ·
     <kbd>F</kbd> fullscreen ·
     <kbd>Home</kbd>/<kbd>End</kbd> first/last
   </div>
