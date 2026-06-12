@@ -134,12 +134,12 @@
     gap: clamp(6px, 0.6vw, 9px);
   }
   .item {
-    display: flex; align-items: flex-start; gap: 10px;
-    font-size: clamp(12.5px, 0.92vw, 14px);
-    line-height: 1.4;
+    display: flex; align-items: center; gap: 10px;
+    font-size: clamp(13px, 0.95vw, 14.5px);
+    line-height: 1.3;
     color: var(--slate-700);
+    white-space: nowrap;
   }
-  .item strong { color: var(--slate-800); font-weight: 600; }
   .item .tag {
     flex: 0 0 auto;
     display: inline-block;
@@ -212,10 +212,10 @@
         <h2>Inputs</h2>
       </div>
       <div class="body">
-        <div class="item"><span class="tag">Signal</span><span><strong>12-lead ECG recordings</strong> at 250 Hz</span></div>
-        <div class="item"><span class="tag">Vitals</span><span><strong>48 hours of ICU vitals</strong> at 1-min resolution</span></div>
-        <div class="item"><span class="tag">Legacy</span><span><strong>Legacy EDF file</strong> with different gain and lead order</span></div>
-        <div class="item"><span class="tag">Labels</span><span><strong>Cardiologist beat annotations</strong> for 8 specific beats</span></div>
+        <div class="item"><span class="tag">Signal</span><span>12-lead ECG recordings</span></div>
+        <div class="item"><span class="tag">Vitals</span><span>48h ICU vitals</span></div>
+        <div class="item"><span class="tag">Legacy</span><span>Legacy EDF file</span></div>
+        <div class="item"><span class="tag">Labels</span><span>Cardiologist beat annotations</span></div>
       </div>
     </section>
 
@@ -225,10 +225,10 @@
         <h2>Expected outputs</h2>
       </div>
       <div class="body">
-        <div class="item"><span class="tag">MI</span><span><strong>Per-patient MI prediction</strong> localising to the inferior-lateral leads</span></div>
-        <div class="item"><span class="tag">Sepsis</span><span><strong>Per-minute sepsis probability</strong> at 2h / 4h / 6h horizons, well-calibrated</span></div>
-        <div class="item"><span class="tag">Plots</span><span><strong>Four diagnostic plots</strong> consumed inside the final report</span></div>
-        <div class="item"><span class="tag">Report</span><span><strong>Sealed report</strong> with disclaimer, provenance, and failure-mode analysis</span></div>
+        <div class="item"><span class="tag">MI</span><span>Per-patient prediction</span></div>
+        <div class="item"><span class="tag">Sepsis</span><span>Per-minute probability</span></div>
+        <div class="item"><span class="tag">Plots</span><span>Four diagnostic plots</span></div>
+        <div class="item"><span class="tag">Report</span><span>Sealed report</span></div>
       </div>
     </section>
 
@@ -238,10 +238,10 @@
         <h2>Challenges</h2>
       </div>
       <div class="body">
-        <div class="item"><span class="tag">Data</span><span><strong>Tiny cohort and mixed provenance</strong></span></div>
-        <div class="item"><span class="tag">Sampling</span><span><strong>Sparse and irregular lactate</strong></span></div>
-        <div class="item"><span class="tag">Regime</span><span><strong>Non-stationary 48h trajectory</strong></span></div>
-        <div class="item"><span class="tag">Cost</span><span><strong>Asymmetric risk and forecast leakage</strong></span></div>
+        <div class="item"><span class="tag">Data</span><span>Tiny mixed cohort</span></div>
+        <div class="item"><span class="tag">Sampling</span><span>Sparse irregular lactate</span></div>
+        <div class="item"><span class="tag">Regime</span><span>Non-stationary 48h</span></div>
+        <div class="item"><span class="tag">Cost</span><span>Asymmetric risk &amp; leakage</span></div>
       </div>
     </section>
 
