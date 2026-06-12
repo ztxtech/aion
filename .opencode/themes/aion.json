@@ -1,0 +1,230 @@
+{
+  "$schema": "https://opencode.ai/theme.json",
+  "defs": {
+    "aionPrimary": "#7C3AED",
+    "aionPrimaryHover": "#6D28D9",
+    "aionSecondary": "#8B5CF6",
+    "aionAccent": "#A78BFA",
+    "aionAccentLight": "#C4B5FD",
+    "aionSlate50": "#F8FAFC",
+    "aionSlate100": "#F1F5F9",
+    "aionSlate200": "#E2E8F0",
+    "aionSlate300": "#CBD5E1",
+    "aionSlate400": "#94A3B8",
+    "aionSlate500": "#64748B",
+    "aionSlate700": "#334155",
+    "aionSlate800": "#1E293B",
+    "aionSlate900": "#0F172A",
+    "aionSlate950": "#020617",
+    "aionPurpleDeep": "#4C1D95",
+    "aionPurpleDark": "#2E1065",
+    "aionGreen": "#10B981",
+    "aionRed": "#EF4444",
+    "aionOrange": "#F97316",
+    "aionAmber": "#F59E0B",
+    "aionBlue": "#3B82F6",
+    "aionPink": "#EC4899"
+  },
+  "theme": {
+    "primary": {
+      "dark": "aionPrimary",
+      "light": "aionPrimaryHover"
+    },
+    "secondary": {
+      "dark": "aionSecondary",
+      "light": "aionSecondary"
+    },
+    "accent": {
+      "dark": "aionAccent",
+      "light": "aionAccent"
+    },
+    "error": {
+      "dark": "aionRed",
+      "light": "#DC2626"
+    },
+    "warning": {
+      "dark": "aionAmber",
+      "light": "aionAmber"
+    },
+    "success": {
+      "dark": "aionGreen",
+      "light": "#047857"
+    },
+    "info": {
+      "dark": "aionSecondary",
+      "light": "aionPrimary"
+    },
+    "text": {
+      "dark": "aionSlate100",
+      "light": "aionSlate800"
+    },
+    "textMuted": {
+      "dark": "aionSlate400",
+      "light": "aionSlate500"
+    },
+    "background": {
+      "dark": "aionSlate950",
+      "light": "#FFFFFF"
+    },
+    "backgroundPanel": {
+      "dark": "aionSlate900",
+      "light": "aionSlate50"
+    },
+    "backgroundElement": {
+      "dark": "aionSlate800",
+      "light": "aionSlate100"
+    },
+    "border": {
+      "dark": "aionSlate800",
+      "light": "aionSlate200"
+    },
+    "borderActive": {
+      "dark": "aionPrimary",
+      "light": "aionPrimary"
+    },
+    "borderSubtle": {
+      "dark": "aionSlate900",
+      "light": "aionSlate100"
+    },
+    "diffAdded": {
+      "dark": "aionGreen",
+      "light": "#047857"
+    },
+    "diffRemoved": {
+      "dark": "aionRed",
+      "light": "#DC2626"
+    },
+    "diffContext": {
+      "dark": "aionSlate500",
+      "light": "aionSlate500"
+    },
+    "diffHunkHeader": {
+      "dark": "aionSecondary",
+      "light": "aionPrimary"
+    },
+    "diffHighlightAdded": {
+      "dark": "aionGreen",
+      "light": "#047857"
+    },
+    "diffHighlightRemoved": {
+      "dark": "aionRed",
+      "light": "#DC2626"
+    },
+    "diffAddedBg": {
+      "dark": "aionSlate800",
+      "light": "#ECFDF5"
+    },
+    "diffRemovedBg": {
+      "dark": "aionSlate800",
+      "light": "#FEF2F2"
+    },
+    "diffContextBg": {
+      "dark": "aionSlate900",
+      "light": "aionSlate50"
+    },
+    "diffLineNumber": {
+      "dark": "aionSlate700",
+      "light": "aionSlate300"
+    },
+    "diffAddedLineNumberBg": {
+      "dark": "aionSlate800",
+      "light": "#ECFDF5"
+    },
+    "diffRemovedLineNumberBg": {
+      "dark": "aionSlate800",
+      "light": "#FEF2F2"
+    },
+    "markdownText": {
+      "dark": "aionSlate100",
+      "light": "aionSlate800"
+    },
+    "markdownHeading": {
+      "dark": "aionAccent",
+      "light": "aionPrimaryHover"
+    },
+    "markdownLink": {
+      "dark": "aionSecondary",
+      "light": "aionPrimary"
+    },
+    "markdownLinkText": {
+      "dark": "aionAccent",
+      "light": "aionAccent"
+    },
+    "markdownCode": {
+      "dark": "aionAccentLight",
+      "light": "aionSecondary"
+    },
+    "markdownBlockQuote": {
+      "dark": "aionSlate500",
+      "light": "aionSlate500"
+    },
+    "markdownEmph": {
+      "dark": "aionAmber",
+      "light": "aionAmber"
+    },
+    "markdownStrong": {
+      "dark": "aionOrange",
+      "light": "aionOrange"
+    },
+    "markdownHorizontalRule": {
+      "dark": "aionSlate700",
+      "light": "aionSlate300"
+    },
+    "markdownListItem": {
+      "dark": "aionAccent",
+      "light": "aionPrimary"
+    },
+    "markdownListEnumeration": {
+      "dark": "aionSecondary",
+      "light": "aionSecondary"
+    },
+    "markdownImage": {
+      "dark": "aionSecondary",
+      "light": "aionPrimary"
+    },
+    "markdownImageText": {
+      "dark": "aionAccent",
+      "light": "aionAccent"
+    },
+    "markdownCodeBlock": {
+      "dark": "aionSlate100",
+      "light": "aionSlate800"
+    },
+    "syntaxComment": {
+      "dark": "aionSlate500",
+      "light": "aionSlate500"
+    },
+    "syntaxKeyword": {
+      "dark": "aionSecondary",
+      "light": "aionPrimaryHover"
+    },
+    "syntaxFunction": {
+      "dark": "aionAccent",
+      "light": "aionPrimary"
+    },
+    "syntaxVariable": {
+      "dark": "aionAccentLight",
+      "light": "aionSecondary"
+    },
+    "syntaxString": {
+      "dark": "aionGreen",
+      "light": "#047857"
+    },
+    "syntaxNumber": {
+      "dark": "aionPink",
+      "light": "aionPink"
+    },
+    "syntaxType": {
+      "dark": "aionAccentLight",
+      "light": "aionSecondary"
+    },
+    "syntaxOperator": {
+      "dark": "aionSecondary",
+      "light": "aionPrimaryHover"
+    },
+    "syntaxPunctuation": {
+      "dark": "aionSlate100",
+      "light": "aionSlate800"
+    }
+  }
+}
