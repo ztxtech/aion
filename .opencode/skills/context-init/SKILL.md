@@ -17,7 +17,7 @@ description: Manual start skill: read `.opencode/` first, then read the task fil
 ## Flow
 
 1. **Read `.opencode/readme.md` FIRST** as the cached structure index. It contains conditional read rules — only pull in files that the current task requires. Do NOT read every file blindly.
-2. Read `.opencode/rules/core.md` and `.opencode/agents/agent.md` (always required).
+2. Read `.opencode/rules/core.md` (always required). Agent prompts are injected programmatically by the AION plugin; no manual agent file read is needed.
 3. Follow the conditional read rules in `readme.md` to load only the relevant rules, protocols, skills, and evals for the current task type.
 4. Read `.opencode/memory/` / `.opencode/trace.md` (if they exist) to align memory and trace constraints.
 4. Read task and note files in the project root, such as `README.md`, `task.md`, and task attachment notes.

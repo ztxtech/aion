@@ -1,0 +1,69 @@
+{
+  // AION Plugin Configuration (JSONC: comments + trailing commas allowed).
+  //
+  // Project-level override. Place this file at:
+  //   <project-root>/.opencode/aion.jsonc
+  //
+  // Schema is auto-validated against aionConfigSchema; missing keys fall
+  // back to defaults. See docs/guide/team-mode.md for the team_mode block.
+
+  "enabled": true,
+
+  // Default model for all AION agents (provider/model format).
+  // Overrides your global config's model setting when set.
+  "model": "local-auto/mimo-v2.5",
+
+  // Default agent name shown on OpenCode startup.
+  "defaultAgent": "aion",
+
+  "governance": {
+    "enforceHierarchy": true,
+    "cCriticSupremacy": true
+  },
+
+  "leakage": {
+    "blockOnSuspicion": true,
+    "blockFutureInfo": true,
+    "blockHiddenSetAccess": true,
+    "blockPrivateData": true,
+    "blockCredentials": true,
+    "blockPromptsAccess": true,
+    "blockMemoryAccess": true
+  },
+
+  "autoContinue": {
+    "enabled": true,
+    "maxRounds": 30,
+    "delaySeconds": 2
+  },
+
+  "compaction": {
+    "autoRefreshAtKeyNodes": true,
+    "snapshotPath": ".opencode/memory/context-snapshot.md"
+  },
+
+  "trace": {
+    "enabled": true,
+    "path": ".opencode/trace.md"
+  },
+
+  "safety": {
+    "requirePrecheckForNewInput": true,
+    "requirePrecheckForHighRiskActions": true,
+    "requirePrecheckForKeyWrites": true
+  },
+
+  "teamMode": {
+    // OFF by default. Enable to register the 12+ team_* tools at plugin load.
+    "enabled": true,
+    "tmuxVisualization": false,
+    "maxParallelMembers": 4,
+    "maxMembers": 8,
+    "maxMessagesPerRun": 10000,
+    "maxWallClockMinutes": 120,
+    "maxMemberTurns": 500,
+    "messagePayloadMaxBytes": 32768,
+    "recipientUnreadMaxBytes": 262144,
+    "mailboxPollIntervalMs": 3000
+  }
+}

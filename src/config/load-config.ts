@@ -1,0 +1,131 @@
+import { existsSync, readFileSync } from "node:fs"
+import { aionConfigSchema, type AionConfig } from "./types"
+import { parseJsoncFile } from "../shared/jsonc"
+
+export type LoadConfigArgs = {
+  directory: string
+  opencodeConfig?: unknown
+}
+
+const DEFAULT_CONFIG: AionConfig = {
+  enabled: true,
+  defaultAgent: "aion",
+  governance: {
+    enforceHierarchy: true,
+    cCriticSupremacy: true,
+  },
+  leakage: {
+    blockOnSuspicion: true,
+    blockFutureInfo: true,
+    blockHiddenSetAccess: true,
+    blockPrivateData: true,
+    blockCredentials: true,
+    blockPromptsAccess: true,
+    // memory/trace are now SHARED CACHE / SHARED EVENT BUS — all agents may access.
+    blockMemoryAccess: false,
+  },
+  autoContinue: {
+    enabled: true,
+    maxRounds: 30,
+    delaySeconds: 2,
+  },
+  compaction: {
+    autoRefreshAtKeyNodes: true,
+    snapshotPath: ".opencode/memory/context-snapshot.md",
+  },
+  trace: {
+    enabled: true,
+    path: ".opencode/trace.md",
+  },
+  safety: {
+    requirePrecheckForNewInput: true,
+    requirePrecheckForHighRiskActions: true,
+    requirePrecheckForKeyWrites: true,
+  },
+  personality: {
+    enabled: true,
+    entrance: true,
+    transitions: true,
+    heartbeats: true,
+    completion: true,
+    milestone: true,
+    heartbeatMinMs: 90_000,
+    heartbeatMaxMs: 240_000,
+    maxHeartbeatsPerSession: 8,
+  },
+  teamMode: {
+    enabled: true,
+    tmuxVisualization: true,
+    maxParallelMembers: 4,
+    maxMembers: 8,
+    maxMessagesPerRun: 10000,
+    maxWallClockMinutes: 120,
+    maxMemberTurns: 500,
+    messagePayloadMaxBytes: 32768,
+    recipientUnreadMaxBytes: 262144,
+    mailboxPollIntervalMs: 3000,
+  },
+  interactiveMode: {
+    enabled: false,
+  },
+}
+
+const CONFIG_CANDIDATES = [
+  ".opencode/aion.jsonc",
+  ".opencode/aion.json",
+] as const
+
+export async function loadAionConfig(
+  directory: string,
+  _opencodeConfig?: unknown,
+): Promise<AionConfig> {
+  let config: AionConfig = DEFAULT_CONFIG
+
+  for (const rel of CONFIG_CANDIDATES) {
+    const fullPath = `${directory}/${rel}`
+    if (!existsSync(fullPath)) continue
+
+    const parsed = parseJsoncFile<unknown>(fullPath)
+    if (!parsed.ok) {
+      console.warn(
+        `[aion] Failed to parse ${fullPath}: ${parsed.error ?? "unknown"}; falling back to defaults`,
+      )
+      return DEFAULT_CONFIG
+    }
+    const validated = aionConfigSchema.safeParse(parsed.value)
+    if (!validated.success) {
+      console.warn(
+        `[aion] Invalid config in ${fullPath}; using defaults. Errors: ${JSON.stringify(validated.error.format())}`,
+      )
+      return DEFAULT_CONFIG
+    }
+    config = validated.data
+    break
+  }
+
+  if (process.env.CMUX_SOCKET_PATH && config.teamMode.enabled) {
+    config.teamMode.tmuxVisualization = true
+  }
+
+  return config
+}
+
+export function syncReadAionConfig(directory: string): AionConfig {
+  for (const rel of CONFIG_CANDIDATES) {
+    const fullPath = `${directory}/${rel}`
+    if (!existsSync(fullPath)) continue
+    try {
+      const raw = readFileSync(fullPath, "utf-8")
+      const stripped = raw
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/(^|[^:])\/\/[^\n]*/g, "$1")
+        .replace(/,(\s*[}\]])/g, "$1")
+      const value = JSON.parse(stripped)
+      const validated = aionConfigSchema.safeParse(value)
+      if (validated.success) return validated.data
+    } catch {
+      // fall through
+    }
+  }
+  return DEFAULT_CONFIG
+}

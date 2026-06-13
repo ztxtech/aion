@@ -1,0 +1,23 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "agent": {
+    "aion": {
+      "mode": "primary"
+    },
+    "requirements-analyst": {
+      "mode": "subagent"
+    },
+    "information-collector": {
+      "mode": "subagent"
+    },
+    "coder": {
+      "mode": "subagent"
+    },
+    "ts-critic": {
+      "mode": "subagent"
+    },
+    "c-critic": {
+      "mode": "subagent"
+    }
+  }
+}

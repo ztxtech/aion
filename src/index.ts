@@ -1,0 +1,108 @@
+import type { Plugin, PluginModule } from "@opencode-ai/plugin"
+import { loadAionConfig } from "./config/load-config"
+import { createAionManagers } from "./create-managers"
+import { createAllAionTools } from "./create-tools"
+import { createAionHooks } from "./create-hooks"
+import { createAionPluginInterface } from "./plugin-interface"
+import { bootstrapWorkspace } from "./workspace-bootstrap"
+import { createPersonality, DEFAULT_PERSONALITY_CONFIG, type PersonalityConfig } from "./hooks/personality"
+import { info } from "./shared/logger"
+
+const aionPlugin: Plugin = async (input, _options) => {
+  info("[aion] ENTRY - plugin loading", {
+    directory: input.directory,
+  })
+
+  const config = await loadAionConfig(input.directory, input)
+
+  bootstrapWorkspace(input.directory, config)
+
+  const personalityConfig: PersonalityConfig = {
+    ...DEFAULT_PERSONALITY_CONFIG,
+    ...(config.personality ?? {}),
+  }
+
+  const personality = createPersonality({
+    client: input.client,
+    config: personalityConfig,
+  })
+
+  const managers = createAionManagers({
+    ctx: input,
+    config,
+    onPhaseChange: (_prev, next) => {
+      personality.onPhaseTransition(next)
+    },
+  })
+
+  const tools = createAllAionTools({
+    ctx: input,
+    config,
+    managers,
+  })
+
+  const hooks = createAionHooks({
+    ctx: input,
+    config,
+    managers,
+    personality,
+  })
+
+  const pluginInterface = createAionPluginInterface({
+    ctx: input,
+    config,
+    managers,
+    hooks,
+    tools,
+  })
+
+  info("[aion] plugin loaded", {
+    teamModeEnabled: config.teamMode.enabled,
+    aionToolCount: Object.keys(tools).length,
+    teamToolCount: tools.team ? Object.keys(tools.team).length : 0,
+    hookCount: Object.keys(hooks).length,
+  })
+
+  return pluginInterface
+}
+
+const aionPluginModule: PluginModule = {
+  id: "aion-ts-plugin",
+  server: aionPlugin,
+}
+
+export default aionPluginModule
+
+export const AionPlugin = aionPlugin
+export { aionPluginModule as pluginModule }
+
+export type { AionConfig, AionPluginConfig } from "./config/types"
+export type { AionManagers, AionPhase } from "./create-managers"
+export type { AionToolName, AionTools } from "./tools/types"
+export type { AionHookName, AionHooks } from "./hooks/types"
+export { AION_AGENT_NAMES } from "./agents/names"
+
+// Test-only exports. Not for production use; for unit tests to verify
+// internal behavior of individual hooks/tools.
+export const _testing = {
+  async chatMessage() {
+    return await import("./hooks/chat-message.js")
+      .then((m) => (m as any)._testing)
+  },
+  async toolGuard() {
+    return await import("./hooks/tool-guard.js")
+      .then((m) => (m as any)._testing)
+  },
+  async governance() {
+    return await import("./create-managers.js")
+      .then((m) => (m as any)._testing)
+  },
+  async personality() {
+    const personalityMod = await import("./shared/personality.js")
+    const handleMod = await import("./hooks/personality.js")
+    return {
+      ...personalityMod,
+      ...handleMod,
+    }
+  },
+} as const

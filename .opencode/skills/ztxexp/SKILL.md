@@ -40,15 +40,16 @@ If the task matches any of these, this skill must be used first. Without an expl
    - business files: write into `artifacts/`
    - checkpoints: write into `checkpoints/`
    - event metadata, history length, label support, effect size, and uncertainty notes: write into `artifacts/` or structured meta files so later review is easy
-5. Align experiment directories with engineering boundaries before writing code. No experiments may start before directory alignment:
-   - `data/`: data reading, cleaning, splitting, and time-series interfaces
-   - `evaluation/`: metrics, evaluation interfaces, and validity checks
-   - `module/`: reusable basic modules
-   - `model/`: model building and core run details
-   - `exp/`: experiment orchestration and abstract base classes
-   - `scripts/`: batch runs, analysis, and helper scripts
-   - `main.py`: unified experiment entry
-   - `outputs/`: all results, plots, logs, and exports
+5. Align experiment directories with engineering boundaries before writing code. No experiments may start before directory alignment. **Only create directories that will actually be used** — pass `used_dirs` to `aion_ztxexp_init` to specify exactly which boundary directories this experiment needs. Empty unused directories defeat the purpose of the contract:
+   - `data/`: data reading, cleaning, splitting, and time-series interfaces — only if this experiment processes data files
+   - `evaluation/`: metrics, evaluation interfaces, and validity checks — required for any experiment with metrics
+   - `module/`: reusable basic modules — only if you have shared building blocks
+   - `model/`: model building and core run details — only if you define model classes
+   - `exp/`: experiment orchestration and abstract base classes — always required
+   - `scripts/`: batch runs, analysis, and helper scripts — only if you have batch/analysis scripts
+   - `main.py`: unified experiment entry — always created
+   - `outputs/`: all results, plots, logs, and exports — always required
+6. After writing code, run `aion_ztxexp_validate` to check: (a) no files written outside boundary dirs, (b) no empty unused directories, (c) all declared dirs actually populated. Fix violations immediately.
 6. Run the minimal loop through `sequential` first before parallel execution. If parallel mode fails, roll back to serial reproduction first.
 7. Fill `evaluation/` and `data/` contracts first, then do model experiments. Do not pile up model code and fill interfaces later.
 8. For clear tasks, define a verifiable experiment interface and result-output contract first, then expand the experiment matrix.

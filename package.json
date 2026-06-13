@@ -1,0 +1,58 @@
+{
+  "name": "aion-ts-plugin",
+  "version": "0.1.0",
+  "description": "AION - Time-Series Harness Plugin for OpenCode. Multi-agent orchestration with governance, leakage prevention, and experiment management.",
+  "main": "./dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "bin": {
+    "aion-ts": "./bin/aion-init.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "bin"
+  ],
+  "scripts": {
+    "build": "bun run build:npm && bun run build:singlefile && bun run build:cli && tsc --emitDeclarationOnly",
+    "build:npm": "bun build src/index.ts --outdir dist --target bun --format esm",
+    "build:singlefile": "bun build src/index.ts --outfile .opencode/plugins/aion.js --target node --format esm",
+    "build:cli": "bun build bin/aion-init.js --outdir dist/bin --target node --format esm",
+    "dev": "bun build src/index.ts --outdir dist --target bun --format esm --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist .opencode/plugins/aion.js",
+    "test": "node --test test/unit/*.test.mjs test/cli/init.test.mjs",
+    "test:unit": "node --test test/unit/*.test.mjs",
+    "test:cli": "node --test test/cli/*.test.mjs",
+    "test:integration": "node --test test/integration/*.test.mjs",
+    "test:all": "node --test test/unit/*.test.mjs test/cli/init.test.mjs test/integration/*.test.mjs"
+  },
+  "keywords": [
+    "opencode",
+    "plugin",
+    "time-series",
+    "forecasting",
+    "multi-agent",
+    "aion"
+  ],
+  "author": "ztxtech",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ztxtech/aion.git"
+  },
+  "dependencies": {
+    "@opencode-ai/plugin": "^1.17.0",
+    "@opencode-ai/sdk": "^1.17.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "bun-types": "^1.2.0",
+    "typescript": "^5.7.0"
+  }
+}

@@ -70,8 +70,8 @@ ENABLE_EXPORT=0
 CUSTOM_DEBUG_DIR=""
 CUSTOM_PROMPT=""
 
-DEFAULT_INITIAL_PROMPT="Begin with a one-line Jarvis-style cold-open naming what you are and what you are about to investigate. Then immediately invoke the context-init skill and run the task end-to-end. Do not narrate steps, do not announce 'I will now do X', do not pause for confirmation — just do the work. The task is in example/aion-medical-demo/medical/task.md, the visual evidence is in example/aion-medical-demo/medical/docs/reference/, the visual handling rules are in the 'Operating Notes' section at the bottom of task.md. Open plots with the macOS 'open' command when the analysis calls for it, hold long enough to actually read them, then 'killall Preview' and continue. Treat this run as autonomous: only stop when c-critic has signed off."
-DEFAULT_CONTINUE_PROMPT="Continue the autonomous run. Open plots with 'open' when the analysis calls for it, hold long enough to read them, then 'killall Preview' and continue. Do not narrate steps, do not pause for confirmation, do not stop until c-critic has signed off."
+DEFAULT_INITIAL_PROMPT="Start the project with the context-init skill. Read the root task files and the .opencode contract first. Treat this run as run plus autonomous: keep the workflow human-free, prefer local detection over upfront questions, and only stop when no skill and no agent can propose any further action, defect, or rollback point. Cinematic demo mode is active: open any reference PNG plots under demo/workspace/docs/reference/ with the macOS 'open' command when you need to inspect them, and use the playwright MCP server for any browser-based visual verification. Begin with a one-line Jarvis-style greeting before context-init runs, so the recording has a clear cold-open."
+DEFAULT_CONTINUE_PROMPT="Continue the current session in run plus autonomous mode. Keep following the existing TODOs and evidence chain, stay human-free unless truly blocked on user-only information, and only stop when no skill and no agent can propose any further action, defect, or rollback point."
 
 # ---- Parse arguments ----
 while [[ $# -gt 0 ]]; do
