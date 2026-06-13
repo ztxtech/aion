@@ -7,6 +7,12 @@
   <a href="README.zh-CN.md"><strong>简体中文</strong></a>
 </p>
 
+## 📰 News
+
+- **2026-06-13** — We're building a new **Plugin** version of AION. Stay tuned on the [`dev`](https://github.com/ztxtech/aion/tree/dev) branch.
+
+---
+
 **AION** is a time-series harness — an explicit control layer that connects task specification, runtime execution, and result assessment into one stable process for next-generation time-series workloads.
 
 Time-series research is moving beyond fixed forecasting benchmarks toward tasks that combine prediction, contextual reasoning, tool use, and structured decision support. AION formalizes these as triples of _task file, workspace, and validation interface_, and organizes the entire system around four stacked layers: **task** (what to solve), **workspace** (what evidence and tools are available), **execution** (how the system acts under constraints), and **review** (whether outputs pass validity, temporal, and completeness checks before progress is accepted).
