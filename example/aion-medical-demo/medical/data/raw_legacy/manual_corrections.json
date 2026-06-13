@@ -1,0 +1,89 @@
+{
+  "annotations": [
+    {
+      "patient_id": "P001",
+      "lead": "II",
+      "beat_index": 17,
+      "timestamp_ms": 340,
+      "original_class": "normal",
+      "corrected_class": "premature_atrial_contraction",
+      "rationale": "P-wave morphology abnormal; PR interval slightly shortened",
+      "annotator": "Dr. Chen Wei (cardiology fellow)"
+    },
+    {
+      "patient_id": "P001",
+      "lead": "V5",
+      "beat_index": 24,
+      "timestamp_ms": 480,
+      "original_class": "st_elevation_2mm",
+      "corrected_class": "st_elevation_3mm",
+      "rationale": "Re-measured J-point elevation; ST segment clearly above threshold",
+      "annotator": "Dr. Chen Wei (cardiology fellow)"
+    },
+    {
+      "patient_id": "P001",
+      "lead": "aVF",
+      "beat_index": 31,
+      "timestamp_ms": 620,
+      "original_class": "noise",
+      "corrected_class": "q_wave_pathological",
+      "rationale": "Re-interpreted as pathological Q-wave; supports inferior MI diagnosis",
+      "annotator": "Dr. Liu Yang (attending cardiologist)"
+    },
+    {
+      "patient_id": "P019",
+      "lead": "III",
+      "beat_index": 8,
+      "timestamp_ms": 160,
+      "original_class": "st_elevation_1mm",
+      "corrected_class": "st_elevation_2mm",
+      "rationale": "Baseline drift correction applied; re-measured J-point",
+      "annotator": "Dr. Chen Wei (cardiology fellow)"
+    },
+    {
+      "patient_id": "P019",
+      "lead": "V6",
+      "beat_index": 45,
+      "timestamp_ms": 900,
+      "original_class": "normal",
+      "corrected_class": "t_wave_inversion",
+      "rationale": "T-wave polarity flipped vs neighboring beats; consistent with lateral ischemia",
+      "annotator": "Dr. Liu Yang (attending cardiologist)"
+    },
+    {
+      "patient_id": "P019",
+      "lead": "II",
+      "beat_index": 52,
+      "timestamp_ms": 1040,
+      "original_class": "motion_artifact",
+      "corrected_class": "qrs_alternans",
+      "rationale": "Beat-to-beat QRS amplitude alternation; sub-clinical but real",
+      "annotator": "Dr. Wang Min (electrophysiology)"
+    },
+    {
+      "patient_id": "P136",
+      "lead": "V1",
+      "beat_index": 12,
+      "timestamp_ms": 240,
+      "original_class": "r_s_progression_abnormal",
+      "corrected_class": "normal_r_s_progression",
+      "rationale": "Lead placement slightly high; standard pattern within normal range",
+      "annotator": "Dr. Chen Wei (cardiology fellow)"
+    },
+    {
+      "patient_id": "P136",
+      "lead": "aVR",
+      "beat_index": 38,
+      "timestamp_ms": 760,
+      "original_class": "st_elevation_05mm",
+      "corrected_class": "isoelectric",
+      "rationale": "Within measurement error; aVR ST elevation is not clinically significant",
+      "annotator": "Dr. Liu Yang (attending cardiologist)"
+    }
+  ],
+  "metadata": {
+    "annotation_scheme": "modified_AHA_beat_classification",
+    "annotator_consensus": "Two-cardiologist majority vote; conflicts resolved by attending",
+    "notes": "These are retrospective manual annotations for selected beats where the automated annotator was uncertain. The original_class reflects the model's initial prediction; corrected_class reflects expert re-interpretation. Use these to evaluate the ECG classification model and to compute the per-lead confusion matrix in the evaluation rubric."
+  }
+}
