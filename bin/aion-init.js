@@ -130,9 +130,14 @@ global OpenCode configuration.
 
 function findBundlePath() {
   const candidates = [
+    // When run from the source repo (development)
     join(__dirname, "..", ".opencode", "plugins", "aion.js"),
     join(__dirname, "..", "dist", "index.js"),
     join(__dirname, "..", "dist", "aion.js"),
+    // When installed system-wide (aion-ts install → ~/.aion/lib/aion.js)
+    join(__dirname, "aion.js"),
+    join(__dirname, "..", "lib", "aion.js"),
+    join(__dirname, "..", "plugins", "aion.js"),
   ];
   for (const p of candidates) {
     if (existsSync(p) && statSync(p).isFile()) return p;
@@ -255,9 +260,23 @@ async function ensureAionConfig(target) {
   console.log("        \"switch to autonomous\" / \"switch to interactive\" mid-conversation.");
 }
 
+function findThemePath(bundlePath) {
+  const candidates = [
+    // Source repo layout
+    join(dirname(bundlePath), "..", "themes", "aion.json"),
+    // Installed layout (aion-theme.json next to the bundle)
+    join(dirname(bundlePath), "aion-theme.json"),
+    join(dirname(bundlePath), "..", "lib", "aion-theme.json"),
+  ];
+  for (const p of candidates) {
+    if (existsSync(p) && statSync(p).isFile()) return p;
+  }
+  return null;
+}
+
 function installTheme(bundlePath, target) {
-  const src = join(dirname(bundlePath), "..", "themes", "aion.json");
-  if (!existsSync(src)) {
+  const src = findThemePath(bundlePath);
+  if (!src) {
     console.log("  [skip] theme not found in source — skipping");
     return;
   }

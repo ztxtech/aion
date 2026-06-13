@@ -37,3 +37,8 @@ zod-v3-backup/
 # temp
 tmp/
 example/kaggle/server/runtime/
+
+# release artifacts (tarballs are attached to GitHub Releases, not committed)
+*.tgz
+*.tar.gz
+release/
