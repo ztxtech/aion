@@ -9,7 +9,8 @@
 
 ## 📰 News
 
-- **2026-06-13** — We're building a new **Plugin** version of AION. Stay tuned on the [`dev`](https://github.com/ztxtech/aion/tree/dev) branch.
+- **2026-06-14** — AION is now a **compiled TypeScript plugin** for OpenCode. Install with a single command — no manual cloning required.
+- **2026-06-13** — Plugin version development started on the [`dev`](https://github.com/ztxtech/aion/tree/dev) branch.
 
 ---
 
@@ -58,74 +59,63 @@ Time-series specialization enters through **temporal grounding**, **knowledge-gr
 
 AION organizes everything around four stacked layers — each layer constrains the one below it: **task** (what to solve), **workspace** (what evidence and tools are available), **execution** (how the system acts under constraints), and **review** (whether outputs pass validity, temporal, and completeness checks before progress is accepted).
 
-### Directory Structure
+### Project Structure (Plugin Version)
+
+AION is a compiled TypeScript plugin. The repository contains the source code; the build produces a self-contained bundle that gets installed into each project's `.opencode/plugins/` directory.
+
+**Repository layout:**
 
 ```
-.opencode/
-├── agents/           # 6 specialized agents
-│   ├── agent.md              # Main orchestrator (mode: primary)
-│   ├── requirements-analyst  # Task intake & requirement extraction
-│   ├── information-collector # External evidence & SOTA search
-│   ├── coder.md              # Implementation, experiments & delivery
-│   ├── ts-critic.md          # Time-series expert + Pareto governance
-│   └── c-critic.md           # Final minimal-context cold-start critic
-├── skills/           # 17 reusable skills
-│   ├── context-init/         # Manual workspace bootstrap
-│   ├── workspace-init/       # Auto workspace initialization
-│   ├── plan/                 # Complex task planning
-│   ├── brain-storm/          # Multi-angle analysis
-│   ├── deep-reasoning/       # Multi-step reasoning & debate
-│   ├── critic-loop/          # Review & rollback judgment
-│   ├── time-series/          # Unified TS review framework
-│   ├── data-interface/       # 4-type data entry contract
-│   ├── forecast-contract/    # Forecast output validation
-│   ├── report-writing/       # Experiment reports & formal docs
-│   ├── python-toolbox/       # Python tool priors
-│   ├── ztxexp/               # Experiment directory & plotting protocol
-│   ├── github-search/        # GitHub first-hand evidence search
-│   ├── pdf-intake/           # Safe PDF extraction
-│   ├── safety-gate/          # Automated safety pre-check
-│   ├── evolution/            # Capability gap → new agent/skill
-│   └── template/             # Empty skill skeleton
-├── rules/            # Shared rules (auto-loaded)
-│   ├── core.md               # Boundaries, trace, placeholders
-│   ├── opencode.md           # OpenCode docs & repo links
-│   ├── agent-autonomy.md     # Subagent autonomy constraints
-│   ├── experiment.md         # Benchmark-first experiment rules
-│   ├── time-series.md        # Shared TS rules
-│   └── websearch.md          # Web search fallback chain
-├── protocols/        # 8 runtime protocols
-│   ├── dispatch.md           # Subagent dispatch contract
-│   ├── reportback.md         # Report-back contract
-│   ├── rebuttal.md           # Rebuttal protocol
-│   ├── stop-go.md            # Stop/go governance
-│   ├── lifecycle.md          # Agent lifecycle management
-│   ├── memory-sync.md        # Memory synchronization
-│   ├── runtime-events.md     # Runtime event tracking
-│   └── compaction.md         # Context compaction protocol
-├── evals/            # 5 evaluation contracts
-│   ├── suites.md             # Test suite definitions
-│   ├── graders.md            # Grader specifications
-│   ├── scorecards.md         # Scorecard templates
-│   ├── regression-matrix.md  # Regression test matrix
-│   └── release-gates.md      # Release gate criteria
-├── memory/
-│   └── template/     # 11 memory templates
-│       ├── initial-prompt.md  # Anti-drift task baseline
-│       ├── context-snapshot.md # Canonical compaction artifact
-│       ├── progress.md        # Task progress tracking
-│       ├── decisions.md       # Key decision log
-│       ├── features.md        # Feature inventory
-│       ├── todo-map.md        # Frontier & TODO tracking
-│       ├── completion-gate.md # Completion checklist
-│       ├── positive.md        # Positive findings pool
-│       ├── negative.md        # Negative findings pool
-│       ├── relation.md        # Agent relationship graph
-│       ├── memory.md          # Persistent memory
-│       ├── dir.md             # Directory structure
-│       └── trace.md           # Trace template seed
-└── .gitignore
+aion/
+├── src/                        # TypeScript plugin source
+│   ├── index.ts                # Plugin entry point (default export)
+│   ├── plugin-interface.ts     # Assembles the PluginInstance for OpenCode
+│   ├── create-managers.ts      # Central state: governance, trace, phases
+│   ├── create-tools.ts         # Aggregates all AION tools
+│   ├── create-hooks.ts         # Aggregates all OpenCode hooks
+│   ├── workspace-bootstrap.ts  # On-disk workspace initializer
+│   ├── agents/                 # 6 agent factories
+│   │   ├── aion.ts             #   Main orchestrator (primary mode)
+│   │   ├── requirements-analyst.ts
+│   │   ├── information-collector.ts
+│   │   ├── coder.ts            #   Implementation workhorse
+│   │   ├── ts-critic.ts        #   Time-series + Pareto governor
+│   │   └── c-critic.ts         #   Final-gate cold-start critic
+│   ├── config/                 # Zod schema + config loader
+│   ├── hooks/                  # 11 OpenCode lifecycle hooks
+│   ├── tools/                  # 15 AION tools (critic, memory, safety...)
+│   ├── team/                   # Team-mode coordination (mailbox, tasks, tmux)
+│   ├── prompts/                # Governance constants + agent prompt loader
+│   └── shared/                 # Logger, JSONC parser, utils, personality
+├── bin/
+│   └── aion-init.js            # CLI installer (aion-ts init)
+├── scripts/
+│   ├── build.sh                # Build + pack release tarball
+│   └── install.sh              # curl-pipe-bash system installer
+├── .opencode/
+│   ├── skills/                 # 17 skill definitions (markdown)
+│   └── themes/aion.json        # AION TUI theme
+├── docs/                       # Documentation website
+├── example/                    # Ready-to-run examples
+├── package.json
+└── tsconfig.json
 ```
+
+**After `aion-ts init` in your project:**
+
+```
+your-project/
+├── .opencode/
+│   ├── plugins/
+│   │   └── aion.js             # Self-contained plugin bundle (auto-discovered)
+│   ├── themes/
+│   │   └── aion.json           # AION theme
+│   ├── aion.jsonc              # AION configuration (all features ON by default)
+│   └── memory/                 # Created at runtime (progress, decisions, etc.)
+└── opencode.json               # OpenCode config (model, agents)
+```
+
+OpenCode auto-discovers plugins in `.opencode/plugins/` at startup — no global configuration is touched.
 
 ---
 
@@ -133,28 +123,12 @@ AION organizes everything around four stacked layers — each layer constrains t
 
 ### 0. Prerequisites
 
-AION requires a standard Linux/macOS environment with these system commands available:
-
-| Command         | Used by                                   | Notes                 |
-| --------------- | ----------------------------------------- | --------------------- |
-| `git`           | Clone .opencode, local checkpoint history | Usually pre-installed |
-| `curl`          | Download AION, web search fallback        | Usually pre-installed |
-| `tar` / `unzip` | Extract archives                          | Usually pre-installed |
-| `python3`       | Python toolchain, validators              | ≥ 3.10 recommended    |
-| `bash`          | cli.sh and skill scripts                  | ≥ 4.0                 |
-
-Some commands (e.g. installing `git`, `curl`, or `unzip` via package manager) may require **root/sudo** access. On minimal containers or CI images, install them before proceeding:
-
-```bash
-# Debian / Ubuntu
-sudo apt-get update && sudo apt-get install -y git curl unzip tar python3
-
-# RHEL / CentOS / Fedora
-sudo dnf install -y git curl unzip tar python3
-
-# macOS (usually pre-installed; if not)
-brew install git curl python3
-```
+| Command  | Used by                          | Notes                 |
+| -------- | -------------------------------- | --------------------- |
+| `node`   | Runs the `aion-ts` CLI           | ≥ 18 recommended      |
+| `curl`   | Download the installer           | Usually pre-installed |
+| `git`    | Local checkpoint history         | Usually pre-installed |
+| `python3`| Python toolchain, validators     | ≥ 3.10 recommended    |
 
 ### 1. Install OpenCode
 
@@ -164,14 +138,7 @@ curl -fsSL https://opencode.ai/install | bash
 
 # Package managers
 npm i -g opencode-ai@latest        # or bun/pnpm/yarn
-scoop install opencode             # Windows
-choco install opencode             # Windows
-brew install anomalyco/tap/opencode # macOS and Linux (recommended, always up to date)
-brew install opencode              # macOS and Linux (official brew formula, updated less)
-sudo pacman -S opencode            # Arch Linux (Stable)
-paru -S opencode-bin               # Arch Linux (Latest from AUR)
-mise use -g opencode               # Any OS
-nix run nixpkgs#opencode           # or github:anomalyco/opencode for latest dev branch
+brew install anomalyco/tap/opencode # macOS and Linux (recommended)
 ```
 
 ### 2. Configure OpenCode
@@ -182,106 +149,57 @@ opencode    # launch the TUI, then pick a provider and authenticate when prompte
 
 Supports **Claude / OpenAI / Codex / Copilot / Gemini** and any compatible endpoint.
 
-### 3. Add AION to Your Project
+### 3. Install the AION CLI
 
 ```bash
-# Option A: Clone into your project root
-cd your-project
-git clone https://github.com/ztxtech/aion.git .opencode
-
-# Option B: Download and extract
-curl -fsSL https://github.com/ztxtech/aion/archive/refs/heads/main.tar.gz | tar xz --strip-components=1
-mv aion-main/.opencode .opencode
-rm -rf aion-main
+curl -fsSL https://raw.githubusercontent.com/ztxtech/aion/dev/scripts/install.sh | bash
 ```
 
-### 4. Run
+This installs the `aion-ts` CLI to `~/.local/bin`. If that directory is not in your `PATH`, add it:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"   # add to ~/.bashrc or ~/.zshrc
+```
+
+> **During testing (no GitHub Release yet):** Build locally and install from the tarball:
+> ```bash
+> git clone -b dev https://github.com/ztxtech/aion.git && cd aion
+> bash scripts/build.sh
+> bash scripts/install.sh --local release/aion-plugin-0.1.0.tar.gz
+> ```
+
+### 4. Add AION to Your Project
+
+```bash
+cd your-project
+aion-ts init .
+```
+
+This drops the plugin bundle into `.opencode/plugins/aion.js`, creates a starter `aion.jsonc` config, and copies the theme. The plugin is fully self-contained — **no `npm install` needed** in your project.
+
+### 5. Run
 
 ```bash
 # Interactive TUI mode
 opencode
 
 # Non-interactive run mode
-opencode run --agent agent "Your task description here"
+opencode run --agent aion "Your task description here"
 
 # With a specific model
-opencode run --agent agent -m anthropic/claude-sonnet-4 "Analyze this time-series dataset"
+opencode run --agent aion -m anthropic/claude-sonnet-4 "Analyze this time-series dataset"
 ```
 
 ### Run Modes vs Execution Strategies
 
 OpenCode's `run` and `tui` describe the interface shape, not the same thing as how much the agent should ask the user.
 
-- `run`
-  This is the non-interactive execution surface. In this template, `run` is paired with `autonomous` by default: the agent should detect local context, pick the default best path, and keep going without pausing for routine environment or workflow choices.
-- `tui`
-  This is the interactive terminal interface. In this template, `tui` may still run in `autonomous`, or it may run in `interactive` when the user explicitly wants to participate in key forks.
-- `tui + autonomous`
-  The user is present and can observe the session, but the agent still defaults to making routine decisions on its own. Being inside TUI does not mean the agent should start asking about every low-risk default.
-- `tui + interactive`
-  Use this only when the user explicitly wants to co-decide important forks. Even then, the agent should still perform local detection first, and only ask when multiple equally reasonable options remain and those options would materially change the later path.
-- `run + interactive`
-  This template does not treat this as a supported default combination. `run` is intended to keep moving autonomously; if the workflow should pause for key user choices, `tui` is the better fit.
+- **`run` + autonomous** (default) — The agent detects local context, picks the best path, and keeps going without pausing for routine choices.
+- **`tui` + autonomous** — The user is present and can observe, but the agent still makes routine decisions on its own.
+- **`tui` + interactive** — The user explicitly wants to co-decide important forks. The agent still does local detection first and only asks when multiple equally reasonable options remain.
+- **`run` + interactive** — Not a supported default. If the workflow should pause for user choices, use `tui` instead.
 
-For Python environments, the default decision tree is:
-
-- decide whether Python is actually needed
-- reuse an existing workspace-root `.venv` if one already exists
-- otherwise follow stronger project constraints such as `pyproject.toml`, `.python-version`, `environment.yml`, `requirements*.txt`, or `uv.lock`
-- only then create a workspace-root `.venv`
-
-In `autonomous`, the agent should follow that tree directly unless there is a real conflict. In `interactive`, the agent should still do the same local detection first, and only ask the user when multiple equally reasonable environment choices remain and those choices materially affect dependencies or implementation.
-
-### 5. CLI Run Mode (Advanced)
-
-Use `cli.sh` for automated, auto-continuing experiment runs:
-
-```bash
-# Basic run
-bash cli.sh
-
-# With custom model
-bash cli.sh -m anthropic/claude-sonnet-4
-
-# With debug logging
-bash cli.sh --debug
-
-# TUI mode instead of run mode
-bash cli.sh --mode tui
-
-# Limit auto-continue rounds
-bash cli.sh --max-continues 10
-```
-
-### Prompting For Autonomous vs Interactive Use
-
-`cli.sh` already includes a default prompt that starts with `context-init` — the harness bootstrap entry point. If you run `bash cli.sh`, you get the full harness initialized automatically.
-
-If you write your own prompt instead of using the default `cli.sh` prompt, make the intended execution strategy explicit AND start with `context-init` so the agent does not have to guess either:
-
-- For non-interactive autonomous execution, include `context-init` and declare the mode:
-
-```text
-Start the project with the context-init skill. Read the root task files and the .opencode contract first. Treat this run as run plus autonomous: keep the workflow human-free, prefer local detection over upfront questions, and only stop when no skill and no agent can propose any further action, defect, or rollback point.
-```
-
-- For interactive TUI collaboration, say that the user wants to participate only in real forks:
-
-```text
-Start the project with the context-init skill. Run this in tui plus interactive mode. Do local detection first, keep routine decisions autonomous, and only ask me when there are multiple equally reasonable options that would materially change the later path.
-```
-
-- For interactive TUI with minimal interruption, make that explicit too:
-
-```text
-Start the project with the context-init skill. Run this in tui plus autonomous mode. I want to watch the session, but I do not want routine environment or workflow questions unless there is a real decision fork.
-```
-
-For Python environments, a good interactive prompt should ask the agent to detect first and only escalate real ambiguity, for example:
-
-```text
-If Python is needed, first check whether the workspace already has a usable .venv or stronger project constraints. Only ask me if multiple environment choices remain and those choices would materially affect dependencies or implementation.
-```
+At session start, AION asks you (via OpenCode's built-in question popup) whether you want **interactive** or **autonomous** mode. You can also toggle mid-conversation by saying "I'm leaving" (→ autonomous) or "switch to interactive".
 
 ---
 
@@ -289,23 +207,22 @@ If Python is needed, first check whether the workspace already has a usable .ven
 
 The [`example/`](example/) directory contains ready-to-run workspaces that demonstrate AION end-to-end on concrete time-series tasks.
 
-> **⚠️ Clinical disclaimer — `example/aion-medical-demo/` is a DEMONSTRATION only.** The case under [`example/aion-medical-demo/`](example/aion-medical-demo/) is a self-contained demo of the AION harness on a clinical-style problem, plus a wrapper that exists only to record the AION demo video. The ECG data is real but tiny (3 patients from PhysioNet PTB); the ICU vitals are synthetic. Models, metrics, and reports produced by the agent are demo artefacts — they are **not validated for clinical use** and must not inform any real medical decision. See [`example/aion-medical-demo/README.md`](example/aion-medical-demo/README.md) for the full disclaimer and recording instructions.
+> **⚠️ Clinical disclaimer — `example/aion-medical-demo/` is a DEMONSTRATION only.** The ECG data is real but tiny (3 patients from PhysioNet PTB); the ICU vitals are synthetic. Models, metrics, and reports produced by the agent are demo artefacts — they are **not validated for clinical use**. See [`example/aion-medical-demo/README.md`](example/aion-medical-demo/README.md) for the full disclaimer.
 
 ### Medical Time-Series Case — ECG Diagnosis & ICU Sepsis Onset (Demo)
 
-[`example/aion-medical-demo/`](example/aion-medical-demo/) wraps a clinical case in a recording-specific scaffold. The goal is to make every AION harness feature fire in a single run, for the YouTube recording titled *"AION: A Time-Series AI Harness (Full Clinical Demo)"*.
+[`example/aion-medical-demo/`](example/aion-medical-demo/) wraps a clinical case in a recording-specific scaffold. The goal is to make every AION harness feature fire in a single run.
 
 ```bash
 cd example/aion-medical-demo/medical
+aion-ts init .
 opencode
 > introduce yourself by completing this task, AION
 ```
 
-See [`example/aion-medical-demo/README.md`](example/aion-medical-demo/README.md) for the wrapper purpose, the 22-feature trigger map, and the design notes on why a real AION project does not need to trigger every feature.
-
 ### Local Kaggle-Like Forecasting Competition
 
-[`example/kaggle/`](example/kaggle/) is a local replica of the Kaggle **Store Sales - Time Series Forecasting** competition (Corporación Favorita), adapted for fast offline iteration. A lightweight local evaluation server mimics the Kaggle submission and scoring API — the agent downloads data, trains models, and submits predictions through the same HTTP interface, but gets instant feedback with no daily submission cap. See [`example/kaggle/README.md`](example/kaggle/README.md) for details.
+[`example/kaggle/`](example/kaggle/) is a local replica of the Kaggle **Store Sales - Time Series Forecasting** competition. A lightweight local evaluation server mimics the Kaggle submission and scoring API. See [`example/kaggle/README.md`](example/kaggle/README.md) for details.
 
 ---
 
@@ -315,7 +232,7 @@ Agents span all four layers — from task parsing through execution orchestratio
 
 | Agent                     | Primary Layer         | Role                                                                                           |
 | ------------------------- | --------------------- | ---------------------------------------------------------------------------------------------- |
-| **agent**                 | Execution             | Main orchestrator — dispatches subagents, enforces review gates, drives to close               |
+| **aion**                  | Execution             | Main orchestrator — dispatches subagents, enforces review gates, drives to close               |
 | **requirements-analyst**  | Task                  | Reads tasks & workspace materials, extracts goals, inputs & constraints                        |
 | **information-collector** | Workspace             | Supplements SOTA, top-venue papers, official implementations & domain knowledge                |
 | **coder**                 | Workspace + Execution | Implementation, experiments, delivery & visualization                                          |
@@ -331,8 +248,6 @@ c-critic > ts-critic > main agent > other subagents
 ```
 
 The main agent owns **dispatch and execution**, but does **not** own a closeout authority above the critics.
-
-More specifically, role boundaries default to `delegate to the role that already covers the work` rather than `let the main agent do everything once`: systematic requirement reframing should go first to `requirements-analyst`, systematic external search and evidence-chain building should go first to `information-collector`, real code / script / experiment implementation should go first to `coder`, and governance critique plus stop-go should go first to `ts-critic` / `c-critic`. The main agent should keep only the smallest routing checks, integration edits, and tiny actions that cannot be split safely.
 
 ---
 
@@ -394,40 +309,61 @@ Memory and git serve different purposes: memory handles abstract experience and 
 
 ## 📡 CLI Reference
 
-`cli.sh` provides a CLI entry point for automated run-mode execution with auto-continue:
+### `aion-ts` — Plugin Installer
+
+The primary CLI for installing AION into a project:
+
+```bash
+aion-ts init [target-dir] [--force]
+```
+
+| Flag            | Default     | Description                                                        |
+| --------------- | ----------- | ------------------------------------------------------------------ |
+| `target-dir`    | `.` (cwd)   | Directory to install into. Created if it does not exist.           |
+| `--force`, `-f` | (off)       | Overwrite an existing `.opencode/plugins/aion.js`.                 |
+| `--help`, `-h`  | —           | Show help.                                                         |
+
+What `init` does:
+1. Copies the plugin bundle to `<target>/.opencode/plugins/aion.js` (auto-discovered by OpenCode).
+2. Creates `<target>/opencode.json` if absent (minimal starter with `$schema`, theme, model).
+3. Copies a commented default config to `<target>/.opencode/aion.jsonc`.
+4. Copies the AION theme to `<target>/.opencode/themes/aion.json`.
+
+Nothing outside `<target>` is touched.
+
+### `cli.sh` — OpenCode Launcher (Legacy)
+
+`cli.sh` is a convenience wrapper around `opencode` for automated run-mode execution with auto-continue. It is optional — you can always use `opencode` directly.
 
 ```bash
 bash cli.sh [OPTIONS]
 ```
-
-### Options
 
 | Flag                  | Default       | Description                                       |
 | --------------------- | ------------- | ------------------------------------------------- |
 | `--mode MODE`         | `run`         | Launch mode: `run` or `tui`                       |
 | `-m, --model MODEL`   | (from config) | OpenCode model (e.g. `anthropic/claude-sonnet-4`) |
 | `--max-continues N`   | `30`          | Max auto-continue rounds; `0` for unlimited       |
-| `--continue-delay S`  | `2`           | Seconds between auto-continue rounds              |
-| `--bash-timeout-ms N` | `1200000`     | OpenCode bash default timeout (ms)                |
 | `--no-auto-continue`  | (off)         | Disable auto-continue after each round            |
 | `--debug`             | (off)         | Enable verbose debug logging                      |
-| `--export`            | (off)         | Export session JSON on completion                 |
 | `-h, --help`          | —             | Show help                                         |
 
-### Examples
+---
+
+## 🔨 Building from Source
+
+For contributors and local testing:
 
 ```bash
-# Basic autonomous run
-bash cli.sh
+git clone -b dev https://github.com/ztxtech/aion.git && cd aion
+npm install
 
-# Specific model with limited rounds
-bash cli.sh -m openai/gpt-4.1 --max-continues 5
+# Build + pack a release tarball
+bash scripts/build.sh
+# → release/aion-plugin-0.1.0.tar.gz
 
-# Debug mode with session export
-bash cli.sh --debug --export
-
-# Interactive TUI
-bash cli.sh --mode tui --no-auto-continue
+# Install from the local tarball
+bash scripts/install.sh --local release/aion-plugin-0.1.0.tar.gz
 ```
 
 ---
@@ -439,7 +375,7 @@ The harness enforces hard boundaries across all four layers:
 - **No knowledge/data leakage** — Future information, labels, hidden-set content, and private data must never leak into features, code, logs, or outputs
 - **Ruthless skepticism** — A single success or metric gain is not proof of reliability; active investigation of leakage, spurious correlation, overfitting, and unverified assumptions is mandatory
 - **Governance hierarchy** — `c-critic > ts-critic > main agent > others` in all governance decisions; main agent cannot override critic blockers
-- **Mutually exclusive delegation first** — As long as an existing role already covers a class of work, the main agent should delegate it by default instead of doing it directly; if work is not delegated or not parallelized, the reason should stay explicit and narrow
+- **Mutually exclusive delegation first** — As long as an existing role already covers a class of work, the main agent should delegate it by default instead of doing it directly
 - **Benchmark-first** — Tasks with leaderboards or competitions must maintain parallel branches: self-exploration + top-solution reverse-engineering
 - **Mermaid-only diagrams** — All structural diagrams must use Mermaid; ASCII/plain-text diagrams are forbidden in formal outputs
 - **Workspace cleanup** — Empty directories, temp files, and debug residue must be cleaned before final delivery
@@ -479,10 +415,10 @@ AION is a community-driven research project. We welcome contributions in:
 | ------------- | -------------------------------------------------------------- |
 | **Agents**    | New specialized agent roles                                    |
 | **Skills**    | Domain knowledge `.md` files (finance, climate, healthcare...) |
+| **Tools**     | New AION tools (TypeScript)                                    |
+| **Hooks**     | New OpenCode lifecycle hooks (TypeScript)                      |
 | **Protocols** | New coordination or governance patterns                        |
-| **Rules**     | Domain-specific constraint sets                                |
 | **Evals**     | Suite definitions, graders, scorecards                         |
-| **Templates** | Memory templates, workspace scaffolds                          |
 
 ---
 

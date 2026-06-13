@@ -9,7 +9,8 @@
 
 ## 📰 News
 
-- **2026-06-13** — 我们正在开发全新的 **Plugin** 版本 AION。欢迎关注 [`dev`](https://github.com/ztxtech/aion/tree/dev) 分支。
+- **2026-06-14** — AION 已重构为**编译型 TypeScript 插件**。一行命令安装，无需手动克隆。
+- **2026-06-13** — Plugin 版本开发启动于 [`dev`](https://github.com/ztxtech/aion/tree/dev) 分支。
 
 ---
 
@@ -58,74 +59,63 @@ AION 作为基于 [OpenCode](https://github.com/anomalyco/opencode) 的**时间�
 
 AION 围绕四个堆叠层组织一切 — 每一层约束其下方的一层：**任务层**（要解决什么）、**工作空间层**（有哪些证据和工具）、**执行层**（系统如何在约束下行动）和**审查层**（输出是否通过有效性、时间性和完整性检查后才被接受）。
 
-### 目录结构
+### 项目结构（Plugin 版本）
+
+AION 是一个编译型 TypeScript 插件。仓库包含源代码；构建后产生自包含的 bundle，安装到每个项目的 `.opencode/plugins/` 目录。
+
+**仓库布局：**
 
 ```
-.opencode/
-├── agents/           # 6 个专业化 agent
-│   ├── agent.md              # 主控 agent（mode: primary）
-│   ├── requirements-analyst  # 任务 intake 与需求抽取
-│   ├── information-collector # 外部证据与 SOTA 搜索
-│   ├── coder.md              # 实现、实验与交付
-│   ├── ts-critic.md          # 时间序列专家 + Pareto 治理
-│   └── c-critic.md           # 最终最小上下文冷启动批判
-├── skills/           # 17 个可复用技能
-│   ├── context-init/         # 手动起手并开始任务
-│   ├── workspace-init/       # 自动工作区初始化
-│   ├── plan/                 # 复杂任务计划
-│   ├── brain-storm/          # 多角度分析
-│   ├── deep-reasoning/       # 多步推理与辩论
-│   ├── critic-loop/          # 审查与回退判断
-│   ├── time-series/          # 时间序列统一审查框架
-│   ├── data-interface/       # 四类数据入口契约
-│   ├── forecast-contract/    # 预测输出可控性与有效性校验
-│   ├── report-writing/       # 实验报告与正式文档输出
-│   ├── python-toolbox/       # Python 工具先验库
-│   ├── ztxexp/               # 实验目录结构与出图协议
-│   ├── github-search/        # GitHub 一手工程证据检索
-│   ├── pdf-intake/           # PDF / 扫描件安全提取
-│   ├── safety-gate/          # 自动化安全预检
-│   ├── evolution/            # 能力缺口 → 新 agent/skill 创建
-│   └── template/             # 空 skill 骨架
-├── rules/            # 共享规则（自动加载）
-│   ├── core.md               # 包边界、trace、占位符
-│   ├── opencode.md           # OpenCode 文档与仓库链接
-│   ├── agent-autonomy.md     # 子 agent 自主性约束
-│   ├── experiment.md         # Benchmark-first 实验规则
-│   ├── time-series.md        # 时间序列共享规则
-│   └── websearch.md          # 网页搜索回退链
-├── protocols/        # 8 个运行时协议
-│   ├── dispatch.md           # 子 agent 派单契约
-│   ├── reportback.md         # 回传契约
-│   ├── rebuttal.md           # Rebuttal 协议
-│   ├── stop-go.md            # 停止/继续治理
-│   ├── lifecycle.md          # Agent 生命周期管理
-│   ├── memory-sync.md        # 记忆同步
-│   ├── runtime-events.md     # 运行时事件追踪
-│   └── compaction.md         # 上下文压缩协议
-├── evals/            # 5 个评测契约
-│   ├── suites.md             # 测试套件定义
-│   ├── graders.md            # 评分器规格
-│   ├── scorecards.md         # 计分卡模板
-│   ├── regression-matrix.md  # 回归测试矩阵
-│   └── release-gates.md      # 发布门禁
-├── memory/
-│   └── template/     # 11 个记忆模板
-│       ├── initial-prompt.md  # 反漂移任务基线
-│       ├── context-snapshot.md # 规范化压缩 artifact
-│       ├── progress.md        # 任务进度追踪
-│       ├── decisions.md       # 关键决策日志
-│       ├── features.md        # 特征清单
-│       ├── todo-map.md        # 前沿与 TODO 追踪
-│       ├── completion-gate.md # 完成度检查表
-│       ├── positive.md        # 正面发现池
-│       ├── negative.md        # 负面发现池
-│       ├── relation.md        # Agent 关系图
-│       ├── memory.md          # 持久记忆
-│       ├── dir.md             # 目录结构
-│       └── trace.md           # Trace 模板种子
-└── .gitignore
+aion/
+├── src/                        # TypeScript 插件源码
+│   ├── index.ts                # 插件入口（默认导出）
+│   ├── plugin-interface.ts     # 组装 PluginInstance 返回给 OpenCode
+│   ├── create-managers.ts      # 中心状态：治理、trace、阶段机
+│   ├── create-tools.ts         # 聚合所有 AION 工具
+│   ├── create-hooks.ts         # 聚合所有 OpenCode 钩子
+│   ├── workspace-bootstrap.ts  # 磁盘工作区初始化
+│   ├── agents/                 # 6 个 agent 工厂
+│   │   ├── aion.ts             #   主控 agent（primary 模式）
+│   │   ├── requirements-analyst.ts
+│   │   ├── information-collector.ts
+│   │   ├── coder.ts            #   实现主力
+│   │   ├── ts-critic.ts        #   时间序列 + Pareto 治理
+│   │   └── c-critic.ts         #   最终门禁冷启动 critic
+│   ├── config/                 # Zod schema + 配置加载
+│   ├── hooks/                  # 11 个 OpenCode 生命周期钩子
+│   ├── tools/                  # 15 个 AION 工具（critic, memory, safety...）
+│   ├── team/                   # 团队模式协调（mailbox, tasks, tmux）
+│   ├── prompts/                # 治理常量 + agent prompt 加载
+│   └── shared/                 # 日志、JSONC 解析、工具函数、个性系统
+├── bin/
+│   └── aion-init.js            # CLI 安装器（aion-ts init）
+├── scripts/
+│   ├── build.sh                # 构建 + 打包发布 tarball
+│   └── install.sh              # curl 管道 bash 系统安装器
+├── .opencode/
+│   ├── skills/                 # 17 个技能定义（markdown）
+│   └── themes/aion.json        # AION TUI 主题
+├── docs/                       # 文档网站
+├── example/                    # 可直接运行的示例
+├── package.json
+└── tsconfig.json
 ```
+
+**在你的项目中执行 `aion-ts init` 后：**
+
+```
+your-project/
+├── .opencode/
+│   ├── plugins/
+│   │   └── aion.js             # 自包含插件 bundle（OpenCode 自动发现）
+│   ├── themes/
+│   │   └── aion.json           # AION 主题
+│   ├── aion.jsonc              # AION 配置（所有功能默认开启）
+│   └── memory/                 # 运行时创建（progress, decisions 等）
+└── opencode.json               # OpenCode 配置（模型、agents）
+```
+
+OpenCode 启动时自动发现 `.opencode/plugins/` 中的插件 — **不修改任何全局配置**。
 
 ---
 
@@ -133,45 +123,22 @@ AION 围绕四个堆叠层组织一切 — 每一层约束其下方的一层：*
 
 ### 0. 环境前提
 
-AION 需要标准的 Linux/macOS 环境，并确保以下系统命令可用：
-
-| 命令            | 用途                                 | 备注        |
-| --------------- | ------------------------------------ | ----------- |
-| `git`           | 克隆 .opencode、本地 checkpoint 历史 | 通常已预装  |
-| `curl`          | 下载 AION、网页搜索回退              | 通常已预装  |
-| `tar` / `unzip` | 解压归档文件                         | 通常已预装  |
-| `python3`       | Python 工具链、校验器                | 建议 ≥ 3.10 |
-| `bash`          | cli.sh 与技能脚本                    | ≥ 4.0       |
-
-部分命令（如通过包管理器安装 `git`、`curl` 或 `unzip`）可能需要 **root/sudo** 权限。在最小化容器或 CI 镜像中，请先安装这些依赖：
-
-```bash
-# Debian / Ubuntu
-sudo apt-get update && sudo apt-get install -y git curl unzip tar python3
-
-# RHEL / CentOS / Fedora
-sudo dnf install -y git curl unzip tar python3
-
-# macOS（通常已预装；如未安装）
-brew install git curl python3
-```
+| 命令     | 用途                        | 备注           |
+| -------- | --------------------------- | -------------- |
+| `node`   | 运行 `aion-ts` CLI          | 建议 ≥ 18      |
+| `curl`   | 下载安装器                  | 通常已预装     |
+| `git`    | 本地 checkpoint 历史        | 通常已预装     |
+| `python3`| Python 工具链、校验器       | 建议 ≥ 3.10    |
 
 ### 1. 安装 OpenCode
 
 ```bash
-# 一键安装（YOLO）
+# 一键安装
 curl -fsSL https://opencode.ai/install | bash
 
 # 包管理器安装
 npm i -g opencode-ai@latest        # 或 bun/pnpm/yarn
-scoop install opencode             # Windows
-choco install opencode             # Windows
-brew install anomalyco/tap/opencode # macOS 和 Linux（推荐，始终最新）
-brew install opencode              # macOS 和 Linux（官方 brew 公式，更新较慢）
-sudo pacman -S opencode            # Arch Linux（稳定版）
-paru -S opencode-bin               # Arch Linux（AUR 最新版）
-mise use -g opencode               # 任意系统
-nix run nixpkgs#opencode           # 或 github:anomalyco/opencode（最新开发分支）
+brew install anomalyco/tap/opencode # macOS 和 Linux（推荐）
 ```
 
 ### 2. 配置 OpenCode
@@ -182,106 +149,57 @@ opencode    # 启动 TUI，然后按提示选择 provider 并认证
 
 支持 **Claude / OpenAI / Codex / Copilot / Gemini** 及任何兼容端点。
 
-### 3. 将 AION 添加到你的项目
+### 3. 安装 AION CLI
 
 ```bash
-# 方式一：clone 到项目根目录
-cd your-project
-git clone https://github.com/ztxtech/aion.git .opencode
-
-# 方式二：下载并解压
-curl -fsSL https://github.com/ztxtech/aion/archive/refs/heads/main.tar.gz | tar xz --strip-components=1
-mv aion-main/.opencode .opencode
-rm -rf aion-main
+curl -fsSL https://raw.githubusercontent.com/ztxtech/aion/dev/scripts/install.sh | bash
 ```
 
-### 4. 运行
+这会把 `aion-ts` CLI 安装到 `~/.local/bin`。如果该目录不在你的 `PATH` 中，添加它：
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"   # 添加到 ~/.bashrc 或 ~/.zshrc
+```
+
+> **测试期间（还没有 GitHub Release）：** 本地构建后从 tarball 安装：
+> ```bash
+> git clone -b dev https://github.com/ztxtech/aion.git && cd aion
+> bash scripts/build.sh
+> bash scripts/install.sh --local release/aion-plugin-0.1.0.tar.gz
+> ```
+
+### 4. 将 AION 添加到你的项目
+
+```bash
+cd your-project
+aion-ts init .
+```
+
+这会把插件 bundle 放到 `.opencode/plugins/aion.js`，创建初始 `aion.jsonc` 配置，并复制主题。插件完全自包含 — 你的项目中**不需要 `npm install`**。
+
+### 5. 运行
 
 ```bash
 # 交互式 TUI 模式
 opencode
 
 # 非交互式 run 模式
-opencode run --agent agent "你的任务描述"
+opencode run --agent aion "你的任务描述"
 
 # 指定模型
-opencode run --agent agent -m anthropic/claude-sonnet-4 "分析这个时间序列数据集"
+opencode run --agent aion -m anthropic/claude-sonnet-4 "分析这个时间序列数据集"
 ```
 
 ### `run` / `tui` 与执行策略的关系
 
 OpenCode 的 `run` 和 `tui` 描述的是界面形态，不等于 agent 是否应该频繁向用户提问。
 
-- `run`
-  这是非交互执行界面。对本模板而言，`run` 默认搭配 `autonomous`：agent 应先做本地探测，自己选择默认最优路径，并持续推进，而不是停下来询问常规环境或流程选择。
-- `tui`
-  这是交互式终端界面。对本模板而言，`tui` 可以搭配 `autonomous`，也可以在用户明确希望参与关键分叉时搭配 `interactive`。
-- `tui + autonomous`
-  用户在场、可以观察会话，但 agent 对常规默认动作仍应自己决策。处于 TUI 中，不代表 agent 应该把低风险默认项都抛回给用户。
-- `tui + interactive`
-  只在用户明确希望共同决策关键分叉时使用。即便如此，agent 也必须先做本地探测，只有在多个同样合理且会实质影响后续路径的候选方案仍然并存时，才向用户发起简洁确认。
-- `run + interactive`
-  本模板不把它视为默认支持组合。`run` 的目标是连续自动执行；如果流程需要在关键节点停下来等待用户选择，`tui` 更合适。
+- **`run` + autonomous**（默认）— agent 先做本地探测，自己选择最优路径，持续推进，不停下来询问常规选择。
+- **`tui` + autonomous** — 用户在场、可以观察，但 agent 对常规默认动作仍自己决策。
+- **`tui` + interactive** — 用户明确希望参与关键分叉。agent 仍先做本地探测，只有多个同样合理的方案并存时才发起确认。
+- **`run` + interactive** — 非默认支持组合。如果需要在关键节点停下来等用户选择，用 `tui` 更合适。
 
-对 Python 环境，本模板的默认决策树是：
-
-- 先判断任务是否真的需要 Python
-- 若工作区根目录已存在 `.venv`，优先复用
-- 否则服从更强的项目环境约束，例如 `pyproject.toml`、`.python-version`、`environment.yml`、`requirements*.txt`、`uv.lock`
-- 若仍无更强约束，再创建工作区根目录 `.venv`
-
-在 `autonomous` 下，只要这条决策树没有出现真实冲突，就直接按默认优先级执行，不先问用户解释器偏好。在 `interactive` 下，也必须先做同样的本地探测；只有当探测后仍存在多个同样合理、且会显著影响依赖或实现路径的候选环境时，才向用户发起一次简洁确认。
-
-### 5. CLI 运行模式（进阶）
-
-使用 `cli.sh` 进行自动化、自动续跑的实验运行：
-
-```bash
-# 基本运行
-bash cli.sh
-
-# 指定模型
-bash cli.sh -m anthropic/claude-sonnet-4
-
-# 开启 debug 日志
-bash cli.sh --debug
-
-# TUI 模式
-bash cli.sh --mode tui
-
-# 限制自动续跑轮数
-bash cli.sh --max-continues 10
-```
-
-### 自动 / 交互场景下怎么写 Prompt
-
-`cli.sh` 已经内置了以 `context-init` 开头的默认 prompt — 这是 harness 引导入口。运行 `bash cli.sh` 即可自动完成完整的 harness 初始化。
-
-如果你不想直接使用 `cli.sh` 默认 prompt，而是自己写提示词，建议**同时包含 `context-init` 入口**并把期望的执行策略明确写出来，避免 agent 自己猜。
-
-- 对非交互、自动执行，包含 `context-init` 并注明模式：
-
-```text
-请以 context-init 技能启动项目。先读取根目录任务文件和 .opencode 合约。请按 run + autonomous 模式执行：保持 human-free，优先做本地探测，不要为了常规环境或流程选择先问我；只有当确实缺少只有我才知道的信息时才停下来。
-```
-
-- 对交互式 TUI 协作，明确说明你只想参与真实分叉：
-
-```text
-请以 context-init 技能启动项目。请按 tui + interactive 模式执行：先做本地探测，常规默认动作仍由你自己决定；只有当存在多个同样合理且会实质影响后续路径的候选方案时，再向我发起简洁确认。
-```
-
-- 如果你想在 TUI 里看过程，但不希望它频繁问你，也可以直接写：
-
-```text
-请以 context-init 技能启动项目。请按 tui + autonomous 模式执行：我希望观察过程，但不希望你为了常规环境或流程选择频繁打断我；只有真实分叉才需要提醒。
-```
-
-对 Python 环境，一个更好的交互式提示词写法是要求 agent 先探测、后上交分叉，例如：
-
-```text
-如果任务需要 Python，请先检查工作区是否已有可用 .venv 或更强项目约束。只有当仍存在多个同样合理、且会显著影响依赖或实现路径的环境选择时，再来问我。
-```
+会话开始时，AION 会通过 OpenCode 内置弹窗询问你选择 **交互模式** 还是 **自主模式**。你也可以在对话中随时说"我要走了"（→ 自主模式）或"切换到交互模式"来切换。
 
 ---
 
@@ -289,23 +207,22 @@ bash cli.sh --max-continues 10
 
 [`example/`](example/) 目录包含可直接运行的工作空间，用于在具体时序任务上演示 AION 的端到端能力。
 
-> **⚠️ 临床免责声明 — `example/aion-medical-demo/` 仅为演示案例。** [`example/aion-medical-demo/`](example/aion-medical-demo/) 是 AION 在医疗风格问题上的一次自包含演示，外层 wrapper 仅为录制 AION 演示视频而存在。心电图数据虽来自真实的 PhysioNet PTB 数据库，但样本量极小（仅 3 名患者）；ICU 生命体征数据为合成数据。Agent 生成的模型、指标和报告仅供演示 —— **未经验证，不可用于任何临床决策**。详见 [`example/aion-medical-demo/README.md`](example/aion-medical-demo/README.md) 完整免责声明与录制说明。
+> **⚠️ 临床免责声明 — `example/aion-medical-demo/` 仅为演示案例。** 心电图数据虽来自真实的 PhysioNet PTB 数据库，但样本量极小（仅 3 名患者）；ICU 生命体征数据为合成数据。Agent 生成的模型、指标和报告仅供演示 —— **未经验证，不可用于任何临床决策**。详见 [`example/aion-medical-demo/README.md`](example/aion-medical-demo/README.md) 完整免责声明。
 
 ### 医疗时序案例 — 心电图诊断与 ICU 败血症预测（演示）
 
-[`example/aion-medical-demo/`](example/aion-medical-demo/) 在临床案例外层包裹了录制专用脚手架。目标是让 AION 的全部特性在一次运行中触发，专为 YouTube 视频 *"AION: A Time-Series AI Harness (Full Clinical Demo)"* 录制。
+[`example/aion-medical-demo/`](example/aion-medical-demo/) 在临床案例外层包裹了录制专用脚手架。目标是让 AION 的全部特性在一次运行中触发。
 
 ```bash
 cd example/aion-medical-demo/medical
+aion-ts init .
 opencode
 > introduce yourself by completing this task, AION
 ```
 
-详见 [`example/aion-medical-demo/README.md`](example/aion-medical-demo/README.md) 获取 wrapper 用途、22 特性触发地图，以及"真实 AION 项目并不需要触发全部特性"的设计说明。
-
 ### 本地 Kaggle 风格预测竞赛
 
-[`example/kaggle/`](example/kaggle/) 是 Kaggle **Store Sales - Time Series Forecasting** 比赛（Corporación Favorita）的本地复刻版本，为离线快速迭代而改造。轻量级的本地评估服务器模拟 Kaggle 的提交和评分 API —— agent 通过相同的 HTTP 接口下载数据、训练模型并提交预测，但可获得即时反馈且没有每日提交上限。详见 [`example/kaggle/README.md`](example/kaggle/README.md)。
+[`example/kaggle/`](example/kaggle/) 是 Kaggle **Store Sales - Time Series Forecasting** 比赛的本地复刻版本。轻量级的本地评估服务器模拟 Kaggle 的提交和评分 API。详见 [`example/kaggle/README.md`](example/kaggle/README.md)。
 
 ---
 
@@ -315,7 +232,7 @@ Agent 横跨全部四层 — 从任务解析到执行编排再到分层审查：
 
 | Agent                     | 主要层级            | 职责                                                                  |
 | ------------------------- | ------------------- | --------------------------------------------------------------------- |
-| **agent**                 | 执行层              | 主控 — 调度子 agent、执行审查门禁、驱动收口                           |
+| **aion**                  | 执行层              | 主控 — 调度子 agent、执行审查门禁、驱动收口                           |
 | **requirements-analyst**  | 任务层              | 读取任务与工作区材料，抽取目标、输入与约束                            |
 | **information-collector** | 工作空间层          | 补齐 SOTA、顶会顶刊、官方实现与领域知识                               |
 | **coder**                 | 工作空间层 + 执行层 | 实现、实验、交付与可视化                                              |
@@ -331,8 +248,6 @@ c-critic > ts-critic > 主 agent > 其他子 agent
 ```
 
 主 agent 负责**调度与执行组织**，但**不**拥有高于 critic 的关门权。
-
-进一步地，这里的角色边界默认采用“能力互斥优先委派”而不是“主 agent 全都自己做一遍”：系统性需求重构优先交给 `requirements-analyst`，系统性外部检索与证据链建设优先交给 `information-collector`，真实代码 / 脚本 / 实验实现优先交给 `coder`，治理性批判与 stop-go 优先交给 `ts-critic` / `c-critic`。主 agent 只保留最小必要的路由级核对、集成性修改和无法安全拆分的极小动作。
 
 ---
 
@@ -394,40 +309,61 @@ AION 在工作空间层维护两套互补的追踪系统：
 
 ## 📡 CLI 参考
 
-`cli.sh` 提供了一个 CLI 入口，用于自动化 run-mode 执行与自动续跑：
+### `aion-ts` — 插件安装器
+
+用于将 AION 安装到项目的主要 CLI：
+
+```bash
+aion-ts init [target-dir] [--force]
+```
+
+| 参数              | 默认值     | 描述                                                       |
+| ----------------- | ---------- | ---------------------------------------------------------- |
+| `target-dir`      | `.` (cwd)  | 安装目标目录。不存在时自动创建。                           |
+| `--force`, `-f`   | （关闭）   | 覆盖已存在的 `.opencode/plugins/aion.js`。                 |
+| `--help`, `-h`    | —          | 显示帮助。                                                 |
+
+`init` 做的事情：
+1. 把插件 bundle 复制到 `<target>/.opencode/plugins/aion.js`（OpenCode 自动发现）。
+2. 如果 `<target>/opencode.json` 不存在，创建一个最小启动文件（含 `$schema`、theme、model）。
+3. 把带注释的默认配置复制到 `<target>/.opencode/aion.jsonc`。
+4. 把 AION 主题复制到 `<target>/.opencode/themes/aion.json`。
+
+`<target>` 之外的任何东西都不会被触碰。
+
+### `cli.sh` — OpenCode 启动器（旧版）
+
+`cli.sh` 是 `opencode` 的便捷封装，用于自动化 run 模式执行与自动续跑。它是可选的 — 你可以直接使用 `opencode`。
 
 ```bash
 bash cli.sh [OPTIONS]
 ```
-
-### 选项
 
 | 参数                  | 默认值       | 描述                                            |
 | --------------------- | ------------ | ----------------------------------------------- |
 | `--mode MODE`         | `run`        | 启动模式：`run` 或 `tui`                        |
 | `-m, --model MODEL`   | （来自配置） | OpenCode 模型（如 `anthropic/claude-sonnet-4`） |
 | `--max-continues N`   | `30`         | 最大自动续跑轮数；`0` 表示不限                  |
-| `--continue-delay S`  | `2`          | 每次自动续跑间隔（秒）                          |
-| `--bash-timeout-ms N` | `1200000`    | OpenCode bash 默认超时（毫秒）                  |
 | `--no-auto-continue`  | （关闭）     | 禁用自动续跑                                    |
 | `--debug`             | （关闭）     | 开启详细 debug 日志                             |
-| `--export`            | （关闭）     | 运行结束后导出 session JSON                     |
 | `-h, --help`          | —            | 显示帮助                                        |
 
-### 示例
+---
+
+## 🔨 从源码构建
+
+贡献者和本地测试：
 
 ```bash
-# 基本自主运行
-bash cli.sh
+git clone -b dev https://github.com/ztxtech/aion.git && cd aion
+npm install
 
-# 指定模型与限制轮数
-bash cli.sh -m openai/gpt-4.1 --max-continues 5
+# 构建 + 打包发布 tarball
+bash scripts/build.sh
+# → release/aion-plugin-0.1.0.tar.gz
 
-# Debug 模式并导出 session
-bash cli.sh --debug --export
-
-# 交互式 TUI
-bash cli.sh --mode tui --no-auto-continue
+# 从本地 tarball 安装
+bash scripts/install.sh --local release/aion-plugin-0.1.0.tar.gz
 ```
 
 ---
@@ -439,7 +375,7 @@ Harness 在全部四层强制执行硬性边界：
 - **禁止知识/数据泄露** — 未来信息、标签、隐藏集内容和私有数据绝不能泄露到特征、代码、日志或输出中
 - **彻底的怀疑主义** — 单次成功或指标提升不是可靠的证据；必须主动排查泄露、伪相关、过拟合和未验证假设
 - **治理层级** — 所有治理决策中 `c-critic > ts-critic > 主 agent > 其他`；主 agent 不能覆盖 critic blocker
-- **能力互斥优先委派** — 只要现有角色已覆盖某类工作，主 agent 默认就应委派而不是自己亲做；若暂不并行或暂不委派，必须有明确且范围很小的理由
+- **能力互斥优先委派** — 只要现有角色已覆盖某类工作，主 agent 默认就应委派而不是自己亲做
 - **Benchmark-first** — 有排行榜或竞赛的任务必须维护并行分支：自主探索 + 高分方案逆向吸收
 - **仅 Mermaid 图表** — 所有结构图必须使用 Mermaid；正式输出中禁止 ASCII/纯文字示意图
 - **工作区清理** — 最终交付前必须清理空目录、临时文件和调试残留
@@ -479,10 +415,10 @@ AION 是社区驱动的研究项目。我们欢迎以下方面的贡献：
 | --------- | ------------------------------------------ |
 | **Agent** | 新的专门化 agent 角色                      |
 | **技能**  | 领域知识 `.md` 文件（金融、气候、医疗...） |
+| **工具**  | 新的 AION 工具（TypeScript）               |
+| **钩子**  | 新的 OpenCode 生命周期钩子（TypeScript）   |
 | **协议**  | 新的协调或治理模式                         |
-| **规则**  | 领域特定约束集                             |
 | **评测**  | Suite 定义、grader、scorecard              |
-| **模板**  | 记忆模板、工作区脚手架                     |
 
 ---
 
