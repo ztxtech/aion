@@ -1,3 +1,12 @@
+/**
+ * `chat.params` hook — per-request sampling-temperature control.
+ *
+ * Strategy:
+ *   - Critic agents (ts-critic, c-critic) always get near-deterministic
+ *     params (temp 0.05, topP 0.8, topK 1) for reproducible verdicts.
+ *   - All other agents get phase-tuned params from {@link PHASE_TEMPERATURES}:
+ *     review phases are colder, gather/implement phases are warmer.
+ */
 import type { CreateHooksArgs } from "../create-hooks"
 import type { AionChatParamsHook } from "./types"
 import type { AionPhase } from "../create-managers"

@@ -1,3 +1,11 @@
+/**
+ * Factory for the **requirements-analyst** subagent.
+ *
+ * First role in the pipeline: reads the raw task, extracts a structured
+ * contract, detects hidden goals, and plans a dual-branch strategy.
+ * Permissions are intentionally narrow — bash only (no edit, no webfetch)
+ * — because this agent shapes the plan, not the artifacts.
+ */
 import type { AgentConfig } from "@opencode-ai/sdk"
 import {
   AION_GOVERNANCE_HEADER,

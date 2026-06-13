@@ -20,13 +20,13 @@ const DEFAULT_AION_CONFIG = `{
   "defaultAgent": "aion",
 
   "governance": {
-    // 治理层级：c-critic > ts-critic > main agent > subagents
+    // Governance hierarchy: c-critic > ts-critic > main agent > subagents
     "enforceHierarchy": true,
     "cCriticSupremacy": true
   },
 
   "leakage": {
-    // 防泄露：每个开关控制一类敏感内容
+    // Leakage prevention: each flag guards one category of sensitive content
     "blockOnSuspicion": true,
     "blockFutureInfo": true,
     "blockHiddenSetAccess": true,
@@ -37,14 +37,14 @@ const DEFAULT_AION_CONFIG = `{
   },
 
   "autoContinue": {
-    // 任务自动续跑：c-critic 没 approve 之前自动续
+    // Auto-continue: keep running rounds until c-critic approves a stop
     "enabled": true,
     "maxRounds": 30,
     "delaySeconds": 2
   },
 
   "teamMode": {
-    // 团队模式：1 lead + 多个 subagent 并行
+    // Team mode: 1 lead coordinates multiple subagents in parallel
     "enabled": true,
     "tmuxVisualization": true,
     "maxParallelMembers": 4,
@@ -58,21 +58,23 @@ const DEFAULT_AION_CONFIG = `{
   },
 
   "trace": {
-    // 追踪：每次工具调用都写到 .opencode/trace.md
+    // Tracing: append every tool call to .opencode/trace.md
     "enabled": true,
     "path": ".opencode/trace.md"
   },
 
   "compaction": {
-    // 上下文压缩：超 token 上限时自动整理
+    // Context compaction: auto-summarize when the token limit is approached
     "autoRefreshAtKeyNodes": true,
     "snapshotPath": ".opencode/memory/context-snapshot.md"
   },
 
   "interactiveMode": {
-    // 会话开始时由 LLM 通过 question 工具问用户（不管安装时如何配置）
-    // 此处 enabled 仅作 fallback：如果 LLM 没问用户（如配置为 true 但用户说别问），
-    // 才使用此值。会话中用户可随时说"我要走了"切换为完全自动。
+    // At session start the LLM asks the user via the question tool (regardless
+    // of this install-time setting). The value here is only a fallback: if the
+    // LLM never asks (e.g. config is true but the user says stop asking), this
+    // value is used. The user can switch to fully-autonomous anytime by saying
+    // "I'm leaving".
     "enabled": false
   }
 }

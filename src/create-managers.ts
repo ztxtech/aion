@@ -1,3 +1,23 @@
+/**
+ * Central state factory and the type hub for the entire AION runtime.
+ *
+ * This module owns:
+ *   - All shared AION types: {@link AionPhase} (the lifecycle state machine),
+ *     {@link GovernanceState} (stop-go / blockers / interactive mode),
+ *     {@link TraceEvent}, {@link BranchFrontier}, {@link RoundCounter}.
+ *   - The {@link AionManagers} bag — a collection of small focused managers
+ *     built once at plugin load and shared by every hook and tool:
+ *       • state   – mutable in-memory runtime state
+ *       • trace   – append-only event log (.opencode/trace.md)
+ *       • governance – stop-signal + blocker registry
+ *       • userContinue / interactiveMode – user-decision tracking
+ *       • phase   – the init→gather→…→done transition machine
+ *       • branches / rounds – experiment-branch frontier + auto-continue counter
+ *       • workspace – resolved absolute paths for all AION artifacts
+ *       • git / enforce – checkpoint commits + leakage gate
+ *
+ * Nothing here touches the network or the LLM; it is pure bookkeeping.
+ */
 import type { AionConfig } from "./config/types"
 import type { PluginContext } from "./plugin/types"
 import type { AionIntent } from "./hooks/types"

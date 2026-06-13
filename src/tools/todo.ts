@@ -1,3 +1,16 @@
+/**
+ * TODO-map tool — the plan-tracking instrument.
+ *
+ * `aion_todo_update` manages the todo-map.md artifact with actions:
+ *   - add             — append a new TODO item
+ *   - update-state    — move an item forward (todo → in-progress → done)
+ *   - rollback        — revert an item (self / self-and-downstream / all)
+ *   - get             — read the current map
+ *   - add-from-reportback — absorb items from a subagent's reportback
+ *
+ * The todo-map is the bridge between the high-level plan and OpenCode's
+ * own TODO list; the tool-guard after-hook tracks TUI todo-sync state.
+ */
 import { tool, type ToolDefinition } from "@opencode-ai/plugin"
 import type { CreateToolsArgs } from "./_shared"
 import type { AionTools } from "./types"

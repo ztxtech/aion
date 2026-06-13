@@ -1,3 +1,13 @@
+/**
+ * `permission.ask` hook — auto-approval boundary.
+ *
+ * All `aion_*` and `team_*` tools are auto-allowed (they are internal
+ * governance / state tools that pose no external risk). Research tools
+ * (`webfetch`, `bash`) are also auto-allowed so the information-collector
+ * agent can fetch many URLs without triggering OpenCode's doom_loop
+ * permission-escalation. Everything else falls through to OpenCode's
+ * default ask/deny flow.
+ */
 import type { CreateHooksArgs } from "../create-hooks"
 import type { AionPermissionAskHook } from "./types"
 import { info } from "../shared/logger"

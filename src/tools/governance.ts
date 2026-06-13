@@ -1,3 +1,12 @@
+/**
+ * Governance tools: blocker registry.
+ *
+ * `aion_record_blocker` — register a blocker raised by a critic or analysis
+ *   agent. Open blockers prevent the auto-continue loop from stopping and
+ *   appear in the next dispatch's `unresolved_blockers` slot.
+ * `aion_resolve_blocker` — mark a blocker as fixed with evidence. The fix
+ *   evidence is traced for ts-critic audit.
+ */
 import { tool, type ToolDefinition } from "@opencode-ai/plugin"
 import type { CreateToolsArgs } from "./_shared"
 import type { AionTools } from "./types"

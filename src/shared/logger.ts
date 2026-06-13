@@ -1,3 +1,14 @@
+/**
+ * Leveled logger and filesystem helpers shared across the plugin.
+ *
+ * Logging: debug / info / warn / error, each writing ISO-timestamped lines
+ * to the console. The active level is controlled by the `AION_DEBUG` env
+ * var (set to "1" or "true" for debug output).
+ *
+ * Filesystem helpers exported here: {@link ensureDir}, {@link readIfExists},
+ * {@link writeFileEnsuringDir}, {@link appendToFile} — all of which create
+ * parent directories as needed so callers do not need to pre-create them.
+ */
 import { appendFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs"
 import { dirname } from "node:path"
 

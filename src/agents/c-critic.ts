@@ -1,3 +1,11 @@
+/**
+ * Factory for the **c-critic** subagent — the highest-authority final gate.
+ *
+ * Performs a cold-start stranger-view review under minimal context (its
+ * messages are filtered to `minimal_context` by the messages-transform
+ * hook). Visual analysis is mandatory. Its verdict — approve-stop or
+ * reject-stop — is the only signal that can lift the no-stop order.
+ */
 import type { AgentConfig } from "@opencode-ai/sdk"
 import {
   AION_GOVERNANCE_HEADER,

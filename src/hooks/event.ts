@@ -1,3 +1,11 @@
+/**
+ * `event` hook — session lifecycle observer.
+ *
+ * Listens for session.created / session.idle / session.deleted /
+ * session.error events, traces them to the event log, and fires the
+ * personality entrance quip (TUI toast only — never pollutes the chat
+ * context) when a new session is created.
+ */
 import type { CreateHooksArgs } from "../create-hooks"
 import type { AionEventHook } from "./types"
 

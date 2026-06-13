@@ -1,3 +1,10 @@
+/**
+ * TaskStore — simple JSON-file-per-task CRUD for team tasks.
+ *
+ * Tasks flow through statuses: open → claimed → in_progress → done (or
+ * blocked / cancelled). Supports optional task dependencies and priority
+ * ordering. One file per task under `.aion/runtime/{teamRunId}/tasks/`.
+ */
 import { mkdir, readFile, readdir, unlink, writeFile } from "node:fs/promises"
 import { existsSync } from "node:fs"
 import { join } from "node:path"

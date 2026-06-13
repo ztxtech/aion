@@ -1,3 +1,16 @@
+/**
+ * `experimental.chat.messages.transform` hook — context-mode compression.
+ *
+ * Selectively filters the message history sent to the LLM based on the
+ * active agent and phase, keeping token cost manageable without losing
+ * critical evidence:
+ *   - `minimal_context`: c-critic sees only the report + artifacts
+ *     (stranger-view cold-start review — no conversational history).
+ *   - `rebuttal_context`: during rebuttal mode, keeps only the rebuttal
+ *     exchange and key evidence.
+ *   - `compacted_context`: from round ≥ 2, trims old system messages and
+ *     keeps only the recent tail.
+ */
 import type { CreateHooksArgs } from "../create-hooks"
 import type { AionMessagesTransformHook } from "./types"
 import { info } from "../shared/logger"

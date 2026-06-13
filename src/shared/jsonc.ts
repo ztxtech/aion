@@ -1,3 +1,11 @@
+/**
+ * Minimal JSONC (JSON with comments) parser.
+ *
+ * Strips `//` line comments and `/* block *​/` comments (string-literal
+ * aware, so comment markers inside strings are preserved) and trailing
+ * commas before delegating to `JSON.parse`. Returns a discriminated
+ * result `{ ok, value } | { ok: false, error }` so callers never throw.
+ */
 import { readFileSync } from "node:fs"
 
 export type JsoncParseResult<T = unknown> = {

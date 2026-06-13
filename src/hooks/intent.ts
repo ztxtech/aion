@@ -1,3 +1,16 @@
+/**
+ * Intent classifier and system-injection builder.
+ *
+ * {@link detectIntent} classifies a user message into one of seven intents
+ * (search / experiment / review / plan / implement / analyze / general)
+ * using multilingual keyword lists. The Chinese keywords in these arrays
+ * are intentional functional data, not comments — they let AION classify
+ * Chinese-language user messages.
+ *
+ * Also exports {@link getIntentContext}, {@link checkWorkspaceInitialized},
+ * and {@link getFullSystemInjection} which build intent-aware system-prompt
+ * fragments consumed by the system-transform hook.
+ */
 import type { AionIntent } from "./types"
 import { readFileSync, existsSync } from "node:fs"
 import { join } from "node:path"

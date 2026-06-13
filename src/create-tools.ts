@@ -1,3 +1,12 @@
+/**
+ * Tool aggregator.
+ *
+ * Calls every individual tool factory (ztxexp, critic, memory, safety,
+ * workspace, governance, todo, user-check) and spreads the results into a
+ * single {@link AionTools} record. When team mode is enabled the team toolset
+ * is attached under a nested `team` key so it can be flattened separately by
+ * the plugin interface.
+ */
 import type { AionManagers } from "./create-managers"
 import type { AionTools } from "./tools/types"
 import { createZtxexpTools } from "./tools/ztxexp"

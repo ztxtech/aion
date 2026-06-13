@@ -1,3 +1,16 @@
+/**
+ * TeamCoordinator — the team-mode orchestration core.
+ *
+ * Glues together TeamStore + MailboxStore + TaskStore and enforces the
+ * team-mode safety envelope:
+ *   - Wall-clock caps (maxWallClockMinutes) and turn caps (maxMemberTurns)
+ *   - Spec validation against eligible / hard-reject agent sets
+ *   - Send / poll / ack message flow with unread-byte accounting
+ *   - Shutdown request / approve / reject lifecycle
+ *
+ * Also exports {@link resolveTeamBaseDir} which computes the `.aion`
+ * directory honouring the optional config `baseDir` override.
+ */
 import { join } from "node:path"
 import { existsSync, mkdirSync } from "node:fs"
 import { TeamStore, type TeamRuntimeState, type TeamSpec } from "./store"

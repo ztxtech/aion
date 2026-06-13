@@ -1,3 +1,13 @@
+/**
+ * Team toolset — 14 tools that expose team-mode operations to the LLM.
+ *
+ * Created by {@link createTeamTools} and attached under the nested `team`
+ * key. Each tool is a thin wrapper around TeamCoordinator with tracing:
+ *   create / delete / status / list   — team lifecycle
+ *   send_message / inbox / inbox_ack  — messaging
+ *   shutdown_request / approve / reject — graceful shutdown
+ *   task_create / list / get / update — task management
+ */
 import { tool } from "@opencode-ai/plugin"
 import { join } from "node:path"
 import { TeamCoordinator, resolveTeamBaseDir } from "./coordinator"

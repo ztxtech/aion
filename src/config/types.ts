@@ -1,3 +1,16 @@
+/**
+ * Zod schema and inferred types for the entire AION configuration
+ * (`.opencode/aion.jsonc`).
+ *
+ * Every field carries a `.default()` so a missing or partial config file
+ * always yields a valid {@link AionConfig}. The schema is the single source
+ * of truth — `load-config.ts` validates against it and falls back to
+ * defaults on any parse / validation failure.
+ *
+ * Also exports the team-mode membership sets:
+ *   - {@link AION_TEAM_ELIGIBLE_AGENTS} — agents allowed to be team members
+ *   - {@link AION_TEAM_HARD_REJECT}     — critics that may never be members
+ */
 import { z } from "zod"
 
 export const AION_AGENT_NAMES = [

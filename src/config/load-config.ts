@@ -1,3 +1,17 @@
+/**
+ * Config loader.
+ *
+ * Reads `.opencode/aion.jsonc` (or `.aion.json`) from the workspace root,
+ * strips JSONC comments, validates against the Zod schema, and returns the
+ * typed config. On any error (file missing, invalid JSONC, schema mismatch)
+ * it falls back to {@link DEFAULT_CONFIG} so the plugin always boots.
+ *
+ * `syncReadAionConfig` is the synchronous variant used by code paths that
+ * cannot await (e.g. during module evaluation).
+ *
+ * Side effect: when `CMUX_SOCKET_PATH` is set and team mode is on, tmux
+ * visualization is force-enabled so panes render inside cmux sessions.
+ */
 import { existsSync, readFileSync } from "node:fs"
 import { aionConfigSchema, type AionConfig } from "./types"
 import { parseJsoncFile } from "../shared/jsonc"

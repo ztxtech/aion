@@ -1,3 +1,11 @@
+/**
+ * Factory for the **information-collector** subagent.
+ *
+ * External-evidence specialist: websearch + webfetch + bash for SOTA /
+ * literature / GitHub source-level discovery. Edit is denied — this agent
+ * gathers, it never mutates deliverables. Adds the websearch and opencode
+ * tooling rulesets on top of the base governance stack.
+ */
 import type { AgentConfig } from "@opencode-ai/sdk"
 import {
   AION_GOVERNANCE_HEADER,

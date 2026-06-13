@@ -1,3 +1,17 @@
+/**
+ * Idempotent on-disk workspace initializer.
+ *
+ * Runs once at plugin load to guarantee that every directory and template
+ * file AION needs already exists:
+ *   - .opencode/            (config + plugins)
+ *   - .opencode/memory/     (8 markdown templates: progress, features,
+ *                            decisions, todo-map, completion-gate, positive,
+ *                            negative, relation)
+ *   - .aion/teams + runtime (only when team mode is enabled)
+ *   - trace.md + context-snapshot.md starter files
+ *
+ * Existing files are never overwritten — the check is `!existsSync`.
+ */
 import { existsSync, mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import type { AionConfig } from "./config/types"

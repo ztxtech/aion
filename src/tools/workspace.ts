@@ -1,3 +1,14 @@
+/**
+ * Workspace lifecycle tools: compaction and pre-stop gate.
+ *
+ * `aion_compaction` — rewrite context-snapshot.md from the current
+ *   governance state (blockers, decisions, evidence, branch frontier) so
+ *   the compacted prompt retains the most important context.
+ * `aion_pre_stop_gate` — the multi-condition stop check called before
+ *   transitioning to c-critic-final. Evaluates: governance hierarchy,
+ *   open blockers, leakage, evidence completeness, visual-test status.
+ *   Writes its verdict to completion-gate.md.
+ */
 import { tool, type ToolDefinition } from "@opencode-ai/plugin"
 import type { CreateToolsArgs } from "./_shared"
 import type { AionTools } from "./types"

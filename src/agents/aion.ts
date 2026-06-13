@@ -1,3 +1,12 @@
+/**
+ * Factory for the **AION main agent** (the `primary` mode orchestrator).
+ *
+ * Composes the full prompt stack: governance header → agent-specific prompt
+ * → dispatch/reportback/stop-go/memory protocols → core + autonomy +
+ * time-series rules. The main agent has the broadest permissions (bash,
+ * edit, webfetch, question) and is the only agent allowed to use the
+ * `question` tool for interactive-mode user checks.
+ */
 import type { AgentConfig } from "@opencode-ai/sdk"
 import {
   AION_GOVERNANCE_HEADER,

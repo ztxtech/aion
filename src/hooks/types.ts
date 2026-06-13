@@ -1,3 +1,14 @@
+/**
+ * Type declarations for every AION hook.
+ *
+ * Each hook mirrors an OpenCode plugin lifecycle extension point. The
+ * {@link AionHooks} record maps hook names to optional handler signatures.
+ * Concrete implementations live in the sibling files (tool-guard.ts,
+ * compaction.ts, etc.).
+ *
+ * Also defines {@link AionIntent} — the coarse intent categories the
+ * chat-message hook classifies user messages into.
+ */
 import type { Model, Provider, Permission, Message, Part } from "@opencode-ai/sdk"
 import type { ProviderContext } from "@opencode-ai/plugin"
 

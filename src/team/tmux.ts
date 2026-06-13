@@ -1,3 +1,12 @@
+/**
+ * Tmux / cmux layout generator and session lifecycle.
+ *
+ * Detects whether we are running inside cmux (`CMUX_SOCKET_PATH` set) or
+ * plain tmux, generates a pane-per-member layout, builds the bash script
+ * to create / split / send-keys to the session, and brings it up. Falls
+ * back gracefully (no-op + warning) if tmux is absent so team mode still
+ * works headless.
+ */
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
 import type { TeamRuntimeState } from "./store"

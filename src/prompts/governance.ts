@@ -1,3 +1,16 @@
+/**
+ * Headline governance constants — the hard-wired protocol and rule strings
+ * that form the backbone of every AION agent's system prompt.
+ *
+ * These are NOT soft suggestions; they are programmatically enforced
+ * governance text injected verbatim into agent prompts:
+ *   - AION_GOVERNANCE_HEADER  — the non-negotiable hierarchy contract
+ *   - AION_DISPATCH_PROTOCOL  — how the main agent dispatches subagents
+ *   - AION_REPORTBACK_PROTOCOL — how subagents report results back
+ *   - AION_STOP_GO_PROTOCOL   — the stop / continue decision rules
+ *   - AION_MEMORY_HIERARCHY   — the memory artifact ownership map
+ *   - AION_TIME_SERIES_RULES  — domain-specific TS methodology rules
+ */
 export const AION_GOVERNANCE_HEADER = `# AION Governance Contract (HARD GATES)
 
 This is a non-negotiable, programmatically enforced governance contract. You MUST follow it under all conditions.

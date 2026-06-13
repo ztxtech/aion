@@ -1,3 +1,15 @@
+/**
+ * Critic dispatch and verdict tools.
+ *
+ * `aion_critic_dispatch` — issue a structured review instruction to a
+ *   critic subagent (ts-critic or c-critic), including the goal, the
+ *   artifacts to review, and the expected verdict shape.
+ * `aion_critic_verdict` — record a critic's stop signal / verdict. This
+ *   drives the phase machine: a ts-critic verdict may transition
+ *   ts-pre-review → implement; a c-critic approve-stop is the only signal
+ *   that can lift the no-stop order. Also records blockers the critic
+ *   identifies.
+ */
 import { tool, type ToolDefinition } from "@opencode-ai/plugin"
 import type { CreateToolsArgs } from "./_shared"
 import type { AionTools } from "./types"

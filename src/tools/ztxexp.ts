@@ -1,3 +1,16 @@
+/**
+ * Experiment-management tools (ztxexp = "ztx experiment").
+ *
+ * Enforces a rigid 7-directory experiment boundary so every experiment is
+ * reproducible and isolated:
+ *   data/ evaluation/ exp/ model/ module/ scripts/ outputs/
+ *
+ * Tools:
+ *   `aion_ztxexp_init`     — scaffold the boundary dirs + README + main.py
+ *   `aion_ztxexp_validate` — check the experiment respects the boundary
+ *   `aion_ztxexp_run`      — spawn the experiment command, capture output,
+ *                            and write a run.json manifest
+ */
 import { tool } from "@opencode-ai/plugin"
 import type { CreateToolsArgs } from "./_shared"
 import type { AionTools } from "./types"

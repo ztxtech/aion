@@ -1,3 +1,21 @@
+/**
+ * `session.idle` hook — the auto-continue decision engine.
+ *
+ * Fires every time the main agent goes idle. Implements the core loop logic:
+ *
+ *  1. Guard: if auto-continue is off or max rounds exhausted → stop.
+ *  2. Interactive gate: after c-critic approve-stop in interactive mode,
+ *     hold for the user's continue/stop decision (via the question tool).
+ *  3. Terminal condition: phase=done OR (allow-stop + no blockers +
+ *     c-critic approve-stop) → transition to done, fire completion quip.
+ *  4. Otherwise: advance the round counter and inject a phase-specific
+ *     prompt from {@link PHASE_INJECTION} so the agent knows exactly what
+ *     to do next.
+ *
+ * The {@link PHASE_INJECTION} table is the single source of truth for
+ * per-phase mandatory steps (e.g. "init" requires brainstorm +
+ * deep-reasoning + information-collection before proceeding).
+ */
 import type { CreateHooksArgs } from "../create-hooks"
 import type { AionSessionIdleHook } from "./types"
 import type { AionPhase } from "../create-managers"

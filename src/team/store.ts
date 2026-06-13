@@ -1,3 +1,11 @@
+/**
+ * TeamStore — JSON-file persistence for team specs and runtime state.
+ *
+ * Each team is persisted as a JSON spec file under `.aion/teams/` and a
+ * runtime state file under `.aion/runtime/`. Handles lead derivation (the
+ * first eligible member becomes lead), member→runtime conversion, and a
+ * `.highwatermark` file used to track the last-read message per member.
+ */
 import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises"
 import { existsSync } from "node:fs"
 import { join } from "node:path"

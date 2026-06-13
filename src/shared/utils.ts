@@ -1,3 +1,12 @@
+/**
+ * Small shared helpers used throughout the plugin.
+ *
+ *   nowIso / nowTimestamp — ISO timestamps (the latter filesystem-safe)
+ *   resolvePath           — absolute-aware path join
+ *   isSubPath             — checks if a path is inside another (leakage guard)
+ *   matchAny              — test a string against an array of regexes
+ */
+
 export function nowIso(): string {
   return new Date().toISOString()
 }

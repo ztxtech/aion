@@ -1,3 +1,11 @@
+/**
+ * Factory for the **ts-critic** subagent.
+ *
+ * Time-series domain expert and Pareto stop-go governor. Reviews for
+ * leakage, metric validity, and method-family coverage, then issues a
+ * stop-go verdict. Edit/webfetch denied — the critic advises, it does not
+ * implement.
+ */
 import type { AgentConfig } from "@opencode-ai/sdk"
 import {
   AION_GOVERNANCE_HEADER,

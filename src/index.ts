@@ -1,3 +1,19 @@
+/**
+ * AION plugin entry point.
+ *
+ * This is the single default export that OpenCode loads. It wires the entire
+ * AION subsystem together in a fixed order:
+ *   1. Load + validate config from .opencode/aion.jsonc
+ *   2. Bootstrap the on-disk workspace (memory files, trace, snapshot)
+ *   3. Build the personality handle (TUI quips)
+ *   4. Create the central manager bag (state, trace, governance, ...)
+ *   5. Register all AION tools (critic, memory, safety, team, ...)
+ *   6. Register all OpenCode hooks (tool-guard, compaction, chat, ...)
+ *   7. Assemble the final PluginInstance returned to OpenCode
+ *
+ * The `_testing` export exposes lazy dynamic-import loaders so unit tests can
+ * reach internal hook/tool modules without bundling them into production.
+ */
 import type { Plugin, PluginModule } from "@opencode-ai/plugin"
 import { loadAionConfig } from "./config/load-config"
 import { createAionManagers } from "./create-managers"

@@ -1,3 +1,18 @@
+/**
+ * `chat.message` hook — per-message enrichment and intent routing.
+ *
+ * Fires on every incoming user message and:
+ *   - Classifies the message intent via {@link detectIntent}
+ *   - Detects mid-conversation interactive-mode toggles (the user saying
+ *     "I'm leaving" / "switch to autonomous" or the reverse — matched by
+ *     the LEAVE_PATTERNS / ENGAGE_PATTERNS regex sets which cover both
+ *     English and Chinese phrasings)
+ *   - Injects a phase + intent directive into the message
+ *   - Persists the initial user prompt to memory
+ *   - Triggers heartbeat personality quips
+ *   - Infers phase transitions from tool-call patterns via
+ *     {@link detectPhaseFromToolCall}
+ */
 import type { CreateHooksArgs } from "../create-hooks"
 import type { AionChatMessageHook } from "./types"
 import type { AionPhase } from "../create-managers"

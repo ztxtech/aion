@@ -1,3 +1,14 @@
+/**
+ * Safety tools: pre-action risk gate and leakage checker.
+ *
+ * `aion_safety_gate` — call before risky actions (exec, remote-network,
+ *   git-mutation, bulk filesystem, external-deps). Computes a numeric risk
+ *   score from impact scope + input source + alternatives consideration,
+ *   returns allow / warn / block, and fires a TUI toast on warn/block.
+ * `aion_leakage_check` — programmatic wrapper around the leakage gate.
+ *   Tests a file path (+ optional content sample) against the hard
+ *   anti-leakage rules: credentials, hidden-set, internal prompts.
+ */
 import { tool, type ToolDefinition } from "@opencode-ai/plugin"
 import type { CreateToolsArgs } from "./_shared"
 import type { AionTools } from "./types"

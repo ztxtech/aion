@@ -1,3 +1,12 @@
+/**
+ * Static catalog of all 17 AION skills.
+ *
+ * Each entry records the skill name, description, trigger keywords, the
+ * agents allowed to invoke it, and whether it has a time-series binding.
+ * Derived exports:
+ *   - {@link TS_BOUND_SKILLS} — skills with a tsBinding
+ *   - {@link SKILL_AGENT_MAP} — reverse map: skill → agents that can fire it
+ */
 export type AionSkillName =
   | "brain-storm"
   | "context-init"

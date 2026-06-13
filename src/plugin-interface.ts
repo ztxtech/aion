@@ -1,3 +1,17 @@
+/**
+ * Assembles the final {@link PluginInstance} object that OpenCode consumes.
+ *
+ * Responsibilities:
+ *   - Flatten the tool map: AION core tools + (optionally) team tools are
+ *     merged into a single record so OpenCode sees them at the top level.
+ *   - Wrap every hook in a try/catch boundary. Hooks that fail are either
+ *     re-thrown (when AION itself raised a tagged "[aion]" error) or
+ *     swallowed with a warning so a single misbehaving hook cannot crash
+ *     the host session.
+ *   - Implement the `config` hook: inject the AION model, default agent,
+ *     provider registration, and merge AION agent definitions into the
+ *     user's opencode.json agent overrides (user wins on conflict).
+ */
 import type { AionConfig } from "./config/types"
 import type { AionManagers } from "./create-managers"
 import type { PluginContext, PluginInstance, ToolsRecord } from "./plugin/types"

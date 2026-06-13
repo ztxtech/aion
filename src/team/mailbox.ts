@@ -1,3 +1,12 @@
+/**
+ * MailboxStore — atomic per-message file delivery for team communication.
+ *
+ * Each message is a separate JSON file under `inboxes/{member}/`. Uses a
+ * `.delivering-*` reservation scheme for atomic delivery, with a 10-minute
+ * stale-reservation reclaim for crash recovery. Tracks unread-byte
+ * accounting per recipient (capped by `recipientUnreadMaxBytes`). Supports
+ * broadcast via the team state.json member lookup.
+ */
 import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises"
 import { existsSync } from "node:fs"
 import { join } from "node:path"

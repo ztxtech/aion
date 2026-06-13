@@ -1,3 +1,21 @@
+/**
+ * `tool.execute.before` + `tool.execute.after` hooks — the guard layer.
+ *
+ * BEFORE (createToolGuardBeforeHook): runs before every tool call and
+ * enforces hard safety gates:
+ *   - Leakage guard: blocks credentials, hidden-set data, internal prompts
+ *   - Path guard: blocks writes outside the workspace root
+ *   - Git-push guard: blocks raw `git push` by subagents
+ *   - Dedup guard: rejects repeated identical tool calls (doom-loop detection)
+ *   - ztxexp boundary: ensures experiments run inside the sandboxed dir
+ *
+ * AFTER (createToolGuardAfterHook): runs after every tool call and handles
+ * reactive bookkeeping:
+ *   - Phase transitions inferred from tool-call patterns
+ *   - Rebuttal / blind-optimism flagging from critic output
+ *   - TUI TODO-sync tracking
+ *   - Failure detection and tracing
+ */
 import type { CreateHooksArgs } from "../create-hooks"
 import type { AionToolExecuteBeforeHook, AionToolExecuteAfterHook } from "./types"
 import { warn, info } from "../shared/logger"

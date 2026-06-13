@@ -1,3 +1,13 @@
+/**
+ * Interactive-mode tool.
+ *
+ * `aion_set_interactive_mode` — records the user's choice between
+ * interactive (loop pauses for user between c-critic verdicts) and
+ * autonomous (loop runs fully auto). Must be called after the `question`
+ * tool gathers the user's answer, or when the user toggles mode
+ * mid-conversation. Resets the pending continue/stop decision so future
+ * c-critic verdicts re-prompt in interactive mode.
+ */
 import { tool } from "@opencode-ai/plugin"
 import type { CreateToolsArgs } from "./_shared"
 import type { AionTools } from "./types"

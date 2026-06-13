@@ -1,3 +1,14 @@
+/**
+ * Memory and workspace-initialization tools.
+ *
+ * `aion_memory_sync` — append, replace-section, or fully-replace one of the
+ *   10 memory artifacts (progress, features, decisions, todo-map,
+ *   completion-gate, positive, negative, relation, initial-prompt,
+ *   context-snapshot). Each write is attributed to the calling agent and
+ *   traced.
+ * `aion_workspace_init` — the init-phase bootstrap: persists the user's
+ *   original prompt, creates the context-snapshot, and seeds the todo-map.
+ */
 import { tool, type ToolDefinition } from "@opencode-ai/plugin"
 import type { CreateToolsArgs } from "./_shared"
 import type { AionTools } from "./types"

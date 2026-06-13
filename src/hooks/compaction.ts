@@ -1,3 +1,18 @@
+/**
+ * `experimental.session.compacting` hook.
+ *
+ * When OpenCode compacts a session (trims old context to stay under the
+ * token limit), this hook injects a dense governance-state block into the
+ * surviving context so critical information survives:
+ *   - Current phase, stop signal, round counter, critic verdicts
+ *   - Full list of open blockers (must be carried downstream verbatim)
+ *   - Branch frontier status
+ *   - TODO-map summary
+ *   - Hard anti-leakage reminder + loop-control directives
+ *
+ * Without this injection, compaction would erase the governance state and
+ * the agent would lose track of why it was looping.
+ */
 import type { CreateHooksArgs } from "../create-hooks"
 import type { AionCompactingHook } from "./types"
 import { readIfExists } from "../shared/logger"

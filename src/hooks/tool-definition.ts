@@ -1,3 +1,15 @@
+/**
+ * `tool.definition` hook — dynamic tool-description enrichment.
+ *
+ * Appends phase-aware hints to tool descriptions at request time so the LLM
+ * sees contextual guidance:
+ *   - `aion_critic_dispatch` / `aion_critic_verdict`: which critic to call
+ *     and what verdict means in the current phase.
+ *   - `aion_workspace_init`: flagged as REQUIRED during the init phase.
+ *   - `question`: in interactive mode after c-critic approve-stop, the
+ *     description is rewritten to instruct the agent to ask the user
+ *     whether to continue or finalize.
+ */
 import type { CreateHooksArgs } from "../create-hooks"
 import type { AionToolDefinitionHook } from "./types"
 import type { AionPhase } from "../create-managers"

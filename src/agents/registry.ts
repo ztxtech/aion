@@ -1,3 +1,12 @@
+/**
+ * Agent registry.
+ *
+ * Builds the complete `Record<agentName, AgentConfig>` map that the plugin
+ * interface merges into OpenCode's `agent` config. Also exports
+ * {@link AION_AGENT_DESCRIPTIONS} — the one-line summaries used in TUI /
+ * dispatch hints. The `_modelMap` parameter is reserved for per-agent model
+ * overrides (currently unused; all agents inherit the session model).
+ */
 import type { AgentConfig } from "@opencode-ai/sdk"
 import type { AionAgentName } from "./names"
 import { createAionMainAgent } from "./aion"

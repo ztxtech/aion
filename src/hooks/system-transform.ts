@@ -1,3 +1,17 @@
+/**
+ * `experimental.chat.system.transform` hook — the system-prompt injection engine.
+ *
+ * Runs on every chat turn and mutates the system prompt to inject live,
+ * phase-aware governance context. This is where the bulk of AION's
+ * behavioural steering happens:
+ *   - Banner + environment discovery (agents, MCP servers, skills present)
+ *   - Shared-cache protocol + debug-prefix rule
+ *   - No-stop rule + anti-stop-contamination rule
+ *   - Interactive-mode handling
+ *   - Phase-specific hints (from {@link PHASE_SYSTEM_HINTS})
+ *   - Rebuttal / blind-optimism / visual-semantic injections
+ *   - TODO-map-driven plan reminders + budget warnings
+ */
 import type { CreateHooksArgs } from "../create-hooks"
 import type { AionSystemTransformHook, AionIntent } from "./types"
 import type { AionPhase } from "../create-managers"

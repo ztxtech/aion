@@ -1,3 +1,10 @@
+/**
+ * Hook aggregator.
+ *
+ * Thin wiring layer that instantiates every AION hook factory and returns
+ * them as the {@link AionHooks} record consumed by the plugin interface.
+ * The actual logic lives in src/hooks/*.
+ */
 import type { AionManagers } from "./create-managers"
 import type { AionConfig } from "./config/types"
 import type { PluginContext } from "./plugin/types"

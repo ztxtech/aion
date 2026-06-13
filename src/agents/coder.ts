@@ -1,3 +1,11 @@
+/**
+ * Factory for the **coder** subagent.
+ *
+ * The implementation workhorse: full bash/edit/webfetch access. Mandated
+ * to run experiments through the ztxexp boundary and to produce visual +
+ * statistical + SHAP evidence. Adds the experiment ruleset on top of the
+ * base governance stack.
+ */
 import type { AgentConfig } from "@opencode-ai/sdk"
 import {
   AION_GOVERNANCE_HEADER,
