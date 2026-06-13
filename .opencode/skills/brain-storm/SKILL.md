@@ -10,12 +10,28 @@ description: Open several fundamentally different routes for one problem fast, s
 - The debug prefix should stay stable, short, and easy to grep.
 
 
+## Method Combination and Novel-Route Design (MANDATORY when evidence map is available)
+
+Routes are NOT limited to picking from existing methods found by `information-collector`. When the evidence map (in `.opencode/memory/features.md`) is available, brain-storm MUST actively design **novel combination routes** in addition to single-method routes. Existing methods are prior knowledge; combining them to fill gaps is innovation.
+
+- **Read the gap analysis**: Before designing routes, read `features.md` for the method-combination gap analysis written by `information-collector`. It flags: complementary strengths (method A handles trend, method B handles seasonality), pipeline gaps (preprocessing from domain X + model from domain Y + calibration from domain Z), ensemble opportunities (uncorrelated error modes), transferable tricks (a trick from a citing paper or issue thread), and capability voids (no single method handles a specific constraint).
+- **Design combination routes**: For each significant gap, design at least one combination route that addresses it. The combination must be grounded in evidence — cite which methods are being combined and why their combination is expected to be better than any component alone. Do NOT invent combinations from thin air.
+- **Combination route types**:
+  - **Pipeline composition**: Method A for preprocessing/decomposition → Method B for core modeling → Method C for post-processing/calibration. Each stage grounded in evidence.
+  - **Ensemble / stacking**: Multiple diverse methods whose errors are known to be uncorrelated. Grounded in the error-mode analysis from evidence.
+  - **Cross-domain transfer**: A method from a different domain (found via problem degradation or reframing) applied to this task, possibly with adaptation. Grounded in the analogy evidence.
+  - **Hybrid architecture**: A novel architecture that combines components from multiple existing methods (e.g., attention from model A + decomposition from method B + loss function from paper C). Grounded in the component-level evidence.
+  - **Trick augmentation**: An existing strong method + a trick from a citing paper, issue thread, or competitor analysis that the original did not include. Grounded in the chain-reaction evidence.
+- **Combination routes are first-class citizens**: They get their own `branch_id`, `wave`, validation path, and drop conditions — same as single-method routes. Do NOT treat them as speculative extras. If the evidence map says there is a gap, the combination route is evidence-grounded, not a guess.
+- **Novelty risk management**: Every combination route must explicitly state: (a) which component's evidence is strongest, (b) which component's combination effect is least certain, (c) what the cheapest validation step is to de-risk the uncertain part. This prevents combination routes from becoming untested fantasies.
+
 ## When To Use
 
 - One problem has multiple possible solutions.
 - The current path is stuck and needs an active direction change.
 - Different routes need to be compared for gain, risk, and startup cost.
 - One route already looks stronger, but it still cannot be collapsed directly, so same-family variants should be widened around it.
+- The evidence map reveals structural gaps that no single existing method fills, so novel combination routes are needed.
 - Before the main flow ends, you need to check again whether any actions, strengthening points, or rollback routes are still missing.
 
 ## Flow
@@ -40,15 +56,20 @@ description: Open several fundamentally different routes for one problem fast, s
 - Branch map (use mermaid when needed)
 - Global branch list
 - Recursive-widening branch list
+- Novel-combination route list (routes designed from evidence gap analysis)
 - For each route
   - branch_id
   - parent_branch_id (if it came from recursive widening of a leading branch)
+  - source_type (`existing-method` / `combination` / `cross-domain-transfer` / `trick-augmentation`)
   - wave
   - route number
   - core assumption
   - route focus
   - expected gain
   - main risk
+  - evidence basis (which memory features / information-collector findings ground this route)
+  - combination components (if source_type is combination: which methods/tricks are combined and why)
+  - novelty risk (which part is most uncertain, cheapest de-risking step)
   - first validation step
   - reason to keep it alive in this round
   - gate to enter the next wave

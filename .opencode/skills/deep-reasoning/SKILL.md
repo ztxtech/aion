@@ -10,6 +10,16 @@ description: Split a complex problem into a multi-step reasoning chain, and make
 - The debug prefix should stay stable, short, and easy to grep.
 
 
+## Novel-Route Reasoning (MANDATORY when combination routes exist)
+
+When `brain-storm` produces combination or novel routes (source_type = `combination` / `cross-domain-transfer` / `trick-augmentation`), deep-reasoning must analyze their structural soundness — not just validate single-method routes.
+
+- **Component soundness check**: For each combination route, verify that every component method's precondition is compatible with the task's actual data, constraints, and evaluation setup. A component that works in its original domain may violate a hidden constraint in this task (e.g., requires stationarity but the data has regime shifts; assumes i.i.d. samples but the data is temporally correlated).
+- **Combination effect reasoning**: Explicitly reason about WHY the combination should be better. "A is good at X, B is good at Y" is necessary but not sufficient — also ask: (a) do A and B's assumptions conflict, (b) does the combination introduce new failure modes that neither component has alone, (c) is there an interaction effect that could cancel the expected gain, (d) what is the simplest experiment that would reveal whether the combination effect is real.
+- **Cheapest de-risking path**: For each combination route, identify the cheapest experiment that tests the most uncertain component of the combination. This is NOT the full validation — it is the smallest probe that would kill the route early if the combination effect does not exist. Reason about this path explicitly.
+- **Comparison with single-method routes**: Combination routes must be compared against single-method routes on the same evidence footing. A combination route is NOT inherently better — it must show structural reasons why the combination's ceiling is higher than the best single method's ceiling, and its additional complexity is justified.
+- **Failure-mode mapping for combinations**: Map the failure modes of each combination route separately. Combinations can fail in ways that components cannot: (a) error amplification through the pipeline, (b) incompatible output distributions between stages, (c) training instability from mixed objectives, (d) overfitting from increased capacity without proportional data.
+
 ## When To Use
 
 - The task is complex, and one wrong step may cause a long chain of rework later.
@@ -38,16 +48,18 @@ description: Split a complex problem into a multi-step reasoning chain, and make
 - Global wavefront map
 - For each path
   - branch_id
+  - source_type (`existing-method` / `combination` / `cross-domain-transfer` / `trick-augmentation`)
   - wave
   - route number
   - core assumption
   - key dependencies
   - validation order
   - rollback points
+  - combination soundness analysis (if source_type is combination: component compatibility, combination effect reasoning, cheapest de-risking step, failure-mode mapping)
 - Candidate merge points and merge preconditions
 - Leading-path recursive-widening judgment
 - Parallel validation order for the current wavefront
-- Global compare gate
+- Global compare gate (includes combination-vs-single-method comparison)
 - Whether early merge is allowed
 - Whether stop is allowed
 - Evidence that blocks stopping
