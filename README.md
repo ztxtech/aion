@@ -492,7 +492,15 @@ If you use AION in your research, please cite:
 
 ## 🤝 Contributing
 
-AION is a community-driven research project. We welcome contributions in:
+AION is a community-driven research project. We welcome contributions from researchers, engineers, and domain practitioners — but please follow the process below so we can review your work quickly and keep the project healthy.
+
+**Before you start**
+
+- **Read** [`CONTRIBUTING.md`](./CONTRIBUTING.md) — it covers the dev setup, coding conventions, and the PR process.
+- **Open an issue first** for non-trivial changes (new agents, skills, tools, hooks, protocols, eval suites, governance changes). Use the **Component Proposal** template so the maintainers can sanity-check the fit in the four-layer architecture before any code is written.
+- **Bug reports and small fixes** can go straight to a PR with the **Bug Report** / **Documentation** issue template.
+
+**Contribution areas**
 
 | Area          | Examples                                                       |
 | ------------- | -------------------------------------------------------------- |
@@ -502,6 +510,17 @@ AION is a community-driven research project. We welcome contributions in:
 | **Hooks**     | New OpenCode lifecycle hooks (TypeScript)                      |
 | **Protocols** | New coordination or governance patterns                        |
 | **Evals**     | Suite definitions, graders, scorecards                         |
+
+**When you open a PR**
+
+- Fill in the **PR template** completely, including the *Governance Impact* and *Four-Layer Impact* sections.
+- Run `bun run typecheck` and `bun run test:all` locally — both must pass (574/574 baseline).
+- If your change is user-facing, mirror it in **both** `README.md` and `README.zh-CN.md` in the same PR.
+- Tag the relevant maintainer(s) and be ready to iterate.
+
+**Community norms**
+
+This project follows the [Code of Conduct](./CODE_OF_CONDUCT.md). Security issues are handled via [`SECURITY.md`](./SECURITY.md), not public issues.
 
 ---
 

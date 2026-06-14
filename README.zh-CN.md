@@ -492,7 +492,15 @@ AION 是一个建立在开源社区之上的时间序列 harness。我们衷心�
 
 ## 🤝 参与贡献
 
-AION 是社区驱动的研究项目。我们欢迎以下方面的贡献：
+AION 是社区驱动的研究项目。我们欢迎研究者、工程师和领域从业者参与，但请遵循下面的流程，以便我们快速 review、保持项目健康。
+
+**开始之前**
+
+- 请先阅读 [`CONTRIBUTING.md`](./CONTRIBUTING.md) —— 包含开发环境、编码规范、PR 流程。
+- 涉及较深改动（新 agent / skill / tool / hook / protocol / 评测套件 / 治理变更）请**先开 issue**，使用 **Component Proposal** 模板，让 maintainer 先在四层架构层面 review 一下，再写代码。
+- **Bug 修复和小改文档**可以直接提 PR，配合 **Bug Report** / **Documentation** issue 模板即可。
+
+**可贡献的方向**
 
 | 领域      | 示例                                       |
 | --------- | ------------------------------------------ |
@@ -502,6 +510,17 @@ AION 是社区驱动的研究项目。我们欢迎以下方面的贡献：
 | **钩子**  | 新的 OpenCode 生命周期钩子（TypeScript）   |
 | **协议**  | 新的协调或治理模式                         |
 | **评测**  | Suite 定义、grader、scorecard              |
+
+**提 PR 时**
+
+- 完整填写 **PR 模板**，尤其是 *Governance Impact* 和 *Four-Layer Impact* 两栏。
+- 本地跑通 `bun run typecheck` 和 `bun run test:all`（基线 574/574）。
+- 用户可见的改动请**同步更新** `README.md` 和 `README.zh-CN.md`。
+- @ 相关 maintainer，准备好迭代。
+
+**社区规范**
+
+本项目遵循 [Code of Conduct](./CODE_OF_CONDUCT.md)。安全问题请按 [`SECURITY.md`](./SECURITY.md) 私下报告，**不要**开公开 issue。
 
 ---
 
