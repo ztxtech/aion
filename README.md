@@ -1,6 +1,10 @@
-<h1 align="center">
-  <img src="https://img.shields.io/badge/AION-Time_Series_Harness-7C3AED?style=for-the-badge&logo=openai&logoColor=white" alt="AION" />
-</h1>
+<p align="center">
+  <a href="https://github.com/ztxtech/aion">
+    <img
+      src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=700&size=28&duration=2800&pause=900&color=7C3AED&center=true&vCenter=true&repeat=true&width=720&height=64&lines=AION;Time-Series%20Harness%20for%20OpenCode;Task%20%E2%97%87%20Workspace%20%E2%97%87%20Execution%20%E2%97%87%20Review;Dual-Review%20Governance%20%C3%97%20Leakage%20Gate"
+      alt="AION — Time-Series Harness" />
+  </a>
+</p>
 
 <p align="center">
   <a href="README.md"><strong>English</strong></a> ·

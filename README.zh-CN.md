@@ -1,6 +1,10 @@
-<h1 align="center">
-  <img src="https://img.shields.io/badge/AION-时间序列_Harness-7C3AED?style=for-the-badge&logo=openai&logoColor=white" alt="AION" />
-</h1>
+<p align="center">
+  <a href="https://github.com/ztxtech/aion">
+    <img
+      src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=700&size=28&duration=2800&pause=900&color=7C3AED&center=true&vCenter=true&repeat=true&width=720&height=64&lines=AION;OpenCode%20%E4%B8%8A%E7%9A%84%E6%97%B6%E5%BA%8F%E5%BA%93%20Harness;%E4%BB%BB%E5%8A%A1%20%E2%97%87%20%E5%B7%A5%E4%BD%9C%E5%8C%BA%20%E2%97%87%20%E6%89%A7%E8%A1%8C%20%E2%97%87%20%E5%AE%A1%E6%9F%A5;%E5%8F%8C%E5%AE%A1%E6%B2%BB%E7%90%86%20%C3%97%20%E9%98%BB%E6%B3%84%E9%97%B8"
+      alt="AION — 时序库 Harness" />
+  </a>
+</p>
 
 <p align="center">
   <a href="README.md"><strong>English</strong></a> ·
