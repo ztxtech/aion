@@ -462,7 +462,7 @@ async function hfFetchJson(url, cacheDir, useCache) {
   const timer = setTimeout(() => controller.abort(), HF_TIMEOUT_MS);
   let res;
   try {
-    res = await fetch(url, { signal: controller.signal, headers: { Accept: "application/json", "User-Agent": "aion-cli/0.5.0" } });
+    res = await fetch(url, { signal: controller.signal, headers: { Accept: "application/json", "User-Agent": "aion-cli/0.5.1" } });
   } finally {
     clearTimeout(timer);
   }

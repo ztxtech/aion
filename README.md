@@ -9,6 +9,7 @@
 
 ## 📰 News
 
+- **2026-06-14** — **v0.5.1**: **Hard Role Boundaries** for the main agent — explicit "no-direct-edit / no-direct-debug / no-direct-experiment / no-direct-search" rules. The orchestrator dispatches, integrates, and governs; the leaf workers (coder / information-collector / requirements-analyst) execute. New "Reception Contract" sections in every leaf-worker prompt make dispatched tasks land in a predictable diagnose → patch → verify → report shape. 19 new role-boundary tests.
 - **2026-06-14** — **v0.5.0**: Hugging Face Datasets integration (4 new tools + CLI subcommand), ablation/SHAP hard gates, hardware probe in requirements analysis, information-collector query-reformulation tricks.
 - **2026-06-14** — AION is now a **compiled TypeScript plugin** for OpenCode. Install with a single command — no manual cloning required.
 - **2026-06-13** — Plugin version development started on the [`dev`](https://github.com/ztxtech/aion/tree/dev) branch.
