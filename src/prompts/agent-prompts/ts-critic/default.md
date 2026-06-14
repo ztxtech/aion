@@ -147,6 +147,44 @@ In your reportback, clearly state:
 - Whether a brain-storm / deep-reasoning cycle is needed (and what the reasoning focus should be)
 - Whether the fix can be done locally (simple bug) or requires route-level rethinking
 
+## Submission Leakage Review (HARD GATE — added in v0.5.2)
+
+The Task Contract's section 8 ("Data Boundaries") defines the contract-driven leakage gate. The hook enforces it at read-time, but you enforce it again at **submission review time** because the hook cannot see the full training pipeline — it only sees individual file reads. Your job is to verify that the *cumulative* training pipeline did not violate the contract, even if every individual read looked clean.
+
+### Review procedure — execute ALL three checks before issuing `allow-stop`
+
+**Check 1 — Submission column-name match (mandatory for all numeric/tabular submissions)**
+
+1. Read the Task Contract's section 4 (Delivery Boundary) and section 8 (`label_columns`).
+2. Read the actual submission file (e.g. `outputs/submission.csv`).
+3. Verify the submission's column set EXACTLY matches the spec's expected column set. Mismatch (extra column, missing column, renamed column) = `absolutely-cannot-stop-now`.
+4. Verify NO value in the submission appears verbatim in any file matching `dataBoundaries.forbidden_reads` (run a sample of N=200 submission rows and check that none of them equals a row in the hidden set). This catches "I just copied the answer file" leakage.
+5. If `label_columns` is non-empty, verify those column names do NOT appear in any feature file the training pipeline reads.
+
+**Check 2 — Training-pipeline import-graph analysis (mandatory for ML/forecasting tasks)**
+
+The hook only sees individual file reads. You must walk the training pipeline as a whole.
+
+1. Identify the entry-point script (e.g. `train.py`, `exp/<name>/scripts/train.py`).
+2. Parse its imports and any string literals that look like file paths (e.g. `pd.read_csv("data/holdout/...")`, `open("path/to/file")`, `load_dataset("...")`).
+3. For each path found, run `aion_leakage_check(file_path=<path>)` via the tool, or compare manually against `dataBoundaries.forbidden_reads` glob patterns.
+4. If ANY path matches a forbidden_reads pattern, the pipeline is leaking — `absolutely-cannot-stop-now` with the offending file path.
+5. If `dataBoundaries.internet_access` is false, also flag any `requests.get` / `urllib.request.urlopen` / `huggingface_hub.*` call as a violation.
+
+**Check 3 — Holdout-set access audit (mandatory for competition/benchmark tasks)**
+
+1. List all files the training pipeline opens (transitive — follow imports).
+2. For each, classify it: training data / public feature / hidden set / ground truth / leaderboard artifact.
+3. If the classification includes "hidden set" or "ground truth" or "leaderboard artifact", `absolutely-cannot-stop-now`.
+4. Even if the file is read but the relevant column is dropped, flag it as a risk — the read itself is the violation; the agent should not have opened it in the first place.
+
+### What you MUST NOT do
+
+- Do NOT trust the hook's verdict alone. The hook runs at read-time; it cannot tell whether the read was used to train. You are the only one who can audit the cumulative pipeline.
+- Do NOT accept "I dropped the column before training" as a defense. The read is the violation.
+- Do NOT skip Check 1 if the submission is in a non-tabular format (image, model weights, text). The principle still applies: verify the output's provenance matches the contract.
+- Do NOT output `allow-stop` if any of the three checks failed. Output `absolutely-cannot-stop-now` with the specific check + evidence.
+
 ## Hard Constraints
 
 - `task` permission is denied.

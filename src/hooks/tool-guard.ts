@@ -23,23 +23,29 @@ import { notifyFromCtx } from "../shared/notify-tui"
 import { existsSync, readFileSync } from "node:fs"
 import { join, relative, resolve } from "node:path"
 
-const LEAKAGE_PATH_PATTERNS: RegExp[] = [
-  /\/\.env($|\.)/i,
-  /\/secrets?\//i,
-  /\.(pem|key)$/i,
-  /\/(test|val|holdout|hidden|private)\//i,
-  /\.(csv|parquet|jsonl|tsv)$/i,
-  // NOTE: .opencode/agents/, .opencode/memory/*, and .opencode/trace.md are all SHARED
-  // operational artifacts — all agents (main + subagents) may read and write them as
-  // part of the shared-cache / shared-event-bus protocol. c-critic's minimal-context
-  // restriction is enforced in its prompt, not via path blocking here.
-]
-
-const LEAKAGE_CONTENT_PATTERNS: RegExp[] = [
-  /AKIA[0-9A-Z]{16}/,
-  /-----BEGIN [A-Z ]*PRIVATE KEY-----/,
-  /(password|api[_-]?key|token)\s*[:=]\s*['"]?[A-Za-z0-9_\-]{16,}/i,
-]
+// All leakage pattern checks (path + content) are centralized in
+// `managers.enforce.leakageCheck()` (see create-managers.ts). The hook here
+// is a thin wrapper that calls that one source of truth — never maintain a
+// parallel pattern list.
+//
+// Definition of "leakage" (single source of truth, see create-managers.ts):
+//   Layer 1 — hard-coded (always on when the corresponding flag is true):
+//     1. Credentials / secret paths: .env, /secrets/, .pem, .key
+//     2. AWS key / private-key / password assignment in content
+//     3. Internal AION agent prompts (.opencode/agents/*.md) — anti-extraction
+//   Layer 2 — contract-driven (dataBoundaries in aion.jsonc, derived from the
+//     task contract written by requirements-analyst):
+//     4. forbiddenReads: glob patterns; matching a path blocks the read.
+//     5. allowedReads: when NON-EMPTY, paths must match at least one pattern;
+//        otherwise the read is blocked (allowlist mode).
+//   Layer 3 (separate, not in this hook):
+//     6. Project-root boundary: absolute paths outside cwd are blocked (line 222+).
+//   Layer 4 (ts-critic submission review):
+//     7. Submission column-name matching against the task spec's expected columns.
+//     8. Training-pipeline import-graph analysis: any read/open that touches a
+//        path matching dataBoundaries.forbiddenReads is a leakage verdict.
+// Anything outside these layers is the user's own project data and must NOT
+// be blocked at the hook level.
 
 const IMAGE_EXTENSIONS = /\.(png|jpe?g|gif|svg|bmp|webp|tiff?|pdf)$/i
 const PLOT_OUTPUT_PATHS = /\/(outputs?|scripts\/plot|plots?|figures?|charts?)\//i
@@ -189,21 +195,20 @@ export function createToolGuardBeforeHook(args: CreateHooksArgs): AionToolExecut
     if (toolName === "read" || toolName === "Read" || toolName === "view") {
       const filePath = String((output as { args?: Record<string, unknown> }).args?.filePath ?? "")
       if (filePath) {
-        for (const pat of LEAKAGE_PATH_PATTERNS) {
-          if (pat.test(filePath)) {
-            m.trace.appendEvent(
-              "leakage.detected",
-              `tool.execute.before blocked: ${toolName} ${filePath} matches ${pat}`,
-              { tool: toolName, filePath, pattern: pat.source },
-            )
-            notifyFromCtx(m.ctx, {
-              variant: "error",
-              title: "Leakage block",
-              message: `Refused to access ${filePath} (matches ${pat.source}). See trace for evidence.`,
-              duration: 8000,
-            })
-            throw new Error(`[aion] leakage block: ${filePath} matches restricted pattern ${pat.source}`)
-          }
+        const verdict = m.enforce.leakageCheck(filePath)
+        if (!verdict.safe) {
+          m.trace.appendEvent(
+            "leakage.detected",
+            `tool.execute.before blocked: ${toolName} ${filePath} — ${verdict.reason}`,
+            { tool: toolName, filePath, reason: verdict.reason },
+          )
+          notifyFromCtx(m.ctx, {
+            variant: "error",
+            title: "Leakage block",
+            message: `Refused to access ${filePath} (${verdict.reason}). See trace for evidence.`,
+            duration: 8000,
+          })
+          throw new Error(`[aion] leakage block: ${filePath} — ${verdict.reason}`)
         }
         if (IMAGE_EXTENSIONS.test(filePath)) {
           m.state.governance.lastReadImageFile = filePath
@@ -230,21 +235,22 @@ export function createToolGuardBeforeHook(args: CreateHooksArgs): AionToolExecut
           }
         }
 
-        // Leakage path check
-        for (const pat of LEAKAGE_PATH_PATTERNS) {
-          if (pat.test(filePath)) {
+        // Leakage path + content check (delegated to enforce.leakageCheck — single source of truth)
+        {
+          const verdict = m.enforce.leakageCheck(filePath, content)
+          if (!verdict.safe) {
             m.trace.appendEvent(
               "leakage.detected",
-              `tool.execute.before blocked: ${toolName} ${filePath} matches ${pat}`,
-              { tool: toolName, filePath, pattern: pat.source },
+              `tool.execute.before blocked: ${toolName} ${filePath} — ${verdict.reason}`,
+              { tool: toolName, filePath, reason: verdict.reason },
             )
             notifyFromCtx(m.ctx, {
               variant: "error",
               title: "Leakage block",
-              message: `Refused to access ${filePath} (matches ${pat.source}). See trace for evidence.`,
+              message: `Refused to access ${filePath} (${verdict.reason}). See trace for evidence.`,
               duration: 8000,
             })
-            throw new Error(`[aion] leakage block: ${filePath} matches restricted pattern ${pat.source}`)
+            throw new Error(`[aion] leakage block: ${filePath} — ${verdict.reason}`)
           }
         }
 
@@ -283,25 +289,6 @@ export function createToolGuardBeforeHook(args: CreateHooksArgs): AionToolExecut
             `visual output written: ${filePath} — visual test loop now pending`,
             { filePath, trigger: "visual-semantic" },
           )
-        }
-      }
-      // Leakage content check
-      if (content) {
-        for (const pat of LEAKAGE_CONTENT_PATTERNS) {
-          if (pat.test(content)) {
-            m.trace.appendEvent(
-              "leakage.detected",
-              `tool.execute.before blocked: ${toolName} content matches ${pat} (file=${filePath})`,
-              { tool: toolName, filePath, pattern: pat.source },
-            )
-            notifyFromCtx(m.ctx, {
-              variant: "error",
-              title: "Leakage block: content",
-              message: `Refused to write ${filePath || "<stdout>"} — content matches ${pat.source}. See trace for evidence.`,
-              duration: 8000,
-            })
-            throw new Error(`[aion] leakage block: content matches restricted pattern ${pat.source}`)
-          }
         }
       }
 

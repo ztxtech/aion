@@ -190,29 +190,33 @@ describe("coverage: aion_leakage_check — exhaustive branches", async () => {
     assert.match(out.reason, /private key/i);
   });
 
-  it("blocks /test/ data CSV", async () => {
+  it("allows /test/ data CSV by default (contract is the source of truth)", async () => {
+    // The old design hard-coded /test/val/holdout/ paths as a denylist. The new
+    // design delegates to dataBoundaries.forbiddenReads in the contract. With an
+    // empty contract, the path is allowed — the requirements-analyst writes the
+    // forbidden list into the contract, not the hook.
     const out = JSON.parse(await result.tool.aion_leakage_check.execute({ file_path: "data/test/secret.csv" }, {}));
-    assert.equal(out.safe, false);
+    assert.equal(out.safe, true);
   });
 
-  it("blocks /val/ data JSONL", async () => {
+  it("allows /val/ data JSONL by default", async () => {
     const out = JSON.parse(await result.tool.aion_leakage_check.execute({ file_path: "data/val/labels.jsonl" }, {}));
-    assert.equal(out.safe, false);
+    assert.equal(out.safe, true);
   });
 
-  it("blocks /holdout/ data TSV", async () => {
+  it("allows /holdout/ data TSV by default", async () => {
     const out = JSON.parse(await result.tool.aion_leakage_check.execute({ file_path: "data/holdout/scores.tsv" }, {}));
-    assert.equal(out.safe, false);
+    assert.equal(out.safe, true);
   });
 
-  it("blocks /hidden/ data parquet", async () => {
+  it("allows /hidden/ data parquet by default", async () => {
     const out = JSON.parse(await result.tool.aion_leakage_check.execute({ file_path: "data/hidden/data.parquet" }, {}));
-    assert.equal(out.safe, false);
+    assert.equal(out.safe, true);
   });
 
-  it("blocks /private/ data csv", async () => {
+  it("allows /private/ data csv by default", async () => {
     const out = JSON.parse(await result.tool.aion_leakage_check.execute({ file_path: "data/private/data.csv" }, {}));
-    assert.equal(out.safe, false);
+    assert.equal(out.safe, true);
   });
 
   it("blocks .opencode/agents/*.md internal prompt access", async () => {

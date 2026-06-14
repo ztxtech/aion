@@ -37,6 +37,16 @@ const DEFAULT_CONFIG: AionConfig = {
     blockPromptsAccess: true,
     // memory/trace are now SHARED CACHE / SHARED EVENT BUS — all agents may access.
     blockMemoryAccess: false,
+    // dataBoundaries is the contract-driven gate: requirements-analyst writes
+    // forbiddenReads / allowedReads / labelColumns into the contract, and the
+    // hook + aion_leakage_check tool enforce them. Empty by default = permissive.
+    dataBoundaries: {
+      allowedReads: [],
+      forbiddenReads: [],
+      internetAccess: true,
+      runtimeHosts: [],
+      labelColumns: [],
+    },
   },
   autoContinue: {
     enabled: true,

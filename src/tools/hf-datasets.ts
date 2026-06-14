@@ -165,7 +165,7 @@ async function hfFetch<T = unknown>(
     try {
       const res = await fetch(url, {
         signal: controller.signal,
-        headers: { Accept: "application/json", "User-Agent": "aion-plugin/0.5.1" },
+        headers: { Accept: "application/json", "User-Agent": "aion-plugin/0.5.2" },
       })
       clearTimeout(timer)
       if (res.status === 429 || res.status >= 500) {

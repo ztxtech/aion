@@ -164,9 +164,9 @@ describe("leakage: tool guard before hook", async () => {
   });
 });
 
-describe("leakage: test data files are blocked via path patterns", async () => {
+describe("leakage: legitimate user-project data is NOT blocked (regression)", async () => {
   const bundle = await importBundle();
-  const tmpRoot = createTmpDir("aion-testdata-");
+  const tmpRoot = createTmpDir("aion-legit-");
   let beforeHook;
 
   before(async () => {
@@ -185,39 +185,161 @@ describe("leakage: test data files are blocked via path patterns", async () => {
     try { rmSync(tmpRoot, { recursive: true, force: true }); } catch {}
   });
 
-  it("blocks write to test/ CSV", async () => {
-    await assert.rejects(
-      () => beforeHook({ tool: "write" }, { args: { filePath: "data/test/samples.csv", content: "a,b" } }),
-      /leakage block|restricted pattern/,
-    );
+  it("allows read of data/train.csv (Kaggle-style training set)", async () => {
+    await beforeHook({ tool: "read" }, { args: { filePath: "data/train.csv" } });
   });
 
-  it("blocks write to val/ parquet", async () => {
-    await assert.rejects(
-      () => beforeHook({ tool: "write" }, { args: { filePath: "data/val/metrics.parquet", content: "data" } }),
-      /leakage block|restricted pattern/,
-    );
+  it("allows read of data/test.csv (Kaggle test set, the thing the task is about)", async () => {
+    await beforeHook({ tool: "read" }, { args: { filePath: "data/test.csv" } });
   });
 
-  it("blocks write to hidden/ JSONL", async () => {
-    await assert.rejects(
-      () => beforeHook({ tool: "write" }, { args: { filePath: "data/hidden/results.jsonl", content: "{}" } }),
-      /leakage block|restricted pattern/,
-    );
+  it("allows read of data/sample_submission.csv (template, not leakage)", async () => {
+    await beforeHook({ tool: "read" }, { args: { filePath: "data/sample_submission.csv" } });
   });
 
-  it("blocks write to holdout/ TSV", async () => {
-    await assert.rejects(
-      () => beforeHook({ tool: "write" }, { args: { filePath: "data/holdout/scores.tsv", content: "a\tb" } }),
-      /leakage block|restricted pattern/,
-    );
+  it("allows read of data/stores.csv (metadata)", async () => {
+    await beforeHook({ tool: "read" }, { args: { filePath: "data/stores.csv" } });
   });
 
-  it("blocks write to private/ CSV", async () => {
-    await assert.rejects(
-      () => beforeHook({ tool: "write" }, { args: { filePath: "data/private/experiment.csv", content: "data" } }),
-      /leakage block|restricted pattern/,
+  it("allows read of data/holidays_events.csv (Kaggle public feature)", async () => {
+    await beforeHook({ tool: "read" }, { args: { filePath: "data/holidays_events.csv" } });
+  });
+
+  it("allows read of data/oil.csv (Kaggle public feature)", async () => {
+    await beforeHook({ tool: "read" }, { args: { filePath: "data/oil.csv" } });
+  });
+
+  it("allows read of data/transactions.csv (Kaggle public feature)", async () => {
+    await beforeHook({ tool: "read" }, { args: { filePath: "data/transactions.csv" } });
+  });
+
+  it("allows read of /abs/path/data/train.csv (absolute path variant)", async () => {
+    await beforeHook({ tool: "read" }, { args: { filePath: `${tmpRoot}/data/train.csv` } });
+  });
+
+  it("allows read of project_root/competition/test.csv when path does not have /test/ segment", async () => {
+    await beforeHook({ tool: "read" }, { args: { filePath: "competition/test.csv" } });
+  });
+
+  it("allows write of data/output.csv (user's own output, not in /test/ dir)", async () => {
+    await beforeHook({ tool: "write" }, { args: { filePath: "data/output.csv", content: "a,b\n1,2" } });
+  });
+
+  it("blocks read of /test/ segment when contract lists it as forbiddenRead", async () => {
+    // The hook used to hard-block this; the new design delegates to the contract.
+    // When the contract says nothing, the path is allowed (the requirements-analyst
+    // is responsible for declaring hidden sets in the contract). This test verifies
+    // the new contract-driven behavior.
+    const bundle = await importBundle();
+    const tmp = createTmpDir("aion-contract-block-");
+    mkdirSync(join(tmp, ".opencode"), { recursive: true });
+    writeFileSync(join(tmp, "package.json"), '{"name":"test","type":"module"}');
+    writeFileSync(
+      join(tmp, ".opencode", "aion.jsonc"),
+      JSON.stringify({
+        leakage: {
+          dataBoundaries: { forbiddenReads: ["data/test/**", "**/holdout/**"] },
+        },
+      }),
     );
+    const result = await bundle.default.server({
+      directory: tmp, client: undefined, project: undefined, $: undefined,
+    }, {});
+    const hook = result["tool.execute.before"];
+    await assert.rejects(
+      () => hook({ tool: "read" }, { args: { filePath: "data/test/labels.csv" } }),
+      /data-boundary: forbiddenReads/,
+    );
+    await assert.rejects(
+      () => hook({ tool: "read" }, { args: { filePath: "private/holdout/scores.jsonl" } }),
+      /data-boundary: forbiddenReads/,
+    );
+    try { rmSync(tmp, { recursive: true, force: true }); } catch {}
+  });
+
+  it("ALLOWS read of /test/ segment when contract has no forbiddenReads (default)", async () => {
+    // Default contract (empty forbiddenReads) is permissive — the agent may read
+    // data/test/labels.csv because the requirements-analyst has not declared
+    // any hidden sets. This is the regression test for the data/*.csv over-block.
+    await beforeHook({ tool: "read" }, { args: { filePath: "data/test/labels.csv" } });
+    await beforeHook({ tool: "read" }, { args: { filePath: "private/holdout/scores.jsonl" } });
+  });
+
+  it("blocks paths NOT matching an explicit allowedReads allowlist", async () => {
+    const bundle = await importBundle();
+    const tmp = createTmpDir("aion-contract-allow-");
+    mkdirSync(join(tmp, ".opencode"), { recursive: true });
+    writeFileSync(join(tmp, "package.json"), '{"name":"test","type":"module"}');
+    writeFileSync(
+      join(tmp, ".opencode", "aion.jsonc"),
+      JSON.stringify({
+        leakage: {
+          dataBoundaries: { allowedReads: ["data/train/**", "data/test/features/**"] },
+        },
+      }),
+    );
+    const result = await bundle.default.server({
+      directory: tmp, client: undefined, project: undefined, $: undefined,
+    }, {});
+    const hook = result["tool.execute.before"];
+    // Allowlist match: passes
+    await hook({ tool: "read" }, { args: { filePath: "data/train/file1.csv" } });
+    await hook({ tool: "read" }, { args: { filePath: "data/test/features/X.parquet" } });
+    // Allowlist miss: blocked
+    await assert.rejects(
+      () => hook({ tool: "read" }, { args: { filePath: "data/extra.csv" } }),
+      /data-boundary: allowedReads/,
+    );
+    try { rmSync(tmp, { recursive: true, force: true }); } catch {}
+  });
+});
+
+describe("leakage: enforce.leakageCheck single source of truth (regression)", () => {
+  it("hook and explicit tool agree on .env (both block)", async () => {
+    const bundle = await importBundle();
+    const tmpRoot = createTmpDir("aion-agr-");
+    mkdirSync(join(tmpRoot, ".opencode"), { recursive: true });
+    writeFileSync(join(tmpRoot, "package.json"), '{"name":"test","type":"module"}');
+    const result = await bundle.default.server({
+      directory: tmpRoot, client: undefined, project: undefined, $: undefined,
+    }, {});
+    const beforeHook = result["tool.execute.before"];
+    const checkTool = result.tool?.aion_leakage_check;
+
+    // Hook: blocks .env
+    await assert.rejects(
+      () => beforeHook({ tool: "read" }, { args: { filePath: "config/.env" } }),
+      /leakage block/,
+    );
+    // Tool: should also return safe: false for the same path
+    if (checkTool) {
+      const out = await checkTool.execute({ file_path: "config/.env" }, {});
+      const parsed = JSON.parse(out);
+      assert.equal(parsed.safe, false);
+    }
+    try { rmSync(tmpRoot, { recursive: true, force: true }); } catch {}
+  });
+
+  it("hook and explicit tool agree on data/test.csv (both pass)", async () => {
+    const bundle = await importBundle();
+    const tmpRoot = createTmpDir("aion-agr-");
+    mkdirSync(join(tmpRoot, ".opencode"), { recursive: true });
+    writeFileSync(join(tmpRoot, "package.json"), '{"name":"test","type":"module"}');
+    const result = await bundle.default.server({
+      directory: tmpRoot, client: undefined, project: undefined, $: undefined,
+    }, {});
+    const beforeHook = result["tool.execute.before"];
+    const checkTool = result.tool?.aion_leakage_check;
+
+    // Hook: must NOT block
+    await beforeHook({ tool: "read" }, { args: { filePath: "data/test.csv" } });
+    // Tool: should also return safe: true
+    if (checkTool) {
+      const out = await checkTool.execute({ file_path: "data/test.csv" }, {});
+      const parsed = JSON.parse(out);
+      assert.equal(parsed.safe, true, "explicit tool must return safe: true for data/test.csv");
+    }
+    try { rmSync(tmpRoot, { recursive: true, force: true }); } catch {}
   });
 });
 

@@ -9,7 +9,7 @@
 
 ## 📰 News
 
-- **2026-06-14** — AION is now a **compiled TypeScript plugin** for OpenCode (one-command install). v0.5.0 adds Hugging Face Datasets integration (4 tools + CLI), ablation/SHAP hard gates, hardware probe, info-collector reformulation. v0.5.1 codifies **Hard Role Boundaries** — the main agent dispatches, integrates, and governs; leaf workers (coder / information-collector / requirements-analyst) execute via explicit Reception Contracts (19 new role-boundary tests, 574/574 pass).
+- **2026-06-14** — AION is now a **compiled TypeScript plugin** for OpenCode (one-command install). v0.5.0 adds Hugging Face Datasets integration (4 tools + CLI), ablation/SHAP hard gates, hardware probe, info-collector reformulation. v0.5.1 codifies **Hard Role Boundaries** — the main agent dispatches, integrates, and governs; leaf workers (coder / information-collector / requirements-analyst) execute via explicit Reception Contracts (19 new role-boundary tests, 574/574 pass). v0.5.2 replaces path-based denylists with a **contract-driven leakage gate** — `requirements-analyst` writes `dataBoundaries` (allowed_reads / forbidden_reads / internet_access / runtime_hosts / label_columns) into the Task Contract, the hook enforces it at read-time, and `ts-critic` audits the full training pipeline + submission columns at submission review time.
 
 ---
 

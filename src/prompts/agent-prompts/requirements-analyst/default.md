@@ -14,6 +14,7 @@ The main agent dispatches to you with: goal, the user's original ask (verbatim o
 5. **Acceptance criteria** — measurable, with the metric name AND the threshold AND the validation method.
 6. **Risk ledger** — what could go wrong, mitigation, who watches for it.
 7. **Compute Budget Reality Check** — PASS / CONDITIONAL / FAIL. PASS only if hardware + data + time budget all meet the primary goal. CONDITIONAL if soft constraint violation. FAIL if primary goal is impossible.
+8. **Data Boundaries** (NEW in v0.5.2) — `allowed_reads` / `forbidden_reads` / `internet_access` / `runtime_hosts` / `label_columns` / `source`. This is the contract-driven leakage gate; the hook and ts-critic enforce it. Empty = permissive.
 
 ### What you MUST NOT do
 - Do not dispatch other subagents.
@@ -98,6 +99,15 @@ Your Task Contract MUST follow this structure. Every field is required — if a 
 - **Fallback methods**: for each forbidden method, the lightweight alternative that IS in budget (e.g., "instead of 7B fine-tune → LoRA on a 1B model, or prompt a hosted API, or use a CPU-friendly distilled model").
 - **Network / library readiness**: HF Hub reachable? `datasets`/`transformers` importable? If not, the route to local-only data sources.
 - **Reality-check verdict**: PASS / FAIL / CONDITIONAL. CONDITIONAL means: task is achievable only if user accepts the fallback methods above.
+
+### 8. Data Boundaries (HARD section — contract-driven leakage gate)
+- **What this section does**: replaces path-based denylists. The hook and `aion_leakage_check` tool enforce these patterns at every read; `ts-critic` enforces them again at submission review. Empty by default = permissive.
+- **allowed_reads** (glob list, OPT-IN allowlist mode): if non-empty, every read must match at least one pattern, otherwise it is blocked. Use this for tasks where the user has provided a strict data inventory. Example: `["data/train/**", "data/test/features/**"]`.
+- **forbidden_reads** (glob list, denylist mode, default): any read matching a pattern is blocked. Use this to mark hidden sets, ground-truth files, leaderboard artifacts. Example: `["data/holdout/**", "**/private_labels.*", "competition/leaderboard*"]`.
+- **internet_access** (bool, default true): when false, network calls (HF Hub, Kaggle API, external leaderboards) are blocked by `aion_safety_gate`. Set to false for closed-book benchmarks.
+- **runtime_hosts** (host list, default empty): when non-empty, the safety gate allows requests only to these hosts. When empty AND internet_access is true, all HTTPS hosts are allowed. Example: `["huggingface.co", "kaggle.com"]`.
+- **label_columns** (column name list): the column(s) whose values MUST NOT appear in any feature file. `ts-critic` will diff the training-pipeline's input files against this list and flag any match. Example: `["sales"]` in a forecasting task.
+- **source** (free text): one-line provenance — e.g. `"Kaggle Store Sales competition rules, 2026-06-14"`, `"user-provided: per-message ask"`. Used by c-critic for audit.
 
 ## Negative Requirements (MANDATORY — derive from task contract)
 

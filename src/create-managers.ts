@@ -24,6 +24,16 @@ import type { AionIntent } from "./hooks/types"
 import { appendToFile, ensureDir } from "./shared/logger"
 import { resolvePath, nowIso } from "./shared/utils"
 
+// matchGlob — minimal glob matcher supporting `*` (any chars except `/`),
+// `**` (any chars including `/`), and `?` (single char). Used by the contract-
+// driven leakage gate (dataBoundaries.forbiddenReads / allowedReads). No
+// external deps; the patterns in aion.jsonc are simple enough.
+function matchGlob(pattern: string, path: string): boolean {
+  const p = pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*\*/g, "§§").replace(/\*/g, "[^/]*").replace(/§§/g, ".*").replace(/\?/g, "[^/]")
+  const re = new RegExp(`^${p}$`)
+  return re.test(path)
+}
+
 export type RoundCounter = {
   current: number
   max: number
@@ -530,6 +540,21 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
 
   const enforce = {
     leakageCheck(filePath: string, content?: string): { safe: boolean; reason?: string } {
+      // Layer 1 — hard-coded rules (always on when the corresponding flag is true):
+      //   - credentials / secret paths: .env, .pem, .key, /secrets/
+      //   - AWS / private-key / password assignment in content
+      //   - internal AION agent prompts (.opencode/agents/*.md) — anti-extraction
+      //
+      // Layer 2 — contract-driven gate (dataBoundaries from requirements-analyst):
+      //   - forbiddenReads: list of glob patterns; if a path matches ANY, it is blocked.
+      //   - allowedReads: when NON-EMPTY, the path MUST match at least one pattern,
+      //     otherwise it is blocked (allowlist mode). When empty, all paths pass this
+      //     layer (denylist-only mode).
+      //
+      // Note: project-root boundary is enforced by the hook (not here), and path
+      // segments like /test/val/holdout/ are NOT a default block — the contract
+      // is the source of truth.
+
       const normalized = filePath.toLowerCase()
 
       if (config.leakage.blockCredentials) {
@@ -540,21 +565,37 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
           if (/AKIA[0-9A-Z]{16}/.test(content)) return { safe: false, reason: "AWS key-like content" }
           if (/-----BEGIN [A-Z ]*PRIVATE KEY-----/.test(content))
             return { safe: false, reason: "private key block in content" }
+          if (/(password|api[_-]?key|token)\s*[:=]\s*['"]?[A-Za-z0-9_\-]{16,}/i.test(content)) {
+            return { safe: false, reason: "credential assignment in content (password/api_key/token=...)" }
+          }
         }
       }
 
-      if (config.leakage.blockHiddenSetAccess) {
-        if (/\/(test|val|holdout|hidden|private)\//.test(normalized) && /\.(csv|parquet|jsonl|tsv)$/i.test(normalized)) {
-          return { safe: false, reason: "hidden-set / holdout data file access is blocked" }
-        }
-      }
-
-      // NOTE: .opencode/memory/* and .opencode/trace.md are the SHARED CACHE and SHARED
-      // EVENT BUS — all agents may read and write them. We do NOT block them here.
-      // c-critic's minimal-context restriction is enforced in its prompt, not via this gate.
       if (config.leakage.blockPromptsAccess) {
         if (/\.opencode\/agents\//.test(normalized) && /\.(md|markdown)$/i.test(normalized)) {
           return { safe: false, reason: "internal AION agent prompt read is blocked (anti-extraction)" }
+        }
+      }
+
+      // Layer 2 — contract-driven data boundaries
+      const boundaries = config.leakage.dataBoundaries
+      if (boundaries) {
+        // 2a. forbiddenReads (denylist): any match -> block
+        for (const pattern of boundaries.forbiddenReads ?? []) {
+          if (matchGlob(pattern, filePath)) {
+            return { safe: false, reason: `data-boundary: forbiddenReads matched "${pattern}"` }
+          }
+        }
+        // 2b. allowedReads (allowlist, opt-in): when set, anything not matching -> block
+        const allowed = boundaries.allowedReads ?? []
+        if (allowed.length > 0) {
+          const ok = allowed.some((p) => matchGlob(p, filePath))
+          if (!ok) {
+            return {
+              safe: false,
+              reason: `data-boundary: allowedReads is non-empty and "${filePath}" matches none of [${allowed.join(", ")}]`,
+            }
+          }
         }
       }
 

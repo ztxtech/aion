@@ -48,6 +48,13 @@ export const aionConfigSchema = z.object({
   }).default({ enforceHierarchy: true, cCriticSupremacy: true }),
   leakage: z.object({
     blockOnSuspicion: z.boolean().default(true),
+    // blockFutureInfo + blockHiddenSetAccess + blockPrivateData are deprecated
+    // since the v0.5.2 contract-driven rewrite. Hidden-set / private-data
+    // access is now controlled by dataBoundaries.forbiddenReads (which the
+    // requirements-analyst writes into the contract), not by path heuristics.
+    // The flags are kept for backward compatibility (no-op) so existing user
+    // aion.jsonc files keep loading. To re-enable, set the corresponding
+    // dataBoundaries.forbiddenReads patterns in your aion.jsonc.
     blockFutureInfo: z.boolean().default(true),
     blockHiddenSetAccess: z.boolean().default(true),
     blockPrivateData: z.boolean().default(true),
@@ -58,6 +65,29 @@ export const aionConfigSchema = z.object({
     // false (i.e. memory/trace are accessible to all agents). Setting this to true
     // is a no-op kept for config compatibility.
     blockMemoryAccess: z.boolean().default(false),
+    // dataBoundaries: optional contract-driven leakage gate. When set, the hook
+    // and the aion_leakage_check tool ALSO check the path against these patterns
+    // (in addition to the hard-coded credentials/prompts rules). Each pattern is
+    // a glob (e.g. "data/holdout/**", "competition/leaderboard*"). A path that
+    // matches ANY forbiddenRead pattern returns safe: false with reason
+    // "data-boundary: <pattern>". allowedReads is a denylist-style ALLOW list
+    // (when set, anything NOT matching is blocked); left empty to allow by default.
+    dataBoundaries: z.object({
+      allowedReads: z.array(z.string()).default([]),
+      forbiddenReads: z.array(z.string()).default([]),
+      internetAccess: z.boolean().default(true),
+      runtimeHosts: z.array(z.string()).default([]),
+      labelColumns: z.array(z.string()).default([]),
+      // Source describes how the contract was derived (e.g. "Kaggle Store Sales
+      // public rules", "user-provided"). Stored for ts-critic / c-critic audit trail.
+      source: z.string().optional(),
+    }).default({
+      allowedReads: [],
+      forbiddenReads: [],
+      internetAccess: true,
+      runtimeHosts: [],
+      labelColumns: [],
+    }),
   }).default({
     blockOnSuspicion: true,
     blockFutureInfo: true,
@@ -66,6 +96,13 @@ export const aionConfigSchema = z.object({
     blockCredentials: true,
     blockPromptsAccess: true,
     blockMemoryAccess: false,
+    dataBoundaries: {
+      allowedReads: [],
+      forbiddenReads: [],
+      internetAccess: true,
+      runtimeHosts: [],
+      labelColumns: [],
+    },
   }),
   autoContinue: z.object({
     enabled: z.boolean().default(true),
