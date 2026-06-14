@@ -112,7 +112,7 @@ your-project/
 │   │   └── aion.json           # AION 主题
 │   ├── aion.jsonc              # AION 配置（所有功能默认开启）
 │   └── memory/                 # 运行时创建（progress, decisions 等）
-└── opencode.json               # OpenCode 配置（模型、agents）
+└── opencode.json               # OpenCode 配置（theme、agents）
 ```
 
 OpenCode 启动时自动发现 `.opencode/plugins/` 中的插件 — **不修改任何全局配置**。
@@ -180,14 +180,14 @@ aion-ts init .
 ### 5. 运行
 
 ```bash
-# 交互式 TUI 模式
+# 交互式 TUI 模式 — 在 TUI 里选你的模型
 opencode
 
 # 非交互式 run 模式
 opencode run --agent aion "你的任务描述"
 
 # 指定模型
-opencode run --agent aion -m anthropic/claude-sonnet-4 "分析这个时间序列数据集"
+opencode run --agent aion -m provider/model "分析这个时间序列数据集"
 ```
 
 ### `run` / `tui` 与执行策略的关系
@@ -325,9 +325,11 @@ aion-ts init [target-dir] [--force]
 
 `init` 做的事情：
 1. 把插件 bundle 复制到 `<target>/.opencode/plugins/aion.js`（OpenCode 自动发现）。
-2. 如果 `<target>/opencode.json` 不存在，创建一个最小启动文件（含 `$schema`、theme、model）。
+2. 如果 `<target>/opencode.json` 不存在，创建一个最小启动文件（含 `$schema` 和 theme）。
 3. 把带注释的默认配置复制到 `<target>/.opencode/aion.jsonc`。
 4. 把 AION 主题复制到 `<target>/.opencode/themes/aion.json`。
+
+模型不在 `init` 里设置 — 你在 OpenCode TUI 运行时选择。
 
 `<target>` 之外的任何东西都不会被触碰。
 
@@ -342,11 +344,44 @@ bash cli.sh [OPTIONS]
 | 参数                  | 默认值       | 描述                                            |
 | --------------------- | ------------ | ----------------------------------------------- |
 | `--mode MODE`         | `run`        | 启动模式：`run` 或 `tui`                        |
-| `-m, --model MODEL`   | （来自配置） | OpenCode 模型（如 `anthropic/claude-sonnet-4`） |
+| `-m, --model MODEL`   | （来自 TUI）  | OpenCode 模型（格式 `provider/model`）             |
 | `--max-continues N`   | `30`         | 最大自动续跑轮数；`0` 表示不限                  |
 | `--no-auto-continue`  | （关闭）     | 禁用自动续跑                                    |
 | `--debug`             | （关闭）     | 开启详细 debug 日志                             |
 | `-h, --help`          | —            | 显示帮助                                        |
+
+---
+
+## 🗑️ 卸载
+
+### 系统级（CLI + bundle）
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ztxtech/aion/dev/scripts/uninstall.sh | bash
+```
+
+移除 `~/.local/bin/aion-ts` 和 `~/.local/lib/aion/`。
+
+### 项目级（同时从某个项目中移除）
+
+```bash
+# 系统 + 当前项目（删除前自动备份 AION 文件）
+curl -fsSL https://raw.githubusercontent.com/ztxtech/aion/dev/scripts/uninstall.sh | bash -s -- --project .
+
+# 仅项目（保留 CLI 不删）
+curl -fsSL https://raw.githubusercontent.com/ztxtech/aion/dev/scripts/uninstall.sh | bash -s -- --project . --no-system
+```
+
+项目级卸载：
+- **自动备份** 所有 AION 文件到 `.opencode/aion-backup-<时间戳>.tar.gz`
+- **删除** `.opencode/plugins/aion.js`、`.opencode/themes/aion.json`、`.opencode/aion.jsonc`
+- **清理** `opencode.json`（只移除 `theme: "aion"`，其他配置全部保留）
+- **不触碰** `.opencode/memory/`、`.opencode/trace.md`、`.opencode/skills/` 等用户数据
+
+预览效果（不实际删除）：
+```bash
+bash scripts/uninstall.sh --project . --no-system --dry-run
+```
 
 ---
 

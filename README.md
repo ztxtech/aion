@@ -112,7 +112,7 @@ your-project/
 │   │   └── aion.json           # AION theme
 │   ├── aion.jsonc              # AION configuration (all features ON by default)
 │   └── memory/                 # Created at runtime (progress, decisions, etc.)
-└── opencode.json               # OpenCode config (model, agents)
+└── opencode.json               # OpenCode config (theme, agents)
 ```
 
 OpenCode auto-discovers plugins in `.opencode/plugins/` at startup — no global configuration is touched.
@@ -180,14 +180,14 @@ This drops the plugin bundle into `.opencode/plugins/aion.js`, creates a starter
 ### 5. Run
 
 ```bash
-# Interactive TUI mode
+# Interactive TUI mode — pick your model in the TUI
 opencode
 
 # Non-interactive run mode
 opencode run --agent aion "Your task description here"
 
 # With a specific model
-opencode run --agent aion -m anthropic/claude-sonnet-4 "Analyze this time-series dataset"
+opencode run --agent aion -m provider/model "Analyze this time-series dataset"
 ```
 
 ### Run Modes vs Execution Strategies
@@ -325,9 +325,11 @@ aion-ts init [target-dir] [--force]
 
 What `init` does:
 1. Copies the plugin bundle to `<target>/.opencode/plugins/aion.js` (auto-discovered by OpenCode).
-2. Creates `<target>/opencode.json` if absent (minimal starter with `$schema`, theme, model).
+2. Creates `<target>/opencode.json` if absent (minimal starter with `$schema` and theme).
 3. Copies a commented default config to `<target>/.opencode/aion.jsonc`.
 4. Copies the AION theme to `<target>/.opencode/themes/aion.json`.
+
+The model is NOT set by `init` — you pick it in the OpenCode TUI at runtime.
 
 Nothing outside `<target>` is touched.
 
@@ -342,11 +344,44 @@ bash cli.sh [OPTIONS]
 | Flag                  | Default       | Description                                       |
 | --------------------- | ------------- | ------------------------------------------------- |
 | `--mode MODE`         | `run`         | Launch mode: `run` or `tui`                       |
-| `-m, --model MODEL`   | (from config) | OpenCode model (e.g. `anthropic/claude-sonnet-4`) |
+| `-m, --model MODEL`   | (from TUI)   | OpenCode model (format: `provider/model`)          |
 | `--max-continues N`   | `30`          | Max auto-continue rounds; `0` for unlimited       |
 | `--no-auto-continue`  | (off)         | Disable auto-continue after each round            |
 | `--debug`             | (off)         | Enable verbose debug logging                      |
 | `-h, --help`          | —             | Show help                                         |
+
+---
+
+## 🗑️ Uninstall
+
+### System-level (CLI + bundle)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ztxtech/aion/dev/scripts/uninstall.sh | bash
+```
+
+Removes `~/.local/bin/aion-ts` and `~/.local/lib/aion/`.
+
+### Project-level (also remove from a specific project)
+
+```bash
+# System + current project (backs up AION files before removal)
+curl -fsSL https://raw.githubusercontent.com/ztxtech/aion/dev/scripts/uninstall.sh | bash -s -- --project .
+
+# Project only (keep the CLI installed)
+curl -fsSL https://raw.githubusercontent.com/ztxtech/aion/dev/scripts/uninstall.sh | bash -s -- --project . --no-system
+```
+
+Project-level uninstall:
+- **Backs up** all AION-specific files to `.opencode/aion-backup-<timestamp>.tar.gz` before removal
+- **Removes** `.opencode/plugins/aion.js`, `.opencode/themes/aion.json`, `.opencode/aion.jsonc`
+- **Cleans** `opencode.json` (removes `theme: "aion"`, keeps everything else)
+- **Does NOT touch** `.opencode/memory/`, `.opencode/trace.md`, `.opencode/skills/`, or any user data
+
+Use `--dry-run` to preview without removing:
+```bash
+bash scripts/uninstall.sh --project . --no-system --dry-run
+```
 
 ---
 
