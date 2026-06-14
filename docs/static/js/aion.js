@@ -79,7 +79,7 @@ function setupScrollAnimations() {
 $(document).ready(function() {
     // Initialize scroll animations
     setupScrollAnimations();
-    
+
     // Initialize any carousels if present
     if (typeof bulmaCarousel !== 'undefined') {
         var options = {
@@ -92,4 +92,68 @@ $(document).ready(function() {
         };
         var carousels = bulmaCarousel.attach('.carousel', options);
     }
+
+    // Wire up copy buttons on every <pre> in the page. Decorated once on
+    // load — added buttons persist for the lifetime of the page.
+    setupCodeCopyButtons();
 });
+
+// Decorate every <pre> with a top-right copy button. The button only becomes
+// visible on hover/focus, so it does not interfere with the code visual. Uses
+// the modern Clipboard API when available, falls back to document.execCommand
+// for older browsers / non-HTTPS contexts.
+function setupCodeCopyButtons() {
+    var blocks = document.querySelectorAll('pre');
+    for (var i = 0; i < blocks.length; i++) {
+        var pre = blocks[i];
+        // Skip if already decorated (e.g. by the bibtex handler).
+        if (pre.querySelector(':scope > .code-copy-btn')) continue;
+
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'code-copy-btn';
+        btn.setAttribute('aria-label', 'Copy code to clipboard');
+        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg><span class="code-copy-label">Copy</span>';
+
+        btn.addEventListener('click', (function(targetPre) {
+            return function(ev) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                var code = targetPre.querySelector('code');
+                var text = (code || targetPre).textContent || '';
+                copyTextToClipboard(text).then(function() {
+                    var label = btn.querySelector('.code-copy-label');
+                    btn.classList.add('copied');
+                    if (label) label.textContent = 'Copied';
+                    setTimeout(function() {
+                        btn.classList.remove('copied');
+                        if (label) label.textContent = 'Copy';
+                    }, 1500);
+                });
+            };
+        })(pre));
+
+        pre.style.position = 'relative';
+        pre.appendChild(btn);
+    }
+}
+
+function copyTextToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text);
+    }
+    // Fallback for non-secure contexts (file://, etc.)
+    return new Promise(function(resolve, reject) {
+        try {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            resolve();
+        } catch (e) { reject(e); }
+    });
+}
