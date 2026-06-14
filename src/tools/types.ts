@@ -26,5 +26,9 @@ export type AionToolName =
   | "aion_todo_update"
   | "aion_set_interactive_mode"
   | "aion_set_language"
+  | "aion_hf_search"
+  | "aion_hf_info"
+  | "aion_hf_ingest"
+  | "aion_hf_suggest"
 
 export type AionTools = Record<AionToolName, import("@opencode-ai/plugin").ToolDefinition>

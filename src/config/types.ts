@@ -140,6 +140,21 @@ export const aionConfigSchema = z.object({
     recipientUnreadMaxBytes: 524288,
     mailboxPollIntervalMs: 2000,
   }),
+  hfDatasets: z.object({
+    enabled: z.boolean().default(true).describe("Master switch for the aion_hf_* tool family. Off = hide all 4 tools."),
+    cacheTtlMs: z.number().int().min(0).default(24 * 60 * 60 * 1000).describe("TTL for HF Hub API cache (.opencode/hf-cache/)."),
+    cacheDir: z.string().default(".opencode/hf-cache").describe("Cache directory relative to workspace root."),
+    requestTimeoutMs: z.number().int().min(1000).default(15_000).describe("Per-request timeout."),
+    maxRetries: z.number().int().min(0).max(10).default(3).describe("Retries on 429/5xx."),
+    defaultLimit: z.number().int().min(1).max(50).default(10).describe("Default `limit` for aion_hf_search."),
+  }).default({
+    enabled: true,
+    cacheTtlMs: 24 * 60 * 60 * 1000,
+    cacheDir: ".opencode/hf-cache",
+    requestTimeoutMs: 15_000,
+    maxRetries: 3,
+    defaultLimit: 10,
+  }),
 })
 
 export type TeamModeConfig = z.infer<typeof teamModeConfigSchema>

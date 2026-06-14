@@ -63,7 +63,7 @@ Search broadly for what methods exist for each formulation. The goal of this pha
 | **OpenReview** | Peer-reviewed venue papers, reviewer discussions, rebuttals | `https://openreview.net/search?term=<query>` |
 | **Semantic Scholar** | Citation graphs, influential citations, survey discovery | `https://www.semanticscholar.org/search?q=<query>` |
 | **Papers With Code** | Method-to-code linkage, benchmark leaderboards | `https://paperswithcode.com/search?q=<query>` |
-| **HuggingFace** | Model cards, dataset cards, Spaces, community models | `https://huggingface.co/models?search=<query>` |
+| **HuggingFace** | Model cards, dataset cards, Spaces, community models, dataset leaderboards | `https://huggingface.co/models?search=<query>`, `https://huggingface.co/datasets?search=<query>`, `https://huggingface.co/papers` |
 
 **CCF-A venue priority**: When searching OpenReview and arXiv, pay special attention to papers accepted at top-tier CS venues — their methods have passed rigorous peer review and often come with code:
 - **ML/AI**: NeurIPS, ICML, ICLR, AAAI, IJCAI
@@ -73,6 +73,39 @@ Search broadly for what methods exist for each formulation. The goal of this pha
 - **NLP**: ACL, EMNLP, NAACL (if text/language methods transfer)
 
 Search queries like `"<method> site:openreview.net"` or `"<task> NeurIPS OR ICML OR ICLR OR KDD 2024 2025"` to surface venue-backed work.
+
+### Search-Query Reformulation Tricks (when direct search returns nothing useful)
+
+Direct keyword search frequently fails on a young or niche task. Before giving up, REWRITE the query along these axes — each axis is a different community's vocabulary:
+
+| Trick | Why it works | Example (direct search "ECG anomaly detection" returned 3 hits) |
+|---|---|---|
+| **Review / Survey suffix** | Survey papers curate 50-300 references in one place; one survey beats 50 direct queries | "ECG anomaly detection survey" / "ECG arrhythmia review" / "ECG signal processing survey" |
+| **Benchmark / Leaderboard suffix** | Benchmarks ship with curated datasets, baseline code, and the top solutions' writeups — a single benchmark query can map an entire field | "ECG anomaly benchmark" / "ECG Arrhythmia leaderboard" / "PhysioNet challenge solutions" |
+| **Repository-pattern suffix** | A repo on this topic may not have the keywords in its name/description; search the topic on GitHub and filter by stars/forks | "ECG R-peak detection site:github.com" / "topic:ecg-topic" / "awesome-ecg" awesome-list |
+| **HuggingFace Datasets + Papers pivot** | HF Datasets/Papers is the canonical hub for modern ML — if a task has a dataset, it has a community, and that community has a discussion tab and a leaderboard | `https://huggingface.co/datasets?search=ecg`, then follow the dataset card → paper tab → community tab → discussion |
+| **Failure-mode prefix** | "common mistakes in X", "pitfalls of Y", "why X fails" surfaces practitioner knowledge that papers hide | "common mistakes ECG deep learning" / "data leakage time-series forecasting" |
+| **Workshop / Challenge pivot** | Top venues run shared tasks with public solutions; e.g. PhysioNet, KDD Cup, NeurIPS competitions | "PhysioNet 2017 AF challenge" / "KDD Cup 2022 solutions" / "NeurIPS time-series competitions" |
+| **Citation graph hop** | If a survey or seminal paper exists, its "cited by" and "references" lists are 10x denser than keyword search | Semantic Scholar / Connected Papers / Inciteful on the seed paper |
+| **Cross-domain transfer** | The method may live in a neighboring field; if direct search fails, abstract and search the abstraction | ECG → "1D signal anomaly detection" → "industrial vibration anomaly" |
+
+**Mandatory pre-quit check**: before reporting "no useful results found", you MUST have tried AT LEAST these reformulations:
+1. Original query (as-is)
+2. With "review" or "survey" suffix
+3. With "benchmark" or "leaderboard" suffix
+4. With "common mistakes" / "pitfalls" prefix
+5. A HuggingFace Datasets search and a HuggingFace Papers search
+6. At least one cross-domain abstraction
+
+If 3 or more of these return nothing, you may report a thin-information zone — but you must explicitly say which 3 you tried. This prevents the common failure mode of "I searched once and gave up".
+
+**HuggingFace as a search source — full protocol**:
+- `https://huggingface.co/datasets?search=<q>` — datasets, modality-filtered
+- `https://huggingface.co/models?search=<q>` — model zoo, with the same modality/task filter
+- `https://huggingface.co/papers` — daily/weekly trending papers with up/down votes
+- `https://huggingface.co/spaces?search=<q>` — interactive demos (often the fastest way to see if a method actually works)
+- When you find a HF dataset/model, ALWAYS click the **Community** tab and the **Files and versions** tab — those surface failure cases, license issues, and discussions that the card alone hides.
+- The AION plugin provides the `aion_hf_search`, `aion_hf_info`, `aion_hf_ingest`, and `aion_hf_suggest` tools. Prefer them over raw `webfetch` to HF — they cache results, normalize the schema, and write a manifest under `data/aion-dataset-manifest.json` for downstream ztxexp consumption. Use `aion_hf_suggest` immediately after the Task Contract is emitted to bootstrap a baseline dataset list.
 
 #### Phase C: Chain-Reaction Follow-Through (the core of the job)
 

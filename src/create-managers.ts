@@ -104,6 +104,10 @@ export type TraceEvent = {
     | "critic.verdict"
     | "auto-continue"
     | "file.written"
+    | "hf.search"
+    | "hf.info"
+    | "hf.ingest"
+    | "hf.suggest"
   payload?: Record<string, unknown>
   message: string
 }

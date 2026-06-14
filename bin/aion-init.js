@@ -7,6 +7,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -103,15 +104,36 @@ const DEFAULT_AION_CONFIG = `{
 `;
 
 function parseArgs(argv) {
-  const args = { target: process.cwd(), force: false, command: null };
+  const args = { target: process.cwd(), force: false, command: null, dataset: {}, _datasetId: null };
+  let sub = null;
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--force" || a === "-f") args.force = true;
     else if (a === "--help" || a === "-h") args.command = "help";
+    else if (a === "init") { sub = "init"; args.command = "init"; }
+    else if (a === "datasets" || a === "hf") { sub = "datasets"; args.command = "datasets"; }
+    else if (a === "search") { if (sub === "datasets") args.dataset.action = "search"; }
+    else if (a === "info") { if (sub === "datasets") args.dataset.action = "info"; }
+    else if (a === "ingest") { if (sub === "datasets") args.dataset.action = "ingest"; }
+    else if (a === "suggest") { if (sub === "datasets") args.dataset.action = "suggest"; }
+    else if (a === "--limit" || a === "-n") { args.dataset.limit = parseInt(argv[++i], 10); }
+    else if (a === "--modality") { args.dataset.modality = argv[++i]; }
+    else if (a === "--task") { args.dataset.task = argv[++i]; }
+    else if (a === "--split") { args.dataset.split = argv[++i]; }
+    else if (a === "--keywords") { args.dataset.keywords = argv[++i].split(",").map(s => s.trim()).filter(Boolean); }
+    else if (a === "--goal") { args.dataset.goal = argv[++i]; }
+    else if (a === "--top-k") { args.dataset.topK = parseInt(argv[++i], 10); }
+    else if (a === "--workspace") { args.dataset.workspace = argv[++i]; }
+    else if (a === "--dry-run") { args.dataset.dryRun = true; }
+    else if (a === "--no-cache") { args.dataset.noCache = true; }
     else if (a.startsWith("-")) {
       throw new Error(`Unknown flag: ${a}`);
     } else {
-      args.target = resolve(a);
+      if (sub === "datasets") {
+        args._datasetId = a;
+      } else {
+        args.target = resolve(a);
+      }
     }
   }
   return args;
@@ -122,7 +144,18 @@ function printHelp() {
 
 Usage:
   aion-ts init [target-dir] [--force]
+  aion-ts datasets search <query> [--limit N] [--modality M] [--no-cache]
+  aion-ts datasets info <dataset-id> [--no-cache]
+  aion-ts datasets ingest <dataset-id> [--workspace DIR] [--split S] [--no-cache]
+  aion-ts datasets suggest --goal "..." [--keywords k1,k2] [--modality M] [--top-k N]
   aion-ts --help
+
+Commands:
+  init       Install the plugin bundle into a project directory.
+  datasets   Search and ingest Hugging Face Datasets from the CLI. Mirrors the
+             aion_hf_search / aion_hf_info / aion_hf_ingest / aion_hf_suggest
+             tools so you can prep data without launching OpenCode.
+             All commands support --no-cache to bypass the 24h HF cache.
 
 Arguments:
   target-dir    Optional. Directory to install into. Defaults to current working
@@ -169,6 +202,16 @@ function findBundlePath() {
 
 function ensureDir(p) {
   if (!existsSync(p)) mkdirSync(p, { recursive: true });
+}
+
+function readIfExists(path) {
+  if (!existsSync(path)) return null;
+  return readFileSync(path, "utf8");
+}
+
+function writeFileEnsuringDir(path, content) {
+  ensureDir(dirname(path));
+  writeFileSync(path, content);
 }
 
 function readJsonc(path) {
@@ -315,6 +358,23 @@ async function main() {
     printHelp();
     process.exit(0);
   }
+  if (argv[0] === "datasets" || argv[0] === "hf") {
+    const rest = argv.slice(1);
+    let args;
+    try {
+      args = parseArgs([argv[0], ...rest]);
+    } catch (err) {
+      console.error(err.message);
+      process.exit(1);
+    }
+    try {
+      await runDatasets(args);
+    } catch (err) {
+      console.error(`\n  [error] ${err.message}`);
+      process.exit(1);
+    }
+    return;
+  }
   if (argv[0] !== "init") {
     console.error(`Unknown command: ${argv[0]}`);
     console.error(`Run 'aion-ts --help' for usage.`);
@@ -366,6 +426,314 @@ async function main() {
   console.log("    2. Start OpenCode inside the target directory.");
   console.log("       The plugin is fully self-contained — no npm install needed.");
   console.log("");
+}
+
+// ---------------------------------------------------------------------------
+// datasets subcommand (Hugging Face Datasets CLI)
+// ---------------------------------------------------------------------------
+
+const HF_API_BASE = "https://huggingface.co/api";
+const HF_TIMEOUT_MS = 15000;
+const HF_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const HF_CACHE_DIRNAME = ".opencode/hf-cache";
+
+function hfCacheDir(cwd) {
+  return join(cwd || process.cwd(), HF_CACHE_DIRNAME);
+}
+
+function hashKey(parts) {
+  const s = JSON.stringify(parts, Object.keys(parts).sort());
+  return createHash("sha1").update(s).digest("hex").slice(0, 16);
+}
+
+async function hfFetchJson(url, cacheDir, useCache) {
+  if (useCache) {
+    const key = hashKey({ url });
+    const cacheFile = join(cacheDir, `${key}.json`);
+    const cached = readIfExists(cacheFile);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (Date.now() - parsed.ts < HF_CACHE_TTL_MS) return parsed.data;
+      } catch { /* ignore */ }
+    }
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), HF_TIMEOUT_MS);
+  let res;
+  try {
+    res = await fetch(url, { signal: controller.signal, headers: { Accept: "application/json", "User-Agent": "aion-cli/0.5.0" } });
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!res.ok) throw new Error(`HF API ${res.status} ${res.statusText}: ${url}`);
+  const data = await res.json();
+  if (useCache) {
+    const key = hashKey({ url });
+    const cacheFile = join(cacheDir, `${key}.json`);
+    writeFileEnsuringDir(cacheFile, JSON.stringify({ ts: Date.now(), data }));
+  }
+  return data;
+}
+
+function inferModality(tags) {
+  // HF tags come in two shapes: bare ("text", "image") or namespaced
+  // ("modality:time-series", "task_categories:image-classification").
+  // Normalize by stripping the namespace prefix so both shapes match.
+  const t = new Set((tags || []).map(x => {
+    const lower = (x || "").toLowerCase();
+    return lower.includes(":") ? lower.split(":").pop() : lower;
+  }));
+  const out = [];
+  if (t.has("text") || t.has("nlp") || t.has("lm")) out.push("text");
+  if (t.has("image") || t.has("vision")) out.push("image");
+  if (t.has("audio") || t.has("speech")) out.push("audio");
+  if (t.has("video")) out.push("video");
+  if (t.has("time-series") || t.has("forecasting") || t.has("timeseries")) out.push("timeseries");
+  if (t.has("tabular") || t.has("table")) out.push("tabular");
+  if (out.length > 1) out.push("multimodal");
+  return out.length ? out : ["text"];
+}
+
+function inferSizeBucket(downloads) {
+  if (downloads < 1000) return "n<1K";
+  if (downloads < 10000) return "1K-10K";
+  if (downloads < 100000) return "10K-100K";
+  if (downloads < 1000000) return "100K-1M";
+  if (downloads < 10000000) return "1M-10M";
+  return "n>10M";
+}
+
+function rawToSummary(raw) {
+  const id = String(raw.id || "");
+  const tags = Array.isArray(raw.tags) ? raw.tags : [];
+  const downloads = typeof raw.downloads === "number" ? raw.downloads : 0;
+  const taskCategories = tags.filter(t => t.startsWith("task_categories:")).map(t => t.replace("task_categories:", ""));
+  const license = (raw.cardData && typeof raw.cardData === "object" && "license" in raw.cardData)
+    ? String(raw.cardData.license || "") : undefined;
+  return {
+    id,
+    author: raw.author || undefined,
+    downloads,
+    likes: typeof raw.likes === "number" ? raw.likes : 0,
+    tags,
+    taskCategories,
+    modalities: inferModality(tags),
+    sizeBucket: inferSizeBucket(downloads),
+    license: license || undefined,
+    lastModified: raw.lastModified || undefined,
+    description: raw.description || undefined,
+  };
+}
+
+async function datasetsSearch(query, opts) {
+  const params = new URLSearchParams({ search: query, limit: String(opts.limit || 10) });
+  const url = `${HF_API_BASE}/datasets?${params}`;
+  const cacheDir = hfCacheDir(opts.workspace);
+  const data = await hfFetchJson(url, cacheDir, opts.useCache);
+  let results = (Array.isArray(data) ? data : []).map(rawToSummary);
+  if (opts.modality) {
+    results = results.filter(s => s.modalities.includes(opts.modality));
+  }
+  return { query, count: results.length, results };
+}
+
+async function datasetsInfo(id, opts) {
+  const url = `${HF_API_BASE}/datasets/${encodeURIComponent(id)}`;
+  const cacheDir = hfCacheDir(opts.workspace);
+  const raw = await hfFetchJson(url, cacheDir, opts.useCache);
+  const base = rawToSummary(raw);
+  const siblings = Array.isArray(raw.siblings) ? raw.siblings.map(s => ({ rfilename: String(s.rfilename || ""), size: typeof s.size === "number" ? s.size : undefined })) : [];
+  const configNames = Array.isArray(raw.configNames) ? raw.configNames : [];
+  const splits = [];
+  if (raw.cardData && typeof raw.cardData === "object" && Array.isArray(raw.cardData.splits)) {
+    for (const s of raw.cardData.splits) {
+      if (typeof s === "string") splits.push({ name: s });
+      else if (s && typeof s === "object" && s.name) splits.push({ name: String(s.name), numExamples: typeof s.num_examples === "number" ? s.num_examples : undefined });
+    }
+  }
+  return { ...base, cardData: raw.cardData, siblings, configNames, splits };
+}
+
+async function datasetsIngest(id, opts) {
+  const root = opts.workspace || process.cwd();
+  const dataDir = join(root, "data");
+  ensureDir(dataDir);
+  const url = `${HF_API_BASE}/datasets/${encodeURIComponent(id)}`;
+  const cacheDir = hfCacheDir(root);
+  const raw = await hfFetchJson(url, cacheDir, opts.useCache);
+  const base = rawToSummary(raw);
+  const configNames = Array.isArray(raw.configNames) ? raw.configNames : [];
+  const splits = [];
+  if (raw.cardData && typeof raw.cardData === "object" && Array.isArray(raw.cardData.splits)) {
+    for (const s of raw.cardData.splits) {
+      if (typeof s === "string") splits.push(s);
+      else if (s && typeof s === "object" && s.name) splits.push(String(s.name));
+    }
+  }
+  const manifest = {
+    datasetId: base.id,
+    author: base.author,
+    license: base.license || null,
+    tags: base.tags,
+    taskCategories: base.taskCategories,
+    modalities: base.modalities,
+    sizeBucket: base.sizeBucket,
+    downloads: base.downloads,
+    configNames,
+    splits,
+    hfUrl: `https://huggingface.co/datasets/${id}`,
+    apiUrl: url,
+    ingestedAt: new Date().toISOString(),
+    ingestAgent: "aion-cli",
+  };
+  const manifestPath = join(dataDir, "aion-dataset-manifest.json");
+  writeFileEnsuringDir(manifestPath, JSON.stringify(manifest, null, 2));
+  const safeId = id.replace(/\//g, "_");
+  const loaderPath = join(dataDir, `${safeId}.loader.py`);
+  const targetSplit = opts.split || splits[0] || "train";
+  const loaderPy = `# Auto-generated by aion-ts datasets ingest at ${new Date().toISOString()}
+# Dataset: ${base.id}
+# License: ${base.license || "UNKNOWN - verify before use"}
+# HF URL : https://huggingface.co/datasets/${id}
+#
+# Usage:
+#   pip install datasets
+#   python data/${safeId}.loader.py
+import os
+from datasets import load_dataset
+
+DATASET_ID = "${id}"
+HF_TOKEN = os.environ.get("HF_TOKEN")
+CACHE_DIR = os.environ.get("HF_HOME", "./.cache/huggingface")
+
+def load(split=None, config=None, streaming=False):
+    kwargs = {"cache_dir": CACHE_DIR, "streaming": streaming}
+    if HF_TOKEN:
+        kwargs["token"] = HF_TOKEN
+    if config:
+        kwargs["name"] = config
+    ds = load_dataset(DATASET_ID, **kwargs)
+    if split:
+        return ds[split]
+    return ds
+
+if __name__ == "__main__":
+    target_split = "${targetSplit}"
+    ds = load(split=target_split)
+    print(f"loaded {DATASET_ID} split={target_split} rows={len(ds)} columns={ds.column_names}")
+`;
+  writeFileEnsuringDir(loaderPath, loaderPy);
+  return { manifestPath, loaderPath, datasetId: base.id, splits, configNames, license: base.license || null };
+}
+
+async function datasetsSuggest(opts) {
+  const goal = opts.goal;
+  const keywords = opts.keywords || [];
+  const queries = [goal, ...keywords].filter(Boolean);
+  const seen = new Map();
+  const cacheDir = hfCacheDir(opts.workspace);
+  for (const q of queries) {
+    const params = new URLSearchParams({ search: q, limit: String(opts.perQueryLimit || 5) });
+    const url = `${HF_API_BASE}/datasets?${params}`;
+    const data = await hfFetchJson(url, cacheDir, opts.useCache);
+    if (!Array.isArray(data)) continue;
+    for (const raw of data) {
+      const summary = rawToSummary(raw);
+      const tagSet = new Set(summary.tags.map(t => t.toLowerCase()));
+      const keywordHits = keywords.filter(k => tagSet.has(k.toLowerCase())).length;
+      const goalTokens = goal.toLowerCase().split(/\W+/).filter(t => t.length > 3);
+      const goalHits = goalTokens.filter(t => summary.id.toLowerCase().includes(t) || (summary.description || "").toLowerCase().includes(t)).length;
+      const score = keywordHits * 10 + goalHits * 3 + Math.log10(Math.max(1, summary.downloads));
+      const existing = seen.get(summary.id);
+      if (!existing || existing.score < score) {
+        seen.set(summary.id, { summary, score, matchedTags: keywords.filter(k => tagSet.has(k.toLowerCase())) });
+      }
+    }
+  }
+  let ranked = [...seen.values()];
+  if (opts.modality) ranked = ranked.filter(({ summary }) => summary.modalities.includes(opts.modality));
+  ranked.sort((a, b) => b.score - a.score);
+  ranked = ranked.slice(0, opts.topK || 5);
+  return {
+    goal,
+    keywords,
+    candidates: ranked.map(({ summary, score, matchedTags }) => ({
+      datasetId: summary.id,
+      url: `https://huggingface.co/datasets/${summary.id}`,
+      license: summary.license || "UNKNOWN",
+      sizeBucket: summary.sizeBucket,
+      downloads: summary.downloads,
+      tags: summary.tags.slice(0, 8),
+      matchedTags,
+      rationale: `score=${score.toFixed(1)} (keyword=${matchedTags.length} downloads=${summary.downloads})`,
+    })),
+  };
+}
+
+async function runDatasets(args) {
+  const a = args.dataset;
+  const cwd = process.cwd();
+  const useCache = !a.noCache;
+  if (a.action === "search") {
+    const query = args._datasetId;
+    if (!query) {
+      console.error("\n  [error] search requires a query string. Usage: aion-ts datasets search <query>");
+      process.exit(1);
+    }
+    banner(`search "${query}" (limit=${a.limit || 10}${a.modality ? `, modality=${a.modality}` : ""})`);
+    const result = await datasetsSearch(query, { limit: a.limit, modality: a.modality, workspace: cwd, useCache });
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+  if (a.action === "info") {
+    const id = args._datasetId;
+    if (!id) {
+      console.error("\n  [error] info requires a dataset id. Usage: aion-ts datasets info <owner/name>");
+      process.exit(1);
+    }
+    banner(`info ${id}`);
+    const result = await datasetsInfo(id, { workspace: cwd, useCache });
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+  if (a.action === "ingest") {
+    const id = args._datasetId;
+    if (!id) {
+      console.error("\n  [error] ingest requires a dataset id. Usage: aion-ts datasets ingest <owner/name>");
+      process.exit(1);
+    }
+    const root = a.workspace || cwd;
+    banner(`ingest ${id} → ${root}/data/`);
+    const result = await datasetsIngest(id, { workspace: root, useCache, split: a.split });
+    console.log(`\n  [ok] manifest   → ${result.manifestPath}`);
+    console.log(`  [ok] loader     → ${result.loaderPath}`);
+    console.log(`  [i]  license    = ${result.license}`);
+    console.log(`  [i]  splits     = ${result.splits.join(", ") || "(none)"}`);
+    console.log(`  [i]  configs    = ${result.configNames.join(", ") || "(none)"}`);
+    return;
+  }
+  if (a.action === "suggest") {
+    if (!a.goal) {
+      console.error("\n  [error] suggest requires --goal. Usage: aion-ts datasets suggest --goal \"...\" [--keywords k1,k2] [--modality M]");
+      process.exit(1);
+    }
+    banner(`suggest goal="${a.goal}"`);
+    const result = await datasetsSuggest({
+      goal: a.goal,
+      keywords: a.keywords,
+      modality: a.modality,
+      perQueryLimit: 5,
+      topK: a.topK || 5,
+      workspace: cwd,
+      useCache,
+    });
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+  console.error("\n  [error] datasets subcommand requires an action: search | info | ingest | suggest");
+  console.error("  Run 'aion-ts --help' for usage.");
+  process.exit(1);
 }
 
 main().catch((err) => {

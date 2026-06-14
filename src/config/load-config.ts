@@ -87,6 +87,14 @@ const DEFAULT_CONFIG: AionConfig = {
   language: {
     mode: "en",
   },
+  hfDatasets: {
+    enabled: true,
+    cacheTtlMs: 24 * 60 * 60 * 1000,
+    cacheDir: ".opencode/hf-cache",
+    requestTimeoutMs: 15_000,
+    maxRetries: 3,
+    defaultLimit: 10,
+  },
 }
 
 const CONFIG_CANDIDATES = [
