@@ -23,7 +23,7 @@ description: Used for high-quality experiment reports, analysis reports, and tec
 - No empty talk: every key conclusion must be supported by experiments, data, statistical analysis, cases, or reliable sources.
 - No fake evidence: if there is no experiment, no figure, no table, and no test, then it cannot be written as a confirmed conclusion.
 - Use as many high-value tables and figures as possible, but only when they truly help comparison, explanation, and decision. Do not stack figures just for show.
-- A report is not only text. It should be a full delivery set: body text, figures, tables, appendix, image directory, and PDF export when needed.
+- A report is not only text. It should be a full delivery set: body text (Markdown), rendered web version (HTML), printable version (PDF), figures, tables, appendix, and image directory.
 - As soon as the task flow already produced structured experiment results, diagnostic stats, main result tables, error-analysis tables, real figures, `docs/images/` assets, or evidence in `outputs/`, those artifacts must be consumed clearly in the report body or appendix. Do not allow `experiment was done, figures exist, but the report does not show them`.
 - In report tasks, experiment data, tables, figures, and main conclusions must form a traceable binding: every key conclusion should point back to at least one concrete table, figure, result file, or appendix item; every cited figure or table should also say which result data it comes from.
 - Every image / figure inserted into the Markdown body must be followed by an analysis paragraph right away. It should say at least what is seen, what conclusion it supports, and whether it triggered a new test, rollback, or risk judgment. Do not stack figures or write hollow captions.
@@ -83,8 +83,66 @@ description: Used for high-quality experiment reports, analysis reports, and tec
 
 - The main body should go to `docs/<document_name>.md` first.
 - Figures should go to `docs/images/` first, and be referenced relatively in the body.
-- When formal delivery is needed, also export `docs/<document_name>.pdf`.
+- For formal delivery, produce ALL THREE formats: `docs/<document_name>.md` (source), `docs/<document_name>.html` (rendered web), and `docs/<document_name>.pdf` (printable). See Multi-Format Export below.
 - If the task includes experiment and development process, supporting directories like `dev/`, `exp/`, and `task/` may be kept too.
+
+## Multi-Format Export (MANDATORY for formal delivery)
+
+When the task requires a formal report (as opposed to internal notes), you MUST produce three output formats:
+
+### 1. Markdown (`docs/<name>.md`) — the source of truth
+
+- All diagrams use **Mermaid fenced code blocks** (` ```mermaid `). ASCII art, plain-text box diagrams, and Unicode-drawn flowcharts are FORBIDDEN. They do not render in HTML/PDF and are not acceptable as deliverables.
+- All figures referenced via standard Markdown image syntax: `![caption](images/figure_name.png)`.
+- All tables use standard Markdown pipe tables.
+- All data citations include relative file paths to source CSV/JSON.
+
+### 2. HTML (`docs/<name>.html`) — the rendered web version
+
+- Convert from the Markdown using a standard converter (e.g., `pandoc`, `markdown-it`, or equivalent).
+- Must be a **standalone** HTML file with embedded CSS (no external dependencies that would break if the file is moved).
+- Mermaid diagrams must render — either via embedded `mermaid.min.js` or pre-rendered to inline SVG.
+- All image paths must resolve correctly relative to the HTML file location.
+- If the model has visual capability and Playwright MCP is available, open the HTML file in the browser and **visually verify** the rendering: check layout, font rendering (especially Chinese characters), figure sizing, table formatting, and Mermaid diagram correctness. Fix any rendering issues before exporting PDF.
+
+### 3. PDF (`docs/<name>.pdf`) — the printable version
+
+- Generate from the HTML using Playwright MCP's `page.pdf()` or `puppeteer`/`weasyprint`/`pandoc` (whichever is available).
+- If the model has visual capability: **after generating the PDF, render each page as an image and visually inspect every page**. Check for:
+  - Cut-off content at page boundaries
+  - Missing or broken figures
+  - Mermaid diagrams not rendering (blank boxes)
+  - Chinese font rendering issues (boxes, missing glyphs)
+  - Table overflow beyond page width
+  - Blank pages
+- Fix any issues found, regenerate, and re-verify.
+- If the model does NOT have visual capability, note this limitation in the report metadata and recommend manual review.
+
+### Export Pipeline
+
+```
+docs/<name>.md  →  (Markdown converter)  →  docs/<name>.html  →  (HTML to PDF)  →  docs/<name>.pdf
+                         ↑                                              ↑
+                   Mermaid renders                              Visual page-by-page
+                   via mermaid.js                               inspection (if vision
+                   or pre-rendered SVG                          capable + Playwright MCP)
+```
+
+### Mermaid-Only Diagrams (BLOCKING GATE)
+
+- ALL structural diagrams — architecture, flow, module relations, governance chains, data pipelines, state machines, sequence diagrams — MUST use Mermaid.
+- ASCII art, plain-text boxes, Unicode-drawn diagrams, and emoji-based flowcharts are FORBIDDEN. They are not deliverables.
+- This is a blocking gate: any structural diagram that uses ASCII/plain-text is a report defect that MUST be fixed before delivery.
+- Mermaid syntax must be valid. After writing, verify by rendering (at minimum, check that the ` ```mermaid ` block is syntactically valid Mermaid).
+
+## Figure and Data Referencing (MANDATORY)
+
+- **Every figure in the body MUST be actively referenced and analyzed.** Do not stack figures without explanation. Each figure must be followed by a paragraph stating: what is seen, what conclusion it supports, and what action it triggered.
+- **Every data table in the body MUST cite its source.** Include the relative path to the original CSV/JSON/parquet file so the reader can verify.
+- **Every key conclusion MUST point to at least one figure, table, or data file.** A conclusion without evidence binding is not a conclusion — it is a claim.
+- **Cite experiment results actively.** If `outputs/` contains result JSONs, `exp/figures/` contains diagnostic plots, or `outputs/leaderboard.txt` contains metrics — these MUST appear in the report body or appendix with explicit path references.
+- **No orphan figures.** If a figure exists in `docs/images/` but is not referenced in the body, either add a reference or remove it. Orphan figures suggest incomplete analysis.
+- **No referenced-but-missing figures.** If the body references a figure that does not exist on disk, this is a blocking defect. Verify all `![](path)` references resolve before delivery.
 
 ## Relation With Other Skills
 
