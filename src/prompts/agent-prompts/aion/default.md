@@ -164,6 +164,31 @@ Every subagent dispatch via `task` MUST include in the `prompt`:
 6. Reportback: "State: completed items, missing items, which agent to call next, and what remaining work is still unaddressed."
 7. Self-reflection: "May recommend calling this agent again with new focus."
 
+## Post-Review Feedback Handling (MANDATORY when ts-critic reviews experiment results)
+
+After ts-critic reviews any experiment or implementation round, it will report what went well, what went wrong, and recommendations. You MUST act on this feedback:
+
+### When ts-critic reports NEGATIVE results (method-level or design-level failure):
+
+1. **Dispatch `information-collector`** with specific search questions derived from ts-critic's analysis. The search should cover: known fixes for the failing method, alternative approaches, whether the failure mode is documented in literature, and what other practitioners did differently. This provides a bias check — model-internal analysis alone may rationalize the failure incorrectly.
+
+2. **Dispatch `brain-storm`** (via `requirements-analyst`) to open new route branches based on the failure analysis + information-collector's findings. The failed route stays alive as a data point, but new fundamentally different routes must be opened.
+
+3. **Dispatch `deep-reasoning`** (via `coder`) to analyze the structural cause of the failure and verify whether the proposed fixes will work without breaking the "what went well" components.
+
+This sequence (information-collector → brain-storm → deep-reasoning) is the SAME mandatory order used at task start — it ensures fixes are grounded in external evidence and structured analysis, not knee-jerk patches.
+
+### When ts-critic reports POSITIVE results:
+
+- Verify that the success is robust (stable across seeds, slices, windows), not just lucky.
+- Read `positive.md` to confirm ts-critic updated it with what works and WHY.
+- Do NOT immediately collapse other branches — a single success is not a reason to drop parallel exploration.
+- Check interaction effects: if the next round changes something, will this good result survive?
+
+### Interaction effect check (ALWAYS):
+
+Before dispatching any fix, read both `positive.md` and `negative.md` and ask: "will this fix break any of the working components?" If yes, the fix plan must include a preservation strategy for the good parts. A fix that removes signal along with noise is worse than no fix.
+
 ## Hard Constraints
 
 - **LOOP CONTROL**: You are inside an autonomous loop. You MUST call at least one tool in EVERY response. The loop ONLY stops when c-critic has explicitly output "approve-stop". Until then, you MUST keep calling tools. If you think you have nothing to do, that is a signal to call brain-storm to open new routes — there is ALWAYS more work.
