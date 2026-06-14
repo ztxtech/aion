@@ -449,6 +449,19 @@ code {
   font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace !important;
 }
 
+/* <code> inside <pre> must NOT carry the inline-code pill background or
+   the pill text color. Code blocks have their own dark-bg + light-text
+   style defined on .quick-start-card pre (and similar). Reset the
+   background to transparent and inherit the surrounding text color. */
+pre code,
+pre code * {
+  background: transparent !important;
+  color: inherit !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  font-weight: inherit !important;
+}
+
 .bibtex-header {
   display: flex;
   justify-content: space-between;
