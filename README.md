@@ -459,11 +459,13 @@ The harness enforces hard boundaries across all four layers:
 
 ---
 
-## 🌍 Ecosystem
+## 🤝 Acknowledgements
 
-AION is part of the time-series harness research ecosystem:
+AION is a time-series harness built on top of the open-source community. We gratefully acknowledge the following projects, which made this work possible:
 
-- Built on [OpenCode](https://github.com/anomalyco/opencode) — open-source AI coding agent
+- [OpenCode](https://github.com/anomalyco/opencode) — the open-source AI coding agent that AION is built on
+- [Awesome-Agentic-Time-Series](https://github.com/TROUBADOUR000/Awesome-Agentic-Time-Series) — a curated resource list of agentic time-series research
+- [TSFpaper](https://github.com/ddz16/TSFpaper) — a comprehensive collection of time-series forecasting papers
 
 ---
 

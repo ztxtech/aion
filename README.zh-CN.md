@@ -459,11 +459,13 @@ Harness 在全部四层强制执行硬性边界：
 
 ---
 
-## 🌍 生态
+## 🤝 致谢
 
-AION 是时间序列 harness 研究生态的一部分：
+AION 是一个建立在开源社区之上的时间序列 harness。我们衷心感谢以下项目，是它们让本工作成为可能：
 
-- 基于 [OpenCode](https://github.com/anomalyco/opencode) — 开源 AI 编码 agent
+- [OpenCode](https://github.com/anomalyco/opencode) — AION 所基于的开源 AI 编码 agent
+- [Awesome-Agentic-Time-Series](https://github.com/TROUBADOUR000/Awesome-Agentic-Time-Series) — 关于智能体时间序列研究的精选资源列表
+- [TSFpaper](https://github.com/ddz16/TSFpaper) — 全面的时间序列预测论文汇总
 
 ---
 
