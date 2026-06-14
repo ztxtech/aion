@@ -346,6 +346,25 @@ body {
   margin-bottom: 1.5rem;
 }
 
+.yt-embed-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 880px;
+  margin: 1.5rem auto 2.5rem auto;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.18);
+  background: #0f172a;
+}
+.yt-embed-wrap iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
 .quick-start-card code {
   background: var(--background-accent) !important;
   color: var(--primary-color) !important;
