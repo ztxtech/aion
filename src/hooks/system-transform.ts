@@ -271,11 +271,31 @@ You are inside an autonomous multi-agent loop. You MUST NOT end your turn withou
   3. aion_pre_stop_gate returned allowStop=true
   4. No open governance blockers exist
 If you have nothing left to do in this phase, call aion_todo_update(action="update-state") or aion_memory_sync to advance state. NEVER output a plain text conclusion without a tool call. If you are stuck, call aion_todo_update(action="get") to review the plan.`
-
-    // === Language: resolve from config on first turn ===
-    if (managers.state.governance.languageResolved === "unset" && round <= 1) {
-      const langMode = managers.config.language?.mode ?? "en"
-      managers.language.resolve(langMode, "config-default")
+    // === Language: session-start question OR config-default fallback ===
+    // The LLM is supposed to ask the user via the 'question' tool on round 1.
+    // The user's answer triggers aion_set_language, which resolves the state
+    // with source="session-start". If the LLM never asks (skipped the
+    // directive, or this isn't round 1 anymore), we fall back to the config
+    // default so the loop can keep moving.
+    if (managers.state.governance.languageResolved === "unset") {
+      if (round <= 1) {
+        // Round 1: inject the MANDATORY ask directive. Do NOT resolve yet —
+        // wait for the LLM to actually call aion_set_language.
+        injections.push(
+          `[AION LANGUAGE — ASK THE USER NOW (MANDATORY)]
+You MUST use OpenCode's 'question' tool on your FIRST turn to ask the user which language they want for interaction and delivery. Offer these options:
+  - "English everywhere"  (mode: en)
+  - "Chinese reasoning + English delivery"  (mode: zh-reason-en-deliver)
+  - "Chinese delivery throughout"  (mode: zh-deliver)
+  - "Bilingual (Chinese + English)"  (mode: bilingual)
+After the user answers, call aion_set_language(mode=<choice>) to lock it in.
+Do NOT proceed with the task until you have asked this question.`,
+        )
+      } else {
+        // Round > 1 and still unset: LLM skipped the question. Fall back.
+        const langMode = managers.config.language?.mode ?? "en"
+        managers.language.resolve(langMode, "config-default")
+      }
     }
 
     // === Language: inject directive every turn ===
@@ -294,37 +314,53 @@ If you have nothing left to do in this phase, call aion_todo_update(action="upda
     // want interactive mode (loop pauses for the user between rounds) or fully
     // autonomous mode. This binding is fixed for the rest of the session unless
     // the user explicitly says otherwise.
-    if (managers.state.governance.interactiveModeResolved === "unset" && round <= 1) {
-      const configDefault = managers.config.interactiveMode.enabled
-      const configGranularity = managers.config.interactiveMode.granularity ?? (configDefault ? "round-checkpoint" : "autonomous")
-      managers.interactiveMode.resolve(
-        configDefault ? "interactive" : "autonomous",
-        "config-default",
-        { granularity: configGranularity, customTriggers: managers.config.interactiveMode.customTriggers ?? [] },
-      )
-      if (!configDefault) {
+    //
+    // Same protocol as language: round 1 = inject ask directive, do NOT resolve.
+    // Round > 1 still unset = LLM skipped, fall back to config.
+    if (managers.state.governance.interactiveModeResolved === "unset") {
+      if (round <= 1) {
         injections.push(
-          `[AION INTERACTIVE MODE — AUTO-RESOLVED]
-Session mode has been set to FULLY AUTONOMOUS based on config (interactiveMode.enabled=false).
-The loop will run to completion without asking between rounds.
-Do NOT ask the user about mode. Proceed with the task immediately.
-The user can switch to interactive at any time by saying "switch to interactive" or "ask me between rounds".`,
+          `[AION INTERACTIVE MODE — ASK THE USER NOW (MANDATORY)]
+You MUST use OpenCode's 'question' tool on your FIRST turn to ask the user how they want to interact with the loop. Offer these options:
+  - "Autonomous — run to completion"  (granularity: autonomous)
+  - "Round-checkpoint — pause after c-critic verdicts"  (granularity: round-checkpoint)
+  - "Always-interactive — pause at every major decision"  (granularity: always-interactive)
+After the user answers, call aion_set_interactive_mode(granularity=<choice>) to lock it in.
+Do NOT proceed with the task until you have asked BOTH this question AND the language question.`,
         )
       } else {
-        const effectMap: Record<string, string> = {
-          "round-checkpoint": "After c-critic approves closeout, the loop will pause and ask the user whether to continue.",
-          "always-interactive": "The loop will pause at every major decision (dispatch, critic verdict, plan switch, phase transition) to ask the user.",
-          "custom": `The loop will pause at these custom triggers: ${(managers.config.interactiveMode.customTriggers ?? []).join(", ") || "(none)"}`,
-          "autonomous": "The loop runs fully auto.",
-        }
-        injections.push(
-          `[AION INTERACTIVE MODE — CONFIG SAYS ${configGranularity.toUpperCase()}]
+        // Round > 1 and still unset: LLM skipped. Fall back to config default.
+        const configDefault = managers.config.interactiveMode.enabled
+        const configGranularity = managers.config.interactiveMode.granularity ?? (configDefault ? "round-checkpoint" : "autonomous")
+        managers.interactiveMode.resolve(
+          configDefault ? "interactive" : "autonomous",
+          "config-default",
+          { granularity: configGranularity, customTriggers: managers.config.interactiveMode.customTriggers ?? [] },
+        )
+        if (!configDefault) {
+          injections.push(
+            `[AION INTERACTIVE MODE — AUTO-RESOLVED (LLM skipped the question)]
+Session mode has been set to FULLY AUTONOMOUS based on config (interactiveMode.enabled=false).
+The loop will run to completion without asking between rounds.
+The user can switch to interactive at any time by saying "switch to interactive" or "ask me between rounds".`,
+          )
+        } else {
+          const effectMap: Record<string, string> = {
+            "round-checkpoint": "After c-critic approves closeout, the loop will pause and ask the user whether to continue.",
+            "always-interactive": "The loop will pause at every major decision (dispatch, critic verdict, plan switch, phase transition) to ask the user.",
+            "custom": `The loop will pause at these custom triggers: ${(managers.config.interactiveMode.customTriggers ?? []).join(", ") || "(none)"}`,
+            "autonomous": "The loop runs fully auto.",
+          }
+          injections.push(
+            `[AION INTERACTIVE MODE — AUTO-RESOLVED (LLM skipped the question)]
 Session mode has been set to INTERACTIVE (granularity: ${configGranularity}) based on config.
 ${effectMap[configGranularity] ?? effectMap["round-checkpoint"]}
 The user can switch to autonomous at any time by saying "switch to autonomous" or "I'm leaving".
+
 If you are uncertain about a decision mid-loop, you MAY use the 'question' tool to ask the user.
 Do NOT ask the user about mode — it is already resolved from config.`,
-        )
+          )
+        }
       }
     }
 

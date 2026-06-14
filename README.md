@@ -9,6 +9,7 @@
 
 ## 📰 News
 
+- **2026-06-14** — **v0.5.0**: Hugging Face Datasets integration (4 new tools + CLI subcommand), ablation/SHAP hard gates, hardware probe in requirements analysis, information-collector query-reformulation tricks.
 - **2026-06-14** — AION is now a **compiled TypeScript plugin** for OpenCode. Install with a single command — no manual cloning required.
 - **2026-06-13** — Plugin version development started on the [`dev`](https://github.com/ztxtech/aion/tree/dev) branch.
 
@@ -30,6 +31,7 @@ Time-series research is moving beyond fixed forecasting benchmarks toward tasks 
   <img src="https://img.shields.io/badge/OpenCode-≥0.9-blue?logo=terminal&logoColor=white" alt="OpenCode">
   <img src="https://img.shields.io/badge/Python-≥3.10-3776AB?logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/Multi_Agent-6_Roles-F59E0B?style=flat" alt="Multi-Agent">
+  <img src="https://img.shields.io/badge/Tools-34-06B6D4?style=flat" alt="Tools">
   <img src="https://img.shields.io/badge/Protocols-8-06B6D4?style=flat" alt="Protocols">
   <img src="https://img.shields.io/badge/Evals-5_Gates-EC4899?style=flat" alt="Evals">
   <img src="https://img.shields.io/badge/Time_Series-Harness-7C3AED?style=flat" alt="Time Series">
@@ -277,6 +279,30 @@ Skills serve the workspace and execution layers — providing evidence collectio
 
 ---
 
+## 🛠️ Tools (20 AION + 14 Team = 34)
+
+AION tools are programmable primitives invoked by the agents. All return JSON strings and are auto-traced. Team tools are conditionally registered when `teamMode.enabled = true`.
+
+| Category | Tools | Purpose |
+| --- | --- | --- |
+| **Experiment** | `aion_ztxexp_init`, `aion_ztxexp_validate`, `aion_ztxexp_run` | Rigid 7-directory experiment boundary for reproducible ablations |
+| **Governance** | `aion_critic_dispatch`, `aion_critic_verdict`, `aion_record_blocker`, `aion_resolve_blocker`, `aion_pre_stop_gate` | Stop-go gate, blocker ledger, c-critic supremacy enforcement |
+| **Memory** | `aion_memory_sync`, `aion_workspace_init`, `aion_compaction` | Shared cache across agents, snapshot refresh |
+| **Safety** | `aion_safety_gate`, `aion_leakage_check` | Pre-action safety, leakage detection (hidden-set, future info, credentials) |
+| **Plan** | `aion_todo_update` | Plan-step ↔ OpenCode TODO mapping with stop-impact analysis |
+| **Session** | `aion_set_interactive_mode`, `aion_set_language` | User-mode toggles driven by session-start question |
+| **Hugging Face** | `aion_hf_search`, `aion_hf_info`, `aion_hf_ingest`, `aion_hf_suggest` | Zero-dependency HF Hub REST integration. Cached 24h under `.opencode/hf-cache/` |
+| **Team** | `team_create`, `team_delete`, `team_send_message`, `team_status`, `team_list`, `team_task_*`, `team_inbox*`, `team_shutdown_*`, `team_approve_shutdown`, `team_reject_shutdown` | Multi-agent parallel coordination (lead + members) |
+
+### Ablation & Statistical Rigor (HARD GATES)
+
+Two rules in `rules.ts` cannot be bypassed:
+
+1. **Ablation is the SOLE arbiter of "best method"** — every "X is best" claim MUST be backed by a config-level ablation matrix inside `ztxexp` (≥3 seeds, single-factor toggles). c-critic rejects anecdotal / single-seed / leaderboard-only claims.
+2. **Beyond p-value: complementary analysis battery** — after significance + bootstrap CI, MUST also run SHAP (or equivalent feature attribution), residual structure diagnosis, drift analysis, and sensitivity analysis. Skipping any is a ts-critic blocker.
+
+---
+
 ## 📋 Protocols (8)
 
 Protocols constrain the execution layer — governing how agents communicate, escalate, and compact context:
@@ -332,6 +358,24 @@ What `init` does:
 The model is NOT set by `init` — you pick it in the OpenCode TUI at runtime.
 
 Nothing outside `<target>` is touched.
+
+### `aion-ts datasets` — Hugging Face Datasets CLI
+
+Mirror of the `aion_hf_*` tools. Lets you prep datasets without launching OpenCode. All commands support `--no-cache` to bypass the 24h HF cache (`.opencode/hf-cache/`).
+
+```bash
+aion-ts datasets search "ECG arrhythmia" --limit 10 --modality timeseries
+aion-ts datasets info Salesforce/lotsa_data
+aion-ts datasets ingest Salesforce/lotsa_data --workspace . --split train
+aion-ts datasets suggest --goal "ECG anomaly detection" --keywords "ecg,arrhythmia" --top-k 5
+```
+
+| Action     | Required args                              | Output |
+| ---------- | ------------------------------------------ | ------ |
+| `search`   | `<query>`                                  | JSON: `{ query, count, results[] }` |
+| `info`     | `<owner/name>`                             | JSON: full dataset card + siblings + splits |
+| `ingest`   | `<owner/name>` `[--workspace DIR]` `[--split S]` | Writes `data/aion-dataset-manifest.json` + `data/<id>.loader.py` |
+| `suggest`  | `--goal "..."` `[--keywords k1,k2]` `[--modality M]` `[--top-k N]` | JSON: `{ goal, keywords, candidates[] }` ranked by score |
 
 ### `cli.sh` — OpenCode Launcher (Legacy)
 

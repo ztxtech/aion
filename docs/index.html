@@ -218,15 +218,19 @@
                 <h4 class="subtitle">1. Install OpenCode</h4>
                 <pre><code>curl -fsSL https://opencode.ai/install | bash</code></pre>
                 
-                <h4 class="subtitle">2. Add AION to Your Project</h4>
+                <h4 class="subtitle">2. Install AION Plugin (one command)</h4>
+                <pre><code>curl -fsSL https://raw.githubusercontent.com/ztxtech/aion/dev/scripts/install.sh | bash</code></pre>
+                <p class="is-size-6 has-text-grey-dark mt-1 mb-2">This installs the <code>aion-ts</code> CLI globally. Then install AION into any project:</p>
                 <pre><code>cd your-project
-git clone https://github.com/ztxtech/aion.git .opencode</code></pre>
+aion-ts init .</code></pre>
                 
                 <h4 class="subtitle">3. Run</h4>
-                <pre><code>bash cli.sh</code></pre>
-                
-                <p class="is-size-6 has-text-grey-dark mt-3 mb-2">Or run manually:</p>
-                <pre><code>opencode run --agent agent "Start the project with the context-init skill."</code></pre>
+                <pre><code>opencode</code></pre>
+                <p class="is-size-6 has-text-grey-dark mt-1 mb-2">OpenCode auto-discovers the plugin. On the first turn, AION asks about language and interactive mode, then dispatches agents.</p>
+
+                <h4 class="subtitle">Bonus: Hugging Face Datasets CLI</h4>
+                <pre><code>aion-ts datasets search "ECG arrhythmia" --limit 10
+aion-ts datasets suggest --goal "time-series forecasting" --top-k 5</code></pre>
                 
               </div>
             </div>
@@ -428,6 +432,36 @@ flowchart LR
               </div>
               <h3 class="component-title">Built on OpenCode</h3>
               <p class="component-desc">Extends the OpenCode AI coding agent with time-series-specific governance, skills, and safety gates.</p>
+            </div>
+          </div>
+
+          <div class="column is-one-third">
+            <div class="component-card">
+              <div class="component-icon">
+                <i class="fas fa-tools"></i>
+              </div>
+              <h3 class="component-title">34 Tools (20 AION + 14 Team)</h3>
+              <p class="component-desc">Experiment, governance, memory, safety, plan, session, Hugging Face, and team-coordination primitives — all auto-traced, all return JSON.</p>
+            </div>
+          </div>
+
+          <div class="column is-one-third">
+            <div class="component-card">
+              <div class="component-icon">
+                <i class="fas fa-database"></i>
+              </div>
+              <h3 class="component-title">Hugging Face Integration</h3>
+              <p class="component-desc">Zero-dependency HF Hub REST tools: search, info, ingest, suggest. 24h cache. CLI mirror (<code>aion-ts datasets</code>) for offline prep.</p>
+            </div>
+          </div>
+
+          <div class="column is-one-third">
+            <div class="component-card">
+              <div class="component-icon">
+                <i class="fas fa-balance-scale"></i>
+              </div>
+              <h3 class="component-title">Ablation & Statistical Rigor</h3>
+              <p class="component-desc">HARD GATES: ablation is the SOLE arbiter of "best method". Beyond p-value: SHAP, residual diagnosis, drift analysis, and sensitivity analysis are all mandatory.</p>
             </div>
           </div>
         </div>

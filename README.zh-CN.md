@@ -9,6 +9,7 @@
 
 ## 📰 News
 
+- **2026-06-14** — **v0.5.0**：Hugging Face 数据集集成（4 个新工具 + CLI 子命令）、消融实验/SHAP 硬性门禁、需求分析硬件探查、information-collector 查询重写技巧。
 - **2026-06-14** — AION 已重构为**编译型 TypeScript 插件**。一行命令安装，无需手动克隆。
 - **2026-06-13** — Plugin 版本开发启动于 [`dev`](https://github.com/ztxtech/aion/tree/dev) 分支。
 
@@ -30,6 +31,7 @@
   <img src="https://img.shields.io/badge/OpenCode-≥0.9-blue?logo=terminal&logoColor=white" alt="OpenCode">
   <img src="https://img.shields.io/badge/Python-≥3.10-3776AB?logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/多Agent-6个角色-F59E0B?style=flat" alt="Multi-Agent">
+  <img src="https://img.shields.io/badge/工具-34个-06B6D4?style=flat" alt="Tools">
   <img src="https://img.shields.io/badge/协议-8个-06B6D4?style=flat" alt="Protocols">
   <img src="https://img.shields.io/badge/评测-5道门禁-EC4899?style=flat" alt="Evals">
   <img src="https://img.shields.io/badge/时间序列-Harness-7C3AED?style=flat" alt="Time Series">
@@ -277,6 +279,30 @@ c-critic > ts-critic > 主 agent > 其他子 agent
 
 ---
 
+## 🛠️ 工具清单（20 AION + 14 Team = 34）
+
+AION 工具是 Agent 调用的可编程原语。全部返回 JSON 字符串，并自动写入 trace。Team 工具仅在 `teamMode.enabled = true` 时注册。
+
+| 类别 | 工具 | 用途 |
+| --- | --- | --- |
+| **实验** | `aion_ztxexp_init`、`aion_ztxexp_validate`、`aion_ztxexp_run` | 7 目录硬边界的可复现消融实验框架 |
+| **治理** | `aion_critic_dispatch`、`aion_critic_verdict`、`aion_record_blocker`、`aion_resolve_blocker`、`aion_pre_stop_gate` | 停止门禁、blocker 台账、c-critic 至高权 |
+| **记忆** | `aion_memory_sync`、`aion_workspace_init`、`aion_compaction` | Agent 间共享缓存、快照刷新 |
+| **安全** | `aion_safety_gate`、`aion_leakage_check` | 动作前安全检查、泄漏检测（hidden-set、未来信息、凭证） |
+| **计划** | `aion_todo_update` | Plan-step ↔ OpenCode TODO 映射 + 停止影响分析 |
+| **会话** | `aion_set_interactive_mode`、`aion_set_language` | 用户模式切换（由 session-start 问题驱动） |
+| **Hugging Face** | `aion_hf_search`、`aion_hf_info`、`aion_hf_ingest`、`aion_hf_suggest` | 零依赖 HF Hub REST 集成，24h 缓存在 `.opencode/hf-cache/` |
+| **Team** | `team_create`、`team_delete`、`team_send_message`、`team_status`、`team_list`、`team_task_*`、`team_inbox*`、`team_shutdown_*` | 多 Agent 并行协作（lead + members） |
+
+### 消融实验与统计严格性（硬性门禁）
+
+`rules.ts` 中有两条不可绕过的规则：
+
+1. **消融实验是"最佳方法"的唯一裁判** —— 任何"X 是最佳"的声明必须由 `ztxexp` 内的 config 级消融矩阵支持（≥3 seed、单因子切换）。c-critic 会拒绝基于轶事/单 seed/排行榜截图的声明。
+2. **超越 p-value：补充分析电池** —— 显著性 + bootstrap CI 之后，还必须运行 SHAP（或等价的特征归因方法）、残差结构诊断、漂移分析、敏感性分析。任何一项缺失都是 ts-critic 的 blocker。
+
+---
+
 ## 📋 协议清单（8 个）
 
 协议约束执行层 — 管理 agent 如何通信、升级和压缩上下文：
@@ -332,6 +358,24 @@ aion-ts init [target-dir] [--force]
 模型不在 `init` 里设置 — 你在 OpenCode TUI 运行时选择。
 
 `<target>` 之外的任何东西都不会被触碰。
+
+### `aion-ts datasets` — Hugging Face 数据集 CLI
+
+`aion_hf_*` 工具的 CLI 镜像。无需启动 OpenCode 即可准备数据集。所有命令支持 `--no-cache` 旁路 24h HF 缓存（`.opencode/hf-cache/`）。
+
+```bash
+aion-ts datasets search "ECG arrhythmia" --limit 10 --modality timeseries
+aion-ts datasets info Salesforce/lotsa_data
+aion-ts datasets ingest Salesforce/lotsa_data --workspace . --split train
+aion-ts datasets suggest --goal "ECG 异常检测" --keywords "ecg,arrhythmia" --top-k 5
+```
+
+| 动作      | 必需参数                                   | 输出 |
+| --------- | ------------------------------------------ | ---- |
+| `search`  | `<query>`                                  | JSON: `{ query, count, results[] }` |
+| `info`    | `<owner/name>`                             | JSON: 完整 dataset card + siblings + splits |
+| `ingest`  | `<owner/name>` `[--workspace DIR]` `[--split S]` | 写入 `data/aion-dataset-manifest.json` + `data/<id>.loader.py` |
+| `suggest` | `--goal "..."` `[--keywords k1,k2]` `[--modality M]` `[--top-k N]` | JSON: `{ goal, keywords, candidates[] }` 按分数排序 |
 
 ### `cli.sh` — OpenCode 启动器（旧版）
 
