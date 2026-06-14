@@ -347,9 +347,12 @@ body {
 }
 
 .quick-start-card code {
-  background: transparent !important;
-  color: #e2e8f0 !important;
+  background: var(--background-accent) !important;
+  color: var(--primary-color) !important;
   font-family: 'SF Mono', 'Monaco', 'Cascadia Code', monospace !important;
+  padding: 0.1em 0.4em;
+  border-radius: 4px;
+  font-weight: 500;
 }
 
 .quick-start-card .subtitle {
