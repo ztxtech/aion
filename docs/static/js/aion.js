@@ -108,6 +108,10 @@ function setupCodeCopyButtons() {
         var pre = blocks[i];
         // Skip if already decorated (e.g. by the bibtex handler).
         if (pre.querySelector(':scope > .code-copy-btn')) continue;
+        // Skip Mermaid source blocks. Mermaid 10 reads pre.textContent as
+        // diagram source; injecting a <button> here would pollute the parse
+        // input and produce a "Syntax error in text" error.
+        if (pre.classList.contains('mermaid')) continue;
 
         var btn = document.createElement('button');
         btn.type = 'button';
