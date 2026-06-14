@@ -87,6 +87,17 @@ const DEFAULT_AION_CONFIG = `{
     "enabled": false,
     "granularity": "autonomous",
     "customTriggers": []
+  },
+
+  "language": {
+    // Language mode for interaction and delivery.
+    //   "en"                   — English everywhere
+    //   "zh-reason-en-deliver" — Chinese reasoning + English delivery
+    //   "zh-deliver"           — Chinese delivery
+    //   "bilingual"            — Chinese + English delivery
+    // AION will also ask you at session start; this is the fallback default.
+    // TUI notifications (I AM AION toasts) always stay in English.
+    "mode": "en"
   }
 }
 `;

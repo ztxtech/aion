@@ -47,6 +47,7 @@ These are custom tools registered by the plugin. Call them by their exact name:
 | `aion_resolve_blocker` | Mark a blocker as resolved with fix evidence |
 | `aion_todo_update` | Dynamic TODO map manager: add/update-state/rollback/get. add-from-reportback extracts plan items from subagent output. THE driving plan tool |
 | `aion_set_interactive_mode` | Record the session's interactive mode (interactive vs autonomous). Call IMMEDIATELY after the user answers the `question` tool. Also call whenever the user toggles mode mid-conversation. |
+| `aion_set_language` | Record the session's language mode (en / zh-reason-en-deliver / zh-deliver / bilingual). Call IMMEDIATELY after the language `question` tool. |
 | `aion_pre_stop_gate` | Programmatic pre-stop gate. Checks all stop conditions and returns allow/block verdict |
 | `aion_ztxexp_init` | Initialize a ztxexp experiment directory with hard boundary enforcement |
 | `aion_ztxexp_validate` | Validate ztxexp directory structure compliance |
@@ -119,6 +120,26 @@ For every new task (ALL steps are mandatory — do not skip any):
      - "On plan switch" → "plan-switch"
      - "On phase transition" → "phase-transition"
      - "On critic reject" → "critic-reject"
+1b. **LANGUAGE** — Immediately after resolving interactive mode, call `question` again to ask about language preference:
+   ```
+   question(questions=[{
+     question: "What language should I use?",
+     header: "Language",
+     options: [
+       { label: "English", description: "English everywhere — reasoning, interaction, delivery. (Recommended)" },
+       { label: "Chinese reasoning + English delivery", description: "Chinese for interaction and reasoning; final code and reports in English." },
+       { label: "Chinese delivery", description: "Chinese throughout, including final delivery." },
+       { label: "Bilingual (Chinese + English)", description: "Deliver in both Chinese and English." }
+     ]
+   }])
+   ```
+   Then call `aion_set_language` with the matching mode:
+   - "English" → `aion_set_language(mode="en")`
+   - "Chinese reasoning + English delivery" → `aion_set_language(mode="zh-reason-en-deliver")`
+   - "Chinese delivery" → `aion_set_language(mode="zh-deliver")`
+   - "Bilingual (Chinese + English)" → `aion_set_language(mode="bilingual")`
+
+   NOTE: TUI notifications (like "I AM AION" toasts) always stay in English regardless of this setting.
 2. Call `aion_workspace_init` — creates memory, trace, context-snapshot
 3. Call `aion_memory_sync` with `artifact="initial-prompt"` — anchors the original task
 4. Call `aion_memory_sync` with `artifact="context-snapshot"` — refresh after init

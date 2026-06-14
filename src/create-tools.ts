@@ -17,6 +17,7 @@ import { createWorkspaceTools } from "./tools/workspace"
 import { createGovernanceTools } from "./tools/governance"
 import { createTodoTools } from "./tools/todo"
 import { createInteractiveModeTool } from "./tools/user-check"
+import { createLanguageTool } from "./tools/language"
 import { createTeamTools } from "./team/tools"
 import type { PluginContext, ToolsRecord } from "./plugin/types"
 import type { AionConfig } from "./config/types"
@@ -41,6 +42,7 @@ export function createAllAionTools(args: CreateToolsArgs): CreatedTools {
     ...(createGovernanceTools({ ctx, config, managers }) as AionTools),
     ...(createTodoTools({ ctx, config, managers }) as AionTools),
     ...(createInteractiveModeTool({ ctx, config, managers }) as AionTools),
+    ...(createLanguageTool({ ctx, config, managers }) as AionTools),
   }
 
   const result: CreatedTools = { ...aionTools }

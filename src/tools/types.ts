@@ -25,5 +25,6 @@ export type AionToolName =
   | "aion_resolve_blocker"
   | "aion_todo_update"
   | "aion_set_interactive_mode"
+  | "aion_set_language"
 
 export type AionTools = Record<AionToolName, import("@opencode-ai/plugin").ToolDefinition>

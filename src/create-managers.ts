@@ -61,6 +61,8 @@ export type GovernanceState = {
   interactiveModeCustomTriggers: string[]
   interactiveModeConfirmedAt: string | null
   interactiveModeSource: "session-start" | "user-toggle" | "config-default" | null
+  languageResolved: "unset" | "en" | "zh-reason-en-deliver" | "zh-deliver" | "bilingual"
+  languageSource: "session-start" | "user-toggle" | "config-default" | null
   tuiTodoSyncPending: boolean
 }
 
@@ -154,6 +156,15 @@ export type AionManagers = {
     ): void
     reset(): void
   }
+  language: {
+    isResolved(): boolean
+    getMode(): "en" | "zh-reason-en-deliver" | "zh-deliver" | "bilingual"
+    resolve(
+      mode: "en" | "zh-reason-en-deliver" | "zh-deliver" | "bilingual",
+      source: "session-start" | "user-toggle" | "config-default",
+    ): void
+    reset(): void
+  }
   phase: {
     current(): AionPhase
     transition(next: AionPhase, reason: string): void
@@ -221,6 +232,8 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
       interactiveModeCustomTriggers: [],
       interactiveModeConfirmedAt: null,
       interactiveModeSource: null,
+      languageResolved: "unset",
+      languageSource: null,
       tuiTodoSyncPending: false,
     },
     branches: new Map(),
@@ -386,6 +399,33 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
     },
   }
 
+  const languageManager = {
+    isResolved(): boolean {
+      return state.governance.languageResolved !== "unset"
+    },
+    getMode(): "en" | "zh-reason-en-deliver" | "zh-deliver" | "bilingual" {
+      if (state.governance.languageResolved !== "unset") return state.governance.languageResolved
+      return config.language?.mode ?? "en"
+    },
+    resolve(
+      mode: "en" | "zh-reason-en-deliver" | "zh-deliver" | "bilingual",
+      source: "session-start" | "user-toggle" | "config-default",
+    ): void {
+      state.governance.languageResolved = mode
+      state.governance.languageSource = source
+      trace.appendEvent(
+        "stopgo.updated",
+        `language = ${mode} (source: ${source})`,
+        { mode, source },
+        source === "user-toggle" ? "user" : "main-agent",
+      )
+    },
+    reset(): void {
+      state.governance.languageResolved = "unset"
+      state.governance.languageSource = null
+    },
+  }
+
   const phaseManager = {
     current(): AionPhase {
       return state.governance.phase
@@ -526,6 +566,7 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
     governance,
     userContinue,
     interactiveMode,
+    language: languageManager,
     phase: phaseManager,
     branches,
     rounds,

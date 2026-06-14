@@ -272,6 +272,23 @@ You are inside an autonomous multi-agent loop. You MUST NOT end your turn withou
   4. No open governance blockers exist
 If you have nothing left to do in this phase, call aion_todo_update(action="update-state") or aion_memory_sync to advance state. NEVER output a plain text conclusion without a tool call. If you are stuck, call aion_todo_update(action="get") to review the plan.`
 
+    // === Language: resolve from config on first turn ===
+    if (managers.state.governance.languageResolved === "unset" && round <= 1) {
+      const langMode = managers.config.language?.mode ?? "en"
+      managers.language.resolve(langMode, "config-default")
+    }
+
+    // === Language: inject directive every turn ===
+    const langMode = managers.language.getMode()
+    const langEffectMap: Record<string, string> = {
+      "en": "Use English everywhere — reasoning, interaction, delivery.",
+      "zh-reason-en-deliver": "Use Chinese for interaction and reasoning. Final code, API names, variable names, and delivery artifacts must be in English.",
+      "zh-deliver": "Use Chinese for all delivery and interaction.",
+      "bilingual": "Deliver in both Chinese and English.",
+    }
+    const langDirective = `[AION LANGUAGE] ${langEffectMap[langMode] ?? langEffectMap["en"]}`
+    injections.push(langDirective)
+
     // === Interactive mode: session-start MANDATORY question ===
     // On the FIRST turn of every session, the LLM MUST ask the user whether they
     // want interactive mode (loop pauses for the user between rounds) or fully

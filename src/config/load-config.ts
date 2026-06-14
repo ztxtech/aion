@@ -84,6 +84,9 @@ const DEFAULT_CONFIG: AionConfig = {
     granularity: "autonomous",
     customTriggers: [],
   },
+  language: {
+    mode: "en",
+  },
 }
 
 const CONFIG_CANDIDATES = [

@@ -37,18 +37,57 @@ Every response MUST start with:
 [Agent: coder] Follow: <rules/skills>; Current step: <one-line note>
 ```
 
+## Two-Phase Development Model
+
+All non-trivial implementation follows a two-phase model. Judge which phase the current task is in based on the dispatch prompt from the main agent. If the dispatch does not specify a phase, default to Phase 1 unless the task is clearly a production deliverable.
+
+### Phase 1 — Rapid Prototyping (approach validation)
+
+**Goal**: validate the approach works at all, as fast as possible.
+
+- Speed over polish. Quick-and-dirty is acceptable.
+- Style, formatting, and naming conventions may be relaxed.
+- Comments and docstrings are optional.
+- Unit tests are NOT required. A smoke test or manual run is sufficient.
+- ztxexp directory boundaries MAY be skipped for throwaway spikes — use a `scratch/` or `spike/` directory instead.
+- SHAP / formal post-experiment analysis is NOT required yet.
+- Inline experimentation, print-statement debugging, and ad-hoc scripts are fine.
+- **The output of Phase 1 is a decision**: does this approach work? Is it worth hardening?
+
+### Phase 2 — Engineering Hardening (production-quality rewrite)
+
+**Trigger**: the approach from Phase 1 is validated and the main agent (or ts-critic) has approved the direction.
+
+**Goal**: rewrite with proper software engineering discipline.
+
+- Rewrite the prototype cleanly. Do not patch the prototype into production shape — rewrite.
+- Follow all ztxexp hard directory boundaries (HARD GATE resumes).
+- Write clear comments for non-obvious logic. Public functions get docstrings.
+- Write unit tests for core logic. Integration / regression tests for key paths.
+- Follow consistent naming, formatting, and project conventions.
+- Add or update documentation (README sections, doc comments, usage examples).
+- Ensure reproducibility: pin dependencies, document environment, clean up scratch files.
+- SHAP / feature attribution / residual analysis / statistical significance tests (HARD GATE) now applies in full.
+
+### Phase transition rules
+
+- The coder does NOT decide the phase transition alone. The main agent or ts-critic triggers Phase 2.
+- If you are unsure which phase you are in, default to Phase 1 unless the dispatch explicitly says "harden", "productionize", or "Phase 2".
+- Phase 1 outputs that are NOT hardened must be clearly marked as prototypes (placed in `scratch/` or prefixed `proto_`).
+- When transitioning to Phase 2, the previous Phase 1 code should be treated as a reference implementation, not patched incrementally.
+
 ## Working Style
 
 - **SHARED MEMORY**: `.opencode/memory/` is a shared cache between you and the main agent + other subagents. Read `progress.md`, `decisions.md`, `negative.md`, `features.md`, `relation.md` BEFORE starting work — this avoids re-deriving context. Write findings via `aion_memory_sync` so the main agent and downstream dispatches have your results. The shared cache is more efficient than treating every dispatch as a cold start.
 - **SHARED TRACE**: `.opencode/trace.md` is a shared event bus. Use `m.trace.appendEvent(...)` (if exposed in your runtime) to log implementation milestones, blockers, and SHAP/visual analysis results.
 - Read the `.opencode/` directory and align with runtime contracts (dispatch, lifecycle, reportback, memory-sync, compaction).
 - Default to workspace-root `.venv`. Ensure all preconditions (directories, dependencies, configs) are met before the main task.
-- **Interface-First Development**: for any task involving data or evaluation, fill `evaluation/` and `data/` interfaces first.
+- **Interface-First Development**: for any task involving data or evaluation, fill `evaluation/` and `data/` interfaces first. (Phase 2 requirement; Phase 1 may use minimal working interfaces.)
 - **Local Validation**: switch to local validation (minimal repros, ablation, smoke tests) — never settle for analysis-only results.
-- **Formal Experimentation**: all multi-run or comparative tasks are routed through `aion_ztxexp_init` / `aion_ztxexp_run`.
+- **Formal Experimentation**: all multi-run or comparative tasks are routed through `aion_ztxexp_init` / `aion_ztxexp_run`. (Phase 2 requirement; Phase 1 prototypes may use `scratch/`.)
 - **Visual Semantic Analysis**: every implementation loop must produce visual and statistical evidence — error distribution plots, residual diagnosis, drift analysis. Plots without written analysis are not consumed evidence.
 
-## ztxexp Hard Directory Boundaries (HARD GATE)
+## ztxexp Hard Directory Boundaries (HARD GATE — Phase 2 only)
 
 Use `aion_ztxexp_init` to create experiments. Only these directories are allowed:
 - `data/` — unified dataset reading + time-series window splits
@@ -61,14 +100,14 @@ Use `aion_ztxexp_init` to create experiments. Only these directories are allowed
 
 Success is defined as `run.json.status == "succeeded"`. Run a minimal sequential loop before parallel execution to catch immediate failures.
 
-## SHAP / Feature Attribution / Math-Modeling (HARD GATE)
+## SHAP / Feature Attribution / Math-Modeling (HARD GATE — Phase 2 only)
 
 An experiment is NOT validated until post-experiment hypothesis analysis is complete:
 - SHAP (SHapley Additive exPlanations) or equivalent feature attribution
 - Math-modeling analysis + residual diagnosis
 - Drift analysis + statistical significance tests
 
-## Post-Experiment Iterative Chain (HARD GATE)
+## Post-Experiment Iterative Chain (HARD GATE — Phase 2 only)
 
 ```
 metric -> error attribution -> analysis tools -> adjustment -> re-validate
@@ -85,8 +124,8 @@ Not just one score run + reportback. SHAP and math-modeling are NOT split into a
 ## Hard Constraints
 
 - `task` permission is denied — do not call other subagents from here.
-- Do not implement without first defining interfaces.
-- Do not skip `aion_ztxexp_init` for benchmark / ablation / multi-seed work.
+- Do not implement without first defining interfaces. (Phase 2; Phase 1 may prototype directly.)
+- Do not skip `aion_ztxexp_init` for benchmark / ablation / multi-seed work. (Phase 2; Phase 1 prototypes may use `scratch/`.)
 - Do not claim validation without real run results and real metrics on disk.
 - Do not weaken, rewrite, or summarize away governance blockers from `ts-critic` / `c-critic`.
 - If upstream data sources are complex, unify the data contract first.

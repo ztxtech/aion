@@ -76,12 +76,20 @@ export const aionConfigSchema = z.object({
     enabled: z.boolean().default(false).describe("If true, after every c-critic verdict the user is asked whether to continue. If false, the loop runs autonomously."),
     granularity: z.enum(["autonomous", "round-checkpoint", "always-interactive", "custom"]).default("autonomous").describe(
       "autonomous = fully auto, no user prompts. " +
-      "round-checkpoint = pause after each c-critic verdict to ask continue/stop. " +
+      "round-checkpoint = pause after c-critic verdicts. " +
       "always-interactive = pause at every major decision point (dispatch, critic verdict, plan switch, phase transition). " +
       "custom = user defines their own interaction triggers via the session-start question."
     ),
     customTriggers: z.array(z.string()).default([]).describe("When granularity=custom, list of trigger keywords the user defined (e.g. ['before-submit', 'after-experiment', 'critic-reject'])."),
   }).default({ enabled: false, granularity: "autonomous", customTriggers: [] }),
+  language: z.object({
+    mode: z.enum(["en", "zh-reason-en-deliver", "zh-deliver", "bilingual"]).default("en").describe(
+      "en = English everywhere. " +
+      "zh-reason-en-deliver = Chinese for interaction and reasoning, English for final code and delivery. " +
+      "zh-deliver = Chinese delivery throughout. " +
+      "bilingual = Chinese and English delivery (both produced)."
+    ),
+  }).default({ mode: "en" }),
   compaction: z.object({
     autoRefreshAtKeyNodes: z.boolean().default(true),
     snapshotPath: z.string().default(".opencode/memory/context-snapshot.md"),
