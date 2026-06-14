@@ -9,10 +9,7 @@
 
 ## 📰 News
 
-- **2026-06-14** — **v0.5.1**：为 main agent 加入**硬性角色边界** — 明确的「不可直接编辑/直接调试/直接实验/直接搜索」规则。Orchestrator 负责 dispatch、integrate、govern；leaf worker（coder / information-collector / requirements-analyst）负责执行。每个 leaf worker prompt 新增「Reception Contract」段落，使被分派的任务以「诊断 → 修补 → 验证 → 报告」可预期形态落地。新增 19 个角色边界测试。
-- **2026-06-14** — **v0.5.0**：Hugging Face 数据集集成（4 个新工具 + CLI 子命令）、消融实验/SHAP 硬性门禁、需求分析硬件探查、information-collector 查询重写技巧。
-- **2026-06-14** — AION 已重构为**编译型 TypeScript 插件**。一行命令安装，无需手动克隆。
-- **2026-06-13** — Plugin 版本开发启动于 [`dev`](https://github.com/ztxtech/aion/tree/dev) 分支。
+- **2026-06-14** — AION 已重构为**编译型 TypeScript 插件**（一行命令安装）。v0.5.0 加入 Hugging Face 数据集集成（4 个工具 + CLI）、消融实验/SHAP 硬性门禁、硬件探查、information-collector 查询重写。v0.5.1 确立**硬性角色边界** —— main agent 负责 dispatch、integrate、govern；leaf worker（coder / information-collector / requirements-analyst）通过显式的 Reception Contract 执行（19 个新角色边界测试，574/574 通过）。
 
 ---
 
