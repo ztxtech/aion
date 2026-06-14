@@ -16,7 +16,10 @@ const DEFAULT_AION_CONFIG = `{
   // All features are ON by default. Comment out or set to false to disable.
 
   "enabled": true,
-  "model": "local-auto/mimo-v2.5",
+  // "model" is intentionally omitted — AION inherits the model from
+  // opencode.json (project-level) or the global OpenCode config. Set it
+  // here ONLY if you want AION agents to use a different model than the
+  // rest of OpenCode.
   "defaultAgent": "aion",
 
   "governance": {
@@ -199,6 +202,32 @@ async function installPlugin(bundlePath, target, force) {
   console.log(`  [ok] copied bundle  → ${destPath}`);
 }
 
+/**
+ * Detect the user's default model by reading:
+ *   1. The global OpenCode config (~/.config/opencode/opencode.json)
+ *   2. If not found, fall back to "local-auto/glm-5.2" (a sensible default).
+ * Returns a model string like "anthropic/claude-sonnet-4-5" or "local-auto/glm-5.2".
+ */
+function detectDefaultModel() {
+  const homeDir = process.env.HOME || process.env.USERPROFILE || "";
+  const globalConfigCandidates = [
+    join(homeDir, ".config", "opencode", "opencode.json"),
+    join(homeDir, ".config", "opencode", "config.json"),
+  ];
+  for (const cfgPath of globalConfigCandidates) {
+    if (!existsSync(cfgPath)) continue;
+    try {
+      const parsed = readJsonc(cfgPath);
+      if (parsed && typeof parsed.model === "string" && parsed.model.trim()) {
+        return parsed.model.trim();
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }
+  return "local-auto/glm-5.2";
+}
+
 async function ensureOpencodeJson(target) {
   // NOTE: OpenCode auto-discovers plugins in <target>/.opencode/plugins/ and
   // ~/.config/opencode/plugins/. We do NOT touch the "plugin" array in
@@ -212,13 +241,15 @@ async function ensureOpencodeJson(target) {
   const exists = existsSync(path);
 
   if (!exists) {
+    const defaultModel = detectDefaultModel();
     const example = {
       $schema: "https://opencode.ai/config.json",
       theme: "aion",
-      model: "anthropic/claude-sonnet-4-5",
+      model: defaultModel,
     };
     writeJsonPreserveIndent(path, example);
     console.log(`  [ok] created       → ${path}`);
+    console.log(`         model       → ${defaultModel}`);
     return;
   }
 
