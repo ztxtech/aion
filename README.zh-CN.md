@@ -9,7 +9,7 @@
 
 ## 📰 News
 
-- **2026-06-14** — AION 已重构为**编译型 TypeScript 插件**（一行命令安装）。v0.5.0 加入 Hugging Face 数据集集成（4 个工具 + CLI）、消融实验/SHAP 硬性门禁、硬件探查、information-collector 查询重写。v0.5.1 确立**硬性角色边界** —— main agent 负责 dispatch、integrate、govern；leaf worker（coder / information-collector / requirements-analyst）通过显式的 Reception Contract 执行（19 个新角色边界测试，574/574 通过）。v0.5.2 用**契约驱动的 leakage 门禁**取代基于路径的黑名单 —— `requirements-analyst` 将 `dataBoundaries`（allowed_reads / forbidden_reads / internet_access / runtime_hosts / label_columns）写入任务契约，hook 在读取时强制执行，`ts-critic` 在提交审查时审计整个训练 pipeline + 提交列名。
+- **2026-06-14** — AION 已重构为 OpenCode 的编译型 TypeScript 插件（一行命令安装）。
 
 ---
 
