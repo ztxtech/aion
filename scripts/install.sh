@@ -121,9 +121,20 @@ fi
 # =============================================================================
 # Check for existing installation
 # =============================================================================
-if [ "$FORCE" = false ] && [ -f "${BIN_DIR}/aion-ts" ]; then
-  warn "aion-ts already exists at ${BIN_DIR}/aion-ts"
-  warn "re-run with --force to overwrite"
+if [ -f "${BIN_DIR}/aion-ts" ] && [ "$FORCE" = false ]; then
+  VERSION_INFO=""
+  [ -n "$VERSION" ] && VERSION_INFO=" -- --version $VERSION"
+  echo ""
+  warn "aion-ts is already installed at ${BIN_DIR}/aion-ts"
+  echo ""
+  echo "  To upgrade to the latest version, re-run with --force:"
+  echo ""
+  echo -e "    ${BOLD}curl -fsSL https://raw.githubusercontent.com/ztxtech/aion/dev/scripts/install.sh | bash -s -- --force${NC}"
+  echo ""
+  echo "  Or install a specific version:"
+  echo ""
+  echo -e "    ${BOLD}curl -fsSL https://raw.githubusercontent.com/ztxtech/aion/dev/scripts/install.sh | bash -s -- --force --version 0.3.0${NC}"
+  echo ""
   exit 0
 fi
 

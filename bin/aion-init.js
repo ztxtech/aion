@@ -129,7 +129,7 @@ Behavior:
      "plugin" field in opencode.json is intentionally not touched.
   2. If <target>/opencode.json exists, leaves it alone (or migrates away
      from a previous wrong "plugin": ["aion-ts-plugin"] entry). Otherwise
-     creates a minimal starter file with $schema/theme/model.
+     creates a minimal starter file with $schema/theme.
   3. Copies a commented default config to <target>/.opencode/aion.jsonc.
      The bundle is fully self-contained — no external npm dependencies
      are needed.
@@ -202,31 +202,6 @@ async function installPlugin(bundlePath, target, force) {
   console.log(`  [ok] copied bundle  → ${destPath}`);
 }
 
-/**
- * Detect the user's default model by reading:
- *   1. The global OpenCode config (~/.config/opencode/opencode.json)
- *   2. If not found, fall back to "local-auto/glm-5.2" (a sensible default).
- * Returns a model string like "anthropic/claude-sonnet-4-5" or "local-auto/glm-5.2".
- */
-function detectDefaultModel() {
-  const homeDir = process.env.HOME || process.env.USERPROFILE || "";
-  const globalConfigCandidates = [
-    join(homeDir, ".config", "opencode", "opencode.json"),
-    join(homeDir, ".config", "opencode", "config.json"),
-  ];
-  for (const cfgPath of globalConfigCandidates) {
-    if (!existsSync(cfgPath)) continue;
-    try {
-      const parsed = readJsonc(cfgPath);
-      if (parsed && typeof parsed.model === "string" && parsed.model.trim()) {
-        return parsed.model.trim();
-      }
-    } catch {
-      // ignore parse errors
-    }
-  }
-  return "local-auto/glm-5.2";
-}
 
 async function ensureOpencodeJson(target) {
   // NOTE: OpenCode auto-discovers plugins in <target>/.opencode/plugins/ and
@@ -235,21 +210,18 @@ async function ensureOpencodeJson(target) {
   //   1. That field is for npm packages (resolved via Bun at startup).
   //   2. AION ships as a local file bundle, so it goes through the
   //      auto-discovery path and the array entry is not needed.
-  // We still create or merge opencode.json so the user can drop in other
-  // OpenCode-level config (theme, model, agent overrides, etc.).
+  // We do NOT set a "model" field — the user picks the model in the OpenCode
+  // TUI at runtime. This keeps AION model-agnostic.
   const path = join(target, "opencode.json");
   const exists = existsSync(path);
 
   if (!exists) {
-    const defaultModel = detectDefaultModel();
     const example = {
       $schema: "https://opencode.ai/config.json",
       theme: "aion",
-      model: defaultModel,
     };
     writeJsonPreserveIndent(path, example);
     console.log(`  [ok] created       → ${path}`);
-    console.log(`         model       → ${defaultModel}`);
     return;
   }
 
