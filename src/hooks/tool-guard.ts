@@ -331,8 +331,12 @@ export function createToolGuardBeforeHook(args: CreateHooksArgs): AionToolExecut
       const bashArgs = (output as { args?: Record<string, unknown> }).args ?? {}
       const command = String(bashArgs.command ?? bashArgs.cmd ?? "")
       if (command) {
-        // Leakage block
-        if (/(rm -rf|cat .*\.env|cp .*\.env|scp .*\.env|curl .*credentials)/i.test(command)) {
+        // Leakage block — only true info-leak patterns, NOT general file ops.
+        // rm -rf is a normal dev command; only block it when targeting
+        // catastrophic paths (root, home dir, or home subdir).
+        if (/(rm\s+-rf?\s+\/(\s|$)|rm\s+-rf?\s+~(\/|\s|$)|rm\s+-rf?\s+\$\{?HOME\}?)/i.test(command) ||
+            /(cat|cp|scp|curl)\s+.*\.env\b/i.test(command) ||
+            /curl\s+.*credentials/i.test(command)) {
           m.trace.appendEvent(
             "leakage.detected",
             `tool.execute.before blocked: bash command contains suspicious token`,
@@ -449,7 +453,7 @@ export function createToolGuardBeforeHook(args: CreateHooksArgs): AionToolExecut
 }
 
 export function createToolGuardAfterHook(args: CreateHooksArgs): AionToolExecuteAfterHook {
-  const { managers } = args
+  const { managers, personality } = args
   const m = managers
 
   return async function toolGuardAfter(input, output) {
@@ -525,34 +529,30 @@ export function createToolGuardAfterHook(args: CreateHooksArgs): AionToolExecute
     // === A. Visual semantic: writing image files marks visual loop pending ===
     // (already handled in before hook via state flag)
 
-    // === F. Memory sync trace (silently — no warn spam) ===
-    if (toolName === "aion_memory_sync") {
-      const confidence = toolArgs.confidence as string | undefined
-      m.trace.appendEvent(
-        "memory.sync",
-        `memory sync: artifact=${String(toolArgs.artifact ?? "unknown")} confidence=${confidence ?? "n/a"}`,
-        { artifact: toolArgs.artifact, confidence: confidence ?? null },
-        "main-agent",
-      )
+    // === F+G. Trace duplication removed ===
+    // Memory sync, critic dispatch, and critic verdict are already traced inside
+    // their respective tool execute() methods (memory.ts:90, critic.ts:37/146)
+    // with the correct artifact/critic/verdict values. The after-hook context
+    // loses toolArgs (they become undefined), so these duplicate traces always
+    // showed "artifact=unknown" / "dispatched unknown" — pure noise. Removed.
+
+    // === H. Personality: fire toasts on dispatch and critic events ===
+    if (personality) {
+      if (toolName === "task") {
+        const taskArgs = (output as { args?: Record<string, unknown> }).args ?? {}
+        const subagentType = String(taskArgs.subagent_type ?? "")
+        if (subagentType) {
+          personality.onDispatch(subagentType)
+        }
+      }
+      if (toolName === "aion_critic_verdict") {
+        personality.onCriticVerdict(
+          String(toolArgs.critic ?? ""),
+          String(toolArgs.verdict ?? ""),
+        )
+      }
     }
 
-    // === G. Runtime event auto-recording for key tool calls ===
-    if (toolName === "aion_critic_dispatch") {
-      m.trace.appendEvent(
-        "dispatch.created",
-        `dispatched ${String(toolArgs.critic ?? "unknown")} for ${String(toolArgs.goal ?? "")}`,
-        { critic: toolArgs.critic, goal: toolArgs.goal },
-        "main-agent",
-      )
-    }
-    if (toolName === "aion_critic_verdict") {
-      m.trace.appendEvent(
-        "critic.verdict",
-        `${String(toolArgs.critic ?? "")} verdict=${String(toolArgs.verdict ?? "")}`,
-        { critic: toolArgs.critic, verdict: toolArgs.verdict },
-        String(toolArgs.critic ?? "unknown"),
-      )
-    }
     if (toolName === "aion_pre_stop_gate") {
       m.trace.appendEvent(
         "completion-gate.refreshed",
@@ -638,6 +638,9 @@ export function createToolGuardAfterHook(args: CreateHooksArgs): AionToolExecute
         )
       }
     }
+
+    // === Personality: opportunity for heartbeat during long tool sequences ===
+    personality?.onOpportunity()
   }
 }
 

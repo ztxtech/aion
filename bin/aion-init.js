@@ -47,14 +47,14 @@ const DEFAULT_AION_CONFIG = `{
     // Team mode: 1 lead coordinates multiple subagents in parallel
     "enabled": true,
     "tmuxVisualization": true,
-    "maxParallelMembers": 4,
+    "maxParallelMembers": 6,
     "maxMembers": 8,
-    "maxMessagesPerRun": 10000,
-    "maxWallClockMinutes": 120,
-    "maxMemberTurns": 500,
-    "messagePayloadMaxBytes": 32768,
-    "recipientUnreadMaxBytes": 262144,
-    "mailboxPollIntervalMs": 3000
+    "maxMessagesPerRun": 20000,
+    "maxWallClockMinutes": 240,
+    "maxMemberTurns": 800,
+    "messagePayloadMaxBytes": 65536,
+    "recipientUnreadMaxBytes": 524288,
+    "mailboxPollIntervalMs": 2000
   },
 
   "trace": {
@@ -75,7 +75,15 @@ const DEFAULT_AION_CONFIG = `{
     // LLM never asks (e.g. config is true but the user says stop asking), this
     // value is used. The user can switch to fully-autonomous anytime by saying
     // "I'm leaving".
-    "enabled": false
+    //
+    // granularity options:
+    //   "autonomous"        — fully auto, no prompts
+    //   "round-checkpoint"  — pause after c-critic verdicts
+    //   "always-interactive" — pause at every dispatch/critic/plan-switch/phase-transition
+    //   "custom"            — user defines triggers (customTriggers below)
+    "enabled": false,
+    "granularity": "autonomous",
+    "customTriggers": []
   }
 }
 `;

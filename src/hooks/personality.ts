@@ -35,9 +35,9 @@ export const DEFAULT_PERSONALITY_CONFIG: PersonalityConfig = {
   heartbeats: true,
   completion: true,
   milestone: true,
-  heartbeatMinMs: 90_000,
-  heartbeatMaxMs: 240_000,
-  maxHeartbeatsPerSession: 8,
+  heartbeatMinMs: 60_000,
+  heartbeatMaxMs: 180_000,
+  maxHeartbeatsPerSession: 12,
 }
 
 export type PersonalityHandle = {
@@ -49,6 +49,12 @@ export type PersonalityHandle = {
   onCompletion: () => void
   /** Fired on milestone (plan size threshold). */
   onMilestone: () => void
+  /** Fired when a subagent is dispatched. */
+  onDispatch: (agentName: string) => void
+  /** Fired when a critic returns a verdict. */
+  onCriticVerdict: (critic: string, verdict: string) => void
+  /** Fired randomly during long waits — easter egg slot. */
+  onEasterEgg: () => void
   /** Called from chat.message / tool.execute.after to opportunistically fire heartbeats. */
   onOpportunity: (now?: number) => void
   /** Test-only: reset internal state. */
@@ -84,17 +90,28 @@ export function createPersonality(args: CreatePersonalityArgs): PersonalityHandl
     if (slot === "heartbeat" && !config.heartbeats) return
     if (slot === "completion" && !config.completion) return
     if (slot === "milestone" && !config.milestone) return
+    if (slot === "dispatch" && !config.transitions) return
+    if (slot === "critic" && !config.transitions) return
+    if (slot === "easter-egg" && !config.heartbeats) return
     const quip = pickQuip(slot, lastQuip, rng)
     lastQuip = quip
+    // Rarity-driven visual differentiation:
+    //   common    → info toast, standard duration
+    //   rare      → success toast (green), longer duration
+    //   legendary → warning toast (amber/gold), longest duration
     const variant =
-      quip.rarity === "legendary" ? "info"
-        : quip.rarity === "rare" ? "info"
+      quip.rarity === "legendary" ? "warning"
+        : quip.rarity === "rare" ? "success"
           : "info"
+    const duration =
+      quip.rarity === "legendary" ? 8000
+        : quip.rarity === "rare" ? 6000
+          : 4500
     notifyFromCtx({ client }, {
       variant,
-      title: quip.title,
+      title: quip.rarity === "legendary" ? `\u2728 ${quip.title}` : quip.rarity === "rare" ? `\u2728 ${quip.title}` : quip.title,
       message: quip.message,
-      duration: quip.rarity === "legendary" ? 6000 : 4500,
+      duration,
     })
   }
 
@@ -121,6 +138,15 @@ export function createPersonality(args: CreatePersonalityArgs): PersonalityHandl
     },
     onMilestone() {
       fire("milestone")
+    },
+    onDispatch(_agentName: string) {
+      fire("dispatch")
+    },
+    onCriticVerdict(_critic: string, _verdict: string) {
+      fire("critic")
+    },
+    onEasterEgg() {
+      fire("easter-egg")
     },
     onOpportunity(now: number = Date.now()) {
       if (!isHeartbeatDue(now)) return

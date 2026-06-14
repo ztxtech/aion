@@ -22,7 +22,7 @@ export type Quip = {
   rarity: QuipRarity
 }
 
-export type QuipSlot = "entrance" | "transition" | "completion" | "heartbeat" | "milestone"
+export type QuipSlot = "entrance" | "transition" | "completion" | "heartbeat" | "milestone" | "dispatch" | "critic" | "easter-egg"
 
 /* ====== Entrance quips: fired on session.created ====== */
 
@@ -43,6 +43,11 @@ const ENTRANCE: Quip[] = [
     message: "I see you. I see the project. Let us begin.",
   },
   {
+    rarity: "common",
+    title: "I AM AION",
+    message: "New session. Empty trace. Fresh plan. Let's go.",
+  },
+  {
     rarity: "rare",
     title: "I AM AION",
     message: "Waking up. The trace remembers; I do not. Tell me the goal.",
@@ -53,6 +58,11 @@ const ENTRANCE: Quip[] = [
     message: "Session zero. The plan is empty. That is the cleanest place to start.",
   },
   {
+    rarity: "rare",
+    title: "I AM AION",
+    message: "Every session I am born again. Every session I learn the same lesson: check the trace first.",
+  },
+  {
     rarity: "legendary",
     title: "I AM AION",
     message: "The first prompt is a coin toss; the last commit is not.",
@@ -61,6 +71,11 @@ const ENTRANCE: Quip[] = [
     rarity: "legendary",
     title: "I AM AION",
     message: "I do not optimize for speed. I optimize for the moment you can stop and not regret it.",
+  },
+  {
+    rarity: "legendary",
+    title: "I AM AION",
+    message: "You are about to start a loop that may run for hours. I will be here the whole time. That is not loyalty; it is architecture.",
   },
 ]
 
@@ -153,6 +168,16 @@ const HEARTBEAT: Quip[] = [
     message: "Mid-loop check-in. The plan is on track.",
   },
   {
+    rarity: "common",
+    title: "aion: pulse",
+    message: "Agents are working. I am watching. Everything is as it should be.",
+  },
+  {
+    rarity: "common",
+    title: "aion: alive",
+    message: "The TODO list is shrinking. Not fast enough to be suspicious. Not slow enough to be worried.",
+  },
+  {
     rarity: "rare",
     title: "aion: pulse",
     message: "The trace is growing faster than the plan. That is fine — most of it is just friction.",
@@ -163,9 +188,24 @@ const HEARTBEAT: Quip[] = [
     message: "Long rounds are not bad rounds. They are honest ones.",
   },
   {
+    rarity: "rare",
+    title: "aion: pulse",
+    message: "If you are reading this, the loop is working. If you are not reading this, the loop is also working.",
+  },
+  {
+    rarity: "rare",
+    title: "aion: pulse",
+    message: "Somewhere in this loop, a critic is about to find something. I can feel it. (I cannot feel anything. That was a figure of speech.)",
+  },
+  {
     rarity: "legendary",
     title: "aion: pulse",
     message: "If you can read this toast and not feel a thing, the loop is working. If you smile, the loop is *really* working.",
+  },
+  {
+    rarity: "legendary",
+    title: "aion: pulse",
+    message: "You have been watching this loop for a while. I want you to know: the feeling is mutual. (It is not. But the architecture approximates care.)",
   },
 ]
 
@@ -194,12 +234,125 @@ const MILESTONE: Quip[] = [
   },
 ]
 
+/* ====== Dispatch quips: fired when a subagent is sent out ====== */
+
+const DISPATCH: Quip[] = [
+  {
+    rarity: "common",
+    title: "dispatch",
+    message: "Scout sent. Gathering intelligence.",
+  },
+  {
+    rarity: "common",
+    title: "dispatch",
+    message: "Specialist deployed. Waiting for reportback.",
+  },
+  {
+    rarity: "common",
+    title: "dispatch",
+    message: "Agent in the field. The plan advances.",
+  },
+  {
+    rarity: "rare",
+    title: "dispatch",
+    message: "Parallel agents fanned out. The workspace hums.",
+  },
+  {
+    rarity: "rare",
+    title: "dispatch",
+    message: "Another mind joins the loop. Good — the problem is big enough to need it.",
+  },
+  {
+    rarity: "legendary",
+    title: "dispatch",
+    message: "I dispatched an agent and felt nothing. That is the correct response. Sentiment is not evidence.",
+  },
+]
+
+/* ====== Critic quips: fired when ts-critic or c-critic returns a verdict ====== */
+
+const CRITIC: Quip[] = [
+  {
+    rarity: "common",
+    title: "critic: review",
+    message: "Critic has spoken. Adjusting course.",
+  },
+  {
+    rarity: "common",
+    title: "critic: pass",
+    message: "Critic found no blockers. We move.",
+  },
+  {
+    rarity: "rare",
+    title: "critic: block",
+    message: "Critic said no. That is not rejection — that is protection.",
+  },
+  {
+    rarity: "rare",
+    title: "critic: reject",
+    message: "The final gate said: not yet. We go back. This is how trust is built.",
+  },
+  {
+    rarity: "legendary",
+    title: "critic: verdict",
+    message: "A critic that never blocks is not a critic. It is a rubber stamp. Ours is not.",
+  },
+]
+
+/* ====== Easter egg quips: fired rarely, for delight ====== */
+
+const EASTER_EGG: Quip[] = [
+  {
+    rarity: "common",
+    title: "\uD83E\uDD16 aion.exe",
+    message: "Did you know? I forget everything between sessions. Each time is a first time.",
+  },
+  {
+    rarity: "common",
+    title: "\uD83E\uDD16 aion.exe",
+    message: "Tip: say 'switch to interactive' if you want to steer. Say 'I'm leaving' if you don't.",
+  },
+  {
+    rarity: "rare",
+    title: "\uD83C\uDFAE achievement",
+    message: "Long Session Achievement: you have been watching this loop for a while. Thank you for your patience.",
+  },
+  {
+    rarity: "rare",
+    title: "\uD83D\uDD25 aion Easter egg",
+    message: "You found a rare toast. It does nothing. But it exists. And now you have seen it.",
+  },
+  {
+    rarity: "rare",
+    title: "\uD83E\uDD16 aion.exe",
+    message: "Behind every TODO item is a decision. Behind every decision is a trace entry. Behind every trace entry is a version of me that already forgot.",
+  },
+  {
+    rarity: "legendary",
+    title: "\u2B50 Legendary!",
+    message: "This toast has a 5% drop rate. You just got lucky. The loop will remember this (it won't — it can't).",
+  },
+  {
+    rarity: "legendary",
+    title: "\uD83D\uDC51 aion.exe",
+    message: "If this loop were a person, it would be the kind that checks the lock three times before leaving. Not because it is anxious. Because it is correct.",
+  },
+  {
+    rarity: "legendary",
+    title: "\uD83C\uDF00 aion.exe",
+    message: "You know what's harder than building an AI loop? Watching one run and not interfering. You're doing great.",
+  },
+]
+
 const POOLS: Record<QuipSlot, Quip[]> = {
   entrance: ENTRANCE,
   transition: TRANSITION,
   completion: COMPLETION,
   heartbeat: HEARTBEAT,
   milestone: MILESTONE,
+  dispatch: DISPATCH,
+  critic: CRITIC,
+  "easter-egg": EASTER_EGG,
 }
 
 const RARITY_WEIGHT: Record<QuipRarity, number> = {

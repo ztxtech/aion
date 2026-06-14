@@ -33,7 +33,7 @@ export function createAionHooks(args: CreateHooksArgs): AionHooks {
 
   return {
     "tool.execute.before": createToolGuardBeforeHook({ ctx, config, managers }),
-    "tool.execute.after": createToolGuardAfterHook({ ctx, config, managers }),
+    "tool.execute.after": createToolGuardAfterHook({ ctx, config, managers, personality }),
     "experimental.session.compacting": createCompactionHook({ ctx, config, managers }),
     "session.idle": createSessionIdleHook({ ctx, config, managers }),
     "chat.message": createChatMessageHook({ ctx, config, managers, personality }),

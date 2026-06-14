@@ -57,6 +57,8 @@ export type GovernanceState = {
   userComment: string | null
   userCheckedAt: string | null
   interactiveModeResolved: "unset" | "interactive" | "autonomous"
+  interactiveModeGranularity: "autonomous" | "round-checkpoint" | "always-interactive" | "custom"
+  interactiveModeCustomTriggers: string[]
   interactiveModeConfirmedAt: string | null
   interactiveModeSource: "session-start" | "user-toggle" | "config-default" | null
   tuiTodoSyncPending: boolean
@@ -142,7 +144,14 @@ export type AionManagers = {
   interactiveMode: {
     isResolved(): boolean
     isInteractive(): boolean
-    resolve(value: "interactive" | "autonomous", source: "session-start" | "user-toggle" | "config-default"): void
+    getGranularity(): "autonomous" | "round-checkpoint" | "always-interactive" | "custom"
+    getCustomTriggers(): string[]
+    shouldPauseAt(trigger: "c-critic-verdict" | "dispatch" | "plan-switch" | "phase-transition" | "critic-reject"): boolean
+    resolve(
+      value: "interactive" | "autonomous",
+      source: "session-start" | "user-toggle" | "config-default",
+      options?: { granularity?: "autonomous" | "round-checkpoint" | "always-interactive" | "custom"; customTriggers?: string[] },
+    ): void
     reset(): void
   }
   phase: {
@@ -208,6 +217,8 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
       userComment: null,
       userCheckedAt: null,
       interactiveModeResolved: "unset",
+      interactiveModeGranularity: "autonomous",
+      interactiveModeCustomTriggers: [],
       interactiveModeConfirmedAt: null,
       interactiveModeSource: null,
       tuiTodoSyncPending: false,
@@ -325,19 +336,51 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
       if (state.governance.interactiveModeResolved === "autonomous") return false
       return config.interactiveMode.enabled
     },
-    resolve(value: "interactive" | "autonomous", source: "session-start" | "user-toggle" | "config-default"): void {
+    getGranularity(): "autonomous" | "round-checkpoint" | "always-interactive" | "custom" {
+      return state.governance.interactiveModeGranularity
+    },
+    getCustomTriggers(): string[] {
+      return state.governance.interactiveModeCustomTriggers
+    },
+    shouldPauseAt(trigger: "c-critic-verdict" | "dispatch" | "plan-switch" | "phase-transition" | "critic-reject"): boolean {
+      const g = state.governance.interactiveModeGranularity
+      if (g === "autonomous") return false
+      if (g === "always-interactive") return true
+      if (g === "round-checkpoint") return trigger === "c-critic-verdict"
+      if (g === "custom") {
+        return state.governance.interactiveModeCustomTriggers.includes(trigger)
+      }
+      return false
+    },
+    resolve(
+      value: "interactive" | "autonomous",
+      source: "session-start" | "user-toggle" | "config-default",
+      options?: { granularity?: "autonomous" | "round-checkpoint" | "always-interactive" | "custom"; customTriggers?: string[] },
+    ): void {
       state.governance.interactiveModeResolved = value
       state.governance.interactiveModeConfirmedAt = nowIso()
       state.governance.interactiveModeSource = source
+      if (options?.granularity) {
+        state.governance.interactiveModeGranularity = options.granularity
+      } else if (value === "autonomous") {
+        state.governance.interactiveModeGranularity = "autonomous"
+      } else {
+        state.governance.interactiveModeGranularity = "round-checkpoint"
+      }
+      if (options?.customTriggers) {
+        state.governance.interactiveModeCustomTriggers = options.customTriggers
+      }
       trace.appendEvent(
         "stopgo.updated",
-        `interactive mode = ${value} (source: ${source})`,
-        { mode: value, source },
+        `interactive mode = ${value} (source: ${source}, granularity: ${state.governance.interactiveModeGranularity})`,
+        { mode: value, source, granularity: state.governance.interactiveModeGranularity, customTriggers: state.governance.interactiveModeCustomTriggers },
         source === "user-toggle" ? "user" : "main-agent",
       )
     },
     reset(): void {
       state.governance.interactiveModeResolved = "unset"
+      state.governance.interactiveModeGranularity = "autonomous"
+      state.governance.interactiveModeCustomTriggers = []
       state.governance.interactiveModeConfirmedAt = null
       state.governance.interactiveModeSource = null
     },

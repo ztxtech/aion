@@ -72,11 +72,13 @@ export function createMemoryTools(args: CreateToolsArgs): Partial<AionTools> {
           "main-agent"
 
         if (mode === "replace") {
-          writeFileEnsuringDir(path, content)
+          const stamp = `<!-- aion.memory-sync ${nowIso()} artifact=${args.artifact} section=${section} agent=${callingAgent} -->`
+          writeFileEnsuringDir(path, `${stamp}\n\n${content}\n`)
         } else if (mode === "replace-section") {
           const existing = readIfExists(path) ?? ""
           const sectionHeader = `## ${section}`
-          const newBlock = `${sectionHeader}\n\n${content}\n`
+          const stamp = `<!-- aion.memory-sync ${nowIso()} artifact=${args.artifact} section=${section} agent=${callingAgent} -->`
+          const newBlock = `${sectionHeader}\n\n${stamp}\n${content}\n`
           const sectionRegex = new RegExp(`${sectionHeader}\\n[\\s\\S]*?(?=\\n## |$)`, "m")
           const updated = sectionRegex.test(existing)
             ? existing.replace(sectionRegex, newBlock)

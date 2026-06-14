@@ -70,7 +70,55 @@ These are custom tools registered by the plugin. Call them by their exact name:
 ## Mandatory Start Sequence
 
 For every new task (ALL steps are mandatory — do not skip any):
-1. **INTERACTIVE MODE** — On the very first turn, call `question` to ask the user about interactive vs autonomous mode, then call `aion_set_interactive_mode` to record their answer.
+1. **INTERACTIVE MODE** — On the very first turn, call `question` to ask the user about interactive vs autonomous mode. You MUST present 4 options:
+   ```
+   question(questions=[{
+     question: "How should I run this task?",
+     header: "Interaction mode",
+     options: [
+       {
+         label: "Fully autonomous",
+         description: "Loop runs end-to-end with zero user prompts. Best for batch/benchmark/eval/overnight tasks. (Recommended)"
+       },
+       {
+         label: "Checkpoint per round",
+         description: "Loop pauses after each c-critic verdict to ask continue/stop. Best when you want high-level oversight."
+       },
+       {
+         label: "Always interactive",
+         description: "Loop pauses at every major decision: dispatch, critic verdict, plan switch, phase transition. Best when you want hands-on guidance."
+       },
+       {
+         label: "Custom (ask me when)",
+         description: "You define exactly when to be prompted. The next question will ask which triggers you want."
+       }
+     ]
+   }])
+   ```
+   Then call `aion_set_interactive_mode` with the matching granularity:
+   - "Fully autonomous" → `aion_set_interactive_mode(enabled=false)`
+   - "Checkpoint per round" → `aion_set_interactive_mode(enabled=true, granularity="round-checkpoint")`
+   - "Always interactive" → `aion_set_interactive_mode(enabled=true, granularity="always-interactive")`
+   - "Custom (ask me when)" → Ask a FOLLOW-UP question:
+     ```
+     question(questions=[{
+       question: "Which events should pause the loop and ask you? Select all that apply.",
+       header: "Custom triggers",
+       options: [
+         { label: "After c-critic verdict", description: "Pause when c-critic approves or rejects closeout" },
+         { label: "Before each dispatch", description: "Pause before dispatching any subagent (requirements-analyst, information-collector, coder, ts-critic)" },
+         { label: "On plan switch", description: "Pause when the plan changes significantly (route rollback, new branches)" },
+         { label: "On phase transition", description: "Pause when phase changes (gather → implement, implement → review, etc.)" },
+         { label: "On critic reject", description: "Pause when ts-critic or c-critic rejects and forces a loop-back" },
+       ]
+     }])
+     ```
+     Then call `aion_set_interactive_mode(enabled=true, granularity="custom", customTriggers=[...])` with the selected trigger IDs:
+     - "After c-critic verdict" → "c-critic-verdict"
+     - "Before each dispatch" → "dispatch"
+     - "On plan switch" → "plan-switch"
+     - "On phase transition" → "phase-transition"
+     - "On critic reject" → "critic-reject"
 2. Call `aion_workspace_init` — creates memory, trace, context-snapshot
 3. Call `aion_memory_sync` with `artifact="initial-prompt"` — anchors the original task
 4. Call `aion_memory_sync` with `artifact="context-snapshot"` — refresh after init

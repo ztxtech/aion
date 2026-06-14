@@ -279,9 +279,11 @@ If you have nothing left to do in this phase, call aion_todo_update(action="upda
     // the user explicitly says otherwise.
     if (managers.state.governance.interactiveModeResolved === "unset" && round <= 1) {
       const configDefault = managers.config.interactiveMode.enabled
+      const configGranularity = managers.config.interactiveMode.granularity ?? (configDefault ? "round-checkpoint" : "autonomous")
       managers.interactiveMode.resolve(
         configDefault ? "interactive" : "autonomous",
         "config-default",
+        { granularity: configGranularity, customTriggers: managers.config.interactiveMode.customTriggers ?? [] },
       )
       if (!configDefault) {
         injections.push(
@@ -292,10 +294,16 @@ Do NOT ask the user about mode. Proceed with the task immediately.
 The user can switch to interactive at any time by saying "switch to interactive" or "ask me between rounds".`,
         )
       } else {
+        const effectMap: Record<string, string> = {
+          "round-checkpoint": "After c-critic approves closeout, the loop will pause and ask the user whether to continue.",
+          "always-interactive": "The loop will pause at every major decision (dispatch, critic verdict, plan switch, phase transition) to ask the user.",
+          "custom": `The loop will pause at these custom triggers: ${(managers.config.interactiveMode.customTriggers ?? []).join(", ") || "(none)"}`,
+          "autonomous": "The loop runs fully auto.",
+        }
         injections.push(
-          `[AION INTERACTIVE MODE — CONFIG SAYS INTERACTIVE]
-Session mode has been set to INTERACTIVE based on config (interactiveMode.enabled=true).
-After c-critic approves closeout, the loop will pause and ask the user whether to continue.
+          `[AION INTERACTIVE MODE — CONFIG SAYS ${configGranularity.toUpperCase()}]
+Session mode has been set to INTERACTIVE (granularity: ${configGranularity}) based on config.
+${effectMap[configGranularity] ?? effectMap["round-checkpoint"]}
 The user can switch to autonomous at any time by saying "switch to autonomous" or "I'm leaving".
 If you are uncertain about a decision mid-loop, you MAY use the 'question' tool to ask the user.
 Do NOT ask the user about mode — it is already resolved from config.`,
