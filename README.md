@@ -13,7 +13,6 @@
 
 ## 📰 News
 
-- **2026-06-16** — v0.5.3: memory files are exempt from dedup warnings (no more false-positive TUI toasts on `negative.md` re-reads), and a `scripts/dev-install.sh` is added to push local builds into `~/.local/lib/aion/`.
 - **2026-06-14** — AION is now a compiled TypeScript plugin for OpenCode (one-command install).
 
 ---

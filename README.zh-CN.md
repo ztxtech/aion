@@ -13,7 +13,6 @@
 
 ## 📰 News
 
-- **2026-06-16** — v0.5.3：memory 文件不再触发 dedup 警告（`negative.md` 等反复读取不会再误报 TUI 紫色 toast），并新增 `scripts/dev-install.sh` 用于把本地构建推送到 `~/.local/lib/aion/`。
 - **2026-06-14** — AION 已重构为 OpenCode 的编译型 TypeScript 插件（一行命令安装）。
 
 ---
