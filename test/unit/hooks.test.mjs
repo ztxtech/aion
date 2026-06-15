@@ -2,7 +2,7 @@ import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
 import { importBundle } from "../helpers/load-bundle.mjs";
 
 let _counter = 0;
@@ -282,6 +282,30 @@ describe("hooks: tool.execute.before dedup", async () => {
     const trace = readFileSync(join(tmp, ".opencode", "trace.md"), "utf-8");
     const dedupCount = (trace.match(/dedup\.rejected/g) || []).length;
     assert.ok(dedupCount <= 2, "should not dedup different args");
+  });
+
+  it("skips dedup for memory file reads", async () => {
+    // Reset the trace so we can count this case in isolation.
+    const traceFile = join(tmp, ".opencode", "trace.md");
+    const before = readFileSync(traceFile, "utf-8");
+    const baseCount = (before.match(/dedup\.rejected/g) || []).length;
+
+    const memPath = join(tmp, ".opencode", "memory", "negative.md");
+    mkdirSync(dirname(memPath), { recursive: true });
+    writeFileSync(memPath, "x", "utf-8");
+
+    await beforeHook(
+      { tool: "read" },
+      { args: { filePath: memPath } },
+    );
+    await beforeHook(
+      { tool: "read" },
+      { args: { filePath: memPath } },
+    );
+
+    const after = readFileSync(traceFile, "utf-8");
+    const newCount = (after.match(/dedup\.rejected/g) || []).length;
+    assert.equal(newCount, baseCount, "memory file re-reads must not be flagged as dedup");
   });
 });
 

@@ -168,25 +168,37 @@ export function createToolGuardBeforeHook(args: CreateHooksArgs): AionToolExecut
     // to recognize the no-op and move on.
     {
       const toolArgs = (output as { args?: Record<string, unknown> }).args ?? {}
-      const key = `${toolName}::${JSON.stringify(toolArgs)}`
-      const now = Date.now()
-      const last = recentCalls.get(key)
-      if (last !== undefined && now - last < DEDUP_WINDOW_MS) {
-        m.trace.appendEvent(
-          "dedup.rejected",
-          `tool.execute.before: ${toolName} called with same args within ${DEDUP_WINDOW_MS}ms (last: ${now - last}ms ago) — soft warn, allowing`,
-          { tool: toolName, key, lastCallMs: now - last },
-          "main-agent",
-        )
-        warn(`[aion] dedup: ${toolName} called with identical args ${now - last}ms ago — likely a no-op loop, but allowing to avoid triggering doom_loop protection. Move on to a different action.`, { tool: toolName })
-        // Do not throw — let the call proceed to avoid OpenCode's doom_loop escalation
-      }
-      recentCalls.set(key, now)
-      // Periodic cleanup
-      if (now - LAST_CLEANUP_MS > CLEANUP_INTERVAL_MS) {
-        LAST_CLEANUP_MS = now
-        for (const [k, t] of recentCalls) {
-          if (now - t > DEDUP_WINDOW_MS * 2) recentCalls.delete(k)
+      // Memory files (.opencode/memory/*.md) are persistent state stores that
+      // are expected to be re-read across rounds and by multiple sub-agents
+      // (e.g. information-collector re-checking negative.md for anti-patterns).
+      // Skip dedup for them — re-reads are not a no-op loop signal.
+      const toolFilePath = String(toolArgs.filePath ?? toolArgs.path ?? "")
+      const isMemoryRead = (toolName === "read" || toolName === "Read" || toolName === "view")
+        && MEMORY_DIR_PATTERN.test(toolFilePath)
+      if (!isMemoryRead) {
+        const key = `${toolName}::${JSON.stringify(toolArgs)}`
+        const now = Date.now()
+        const last = recentCalls.get(key)
+        if (last !== undefined && now - last < DEDUP_WINDOW_MS) {
+          m.trace.appendEvent(
+            "dedup.rejected",
+            `tool.execute.before: ${toolName} called with same args within ${DEDUP_WINDOW_MS}ms (last: ${now - last}ms ago) — soft warn, allowing`,
+            { tool: toolName, key, lastCallMs: now - last },
+            "main-agent",
+          )
+          // Use info() instead of warn(): this is a soft hint to the LLM, not
+          // a real error. warn() at console level makes the TUI flag the line
+          // as an error, which misleads both human and LLM about severity.
+          info(`[aion] dedup: ${toolName} called with identical args ${now - last}ms ago — likely a no-op loop, but allowing to avoid triggering doom_loop protection. Move on to a different action.`, { tool: toolName })
+          // Do not throw — let the call proceed to avoid OpenCode's doom_loop escalation
+        }
+        recentCalls.set(key, now)
+        // Periodic cleanup
+        if (now - LAST_CLEANUP_MS > CLEANUP_INTERVAL_MS) {
+          LAST_CLEANUP_MS = now
+          for (const [k, t] of recentCalls) {
+            if (now - t > DEDUP_WINDOW_MS * 2) recentCalls.delete(k)
+          }
         }
       }
     }
