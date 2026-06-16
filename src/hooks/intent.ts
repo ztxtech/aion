@@ -19,39 +19,39 @@ import { AION_GOVERNANCE_HEADER } from "../prompts/governance"
 import { info } from "../shared/logger"
 
 const SEARCH_KEYWORDS = [
-  "search", "find", "look up", "lookup", "google", "查阅", "搜索", "查找", "搜一下",
+  "search", "find", "look up", "lookup", "google", "consult", "query",
   "what is", "how to", "latest", "recent", "SOTA", "state of the art",
-  "文献", "论文", "paper", "arxiv", "benchmark", "leaderboard",
+  "literature", "paper", "arxiv", "benchmark", "leaderboard",
 ]
 
 const EXPERIMENT_KEYWORDS = [
   "experiment", "run", "train", "benchmark", "ablation", "evaluate", "training",
-  "实验", "跑", "训练", "对比", "消融", "评估", "baseline",
-  "metric", "accuracy", "loss", "score", "result", "结果", "指标",
+  "compare", "comparison", "assessment", "baseline",
+  "metric", "accuracy", "loss", "score", "result",
 ]
 
 const REVIEW_KEYWORDS = [
   "review", "critic", "check", "audit", "inspect", "verify",
-  "审查", "检查", "评审", "critique", "quality", "质量",
+  "scrutinize", "examine", "critique", "quality",
   "approve", "approve-stop", "reject-stop", "closeout",
 ]
 
 const PLAN_KEYWORDS = [
   "plan", "design", "architect", "blueprint", "brainstorm", "brain-storm",
-  "计划", "规划", "设计", "架构", "方案",
+  "scheme", "layout", "structure", "roadmap",
   "deep-reason", "deep-reasoning",
 ]
 
 const IMPLEMENT_KEYWORDS = [
   "implement", "build", "create", "write", "code", "develop",
-  "实现", "编写", "开发", "构建", "创建",
+  "compose", "author", "construct", "establish",
   "fix", "debug", "refactor", "install", "setup",
 ]
 
 const ANALYZE_KEYWORDS = [
   "analyze", "analysis", "visualize", "plot", "chart", "statistics",
-  "分析", "可视化", "画图", "统计", "诊断", "diagnosis",
-  "report", "summarize", "总结", "报告",
+  "inspect", "render", "illustrate", "summarize", "diagnose", "diagnosis",
+  "report", "outline",
 ]
 
 export function detectIntent(text: string): AionIntent {

@@ -71,23 +71,23 @@ describe("intent: detectInteractiveModeIntent patterns", async () => {
   const chatMessageTesting = await bundle._testing.chatMessage();
   const { detectInteractiveModeIntent } = chatMessageTesting;
 
-  it("detects leave intent from mixed languages", () => {
-    assert.equal(detectInteractiveModeIntent("我要走了"), "leave");
+  it("detects leave intent from mixed phrasings", () => {
+    assert.equal(detectInteractiveModeIntent("I'm leaving"), "leave");
     assert.equal(detectInteractiveModeIntent("gotta go"), "leave");
-    assert.equal(detectInteractiveModeIntent("全自动跑"), "leave");
+    assert.equal(detectInteractiveModeIntent("full auto"), "leave");
     assert.equal(detectInteractiveModeIntent("disable interactive"), "leave");
   });
 
-  it("detects engage intent from mixed languages", () => {
-    assert.equal(detectInteractiveModeIntent("我回来了"), "engage");
+  it("detects engage intent from mixed phrasings", () => {
     assert.equal(detectInteractiveModeIntent("I'm back"), "engage");
-    assert.equal(detectInteractiveModeIntent("开启交互"), "engage");
+    assert.equal(detectInteractiveModeIntent("enable interactive"), "engage");
     assert.equal(detectInteractiveModeIntent("ask me"), "engage");
+    assert.equal(detectInteractiveModeIntent("check in with me"), "engage");
   });
 
   it("returns null for neutral text", () => {
-    assert.equal(detectInteractiveModeIntent("继续"), null);
+    assert.equal(detectInteractiveModeIntent("continue"), null);
     assert.equal(detectInteractiveModeIntent("ok"), null);
-    assert.equal(detectInteractiveModeIntent("请帮我写代码"), null);
+    assert.equal(detectInteractiveModeIntent("please write code"), null);
   });
 });

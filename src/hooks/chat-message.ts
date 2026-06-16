@@ -100,24 +100,17 @@ function detectPhaseFromToolCall(toolName: string, _args: Record<string, unknown
 const ASCII_BEFORE = String.raw`(?<![A-Za-z0-9_])`
 const ASCII_AFTER = String.raw`(?![A-Za-z0-9_])`
 const LEAVE_PATTERNS: RegExp[] = [
-  new RegExp(`${ASCII_BEFORE}(我要走了|我得走了|我先走了|先走了)${ASCII_AFTER}`, "i"),
   new RegExp(`${ASCII_BEFORE}(i'?m leaving|i have to go|i need to go|gotta go|stepping away|i'?m out)${ASCII_AFTER}`, "i"),
-  new RegExp(`${ASCII_BEFORE}(不打扰了|不用再问了|别再问了|不要问我|别问了)${ASCII_AFTER}`, "i"),
   new RegExp(`${ASCII_BEFORE}(stop asking me|don'?t ask me|don'?t bother|do not ask)${ASCII_AFTER}`, "i"),
-  new RegExp(`${ASCII_BEFORE}(全自动|全自动跑|别来烦我|完全自主|不要打断|不要人工|不要交互)${ASCII_AFTER}`, "i"),
   new RegExp(`${ASCII_BEFORE}(run (it )?autonomous|fully autonomous|full auto|go fully auto|switch to auto|go auto|full auto mode)${ASCII_AFTER}`, "i"),
-  new RegExp(`${ASCII_BEFORE}(不要暂停|不要交互|以后别问|以后不要再问)${ASCII_AFTER}`, "i"),
   new RegExp(`${ASCII_BEFORE}(i don'?t want to (be involved|participate)|i won'?t (be here|be available))${ASCII_AFTER}`, "i"),
   new RegExp(`${ASCII_BEFORE}(set (it )?to autonomous|switch to non-interactive|disable interactive)${ASCII_AFTER}`, "i"),
 ]
 
 // Detect user intent to enable / re-enable interactive mode mid-conversation.
 const ENGAGE_PATTERNS: RegExp[] = [
-  new RegExp(`${ASCII_BEFORE}(我在|我回来了|我在看|我在听)${ASCII_AFTER}`, "i"),
   new RegExp(`${ASCII_BEFORE}(i'?m back|i'?m here|i'?m watching|i'm here)${ASCII_AFTER}`, "i"),
-  new RegExp(`${ASCII_BEFORE}(交互模式|开启交互|进入交互|以后问我|开始问我)${ASCII_AFTER}`, "i"),
   new RegExp(`${ASCII_BEFORE}(enable interactive|switch to interactive|ask me|check with me)${ASCII_AFTER}`, "i"),
-  new RegExp(`${ASCII_BEFORE}(继续问我|先问我|和我确认|和我讨论)${ASCII_AFTER}`, "i"),
   new RegExp(`${ASCII_BEFORE}(check in with me|let me weigh in|ask for my input)${ASCII_AFTER}`, "i"),
 ]
 

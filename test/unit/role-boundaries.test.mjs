@@ -64,7 +64,7 @@ describe("hard role boundaries (orchestrator must not do worker work)", () => {
   it("aion prompt warns the user monitors the trace and will judge role violations", () => {
     const prompt = readPrompt("aion");
     assert.match(prompt, /trace/i);
-    assert.match(prompt, /role violation|各司其职|own fix|play.{0,5}role/i);
+    assert.match(prompt, /role violation|own fix|play.{0,5}role/i);
   });
 });
 
