@@ -22,7 +22,7 @@ export function createCriticTools(args: CreateToolsArgs): Partial<AionTools> {
   return {
     aion_critic_dispatch: tool({
       description:
-        "Programmatically dispatch a critic review. Use aion_critic_dispatch('ts-critic' | 'c-critic', goal, evidence_artifacts). This is the ONLY sanctioned way to call a critic — replacing the soft 'dispatch ts-critic' prompt. The critic verdict is recorded into the governance state and trace.",
+        "Prepare a critic review package. This tool DOES NOT dispatch the critic itself — it returns a structured instruction payload that you MUST pass to the `task` tool in the SAME turn to actually run the critic. Flow: (1) call aion_critic_dispatch('ts-critic' | 'c-critic', goal, evidence_artifacts) to get the dispatch payload; (2) IMMEDIATELY call task(subagent_type=<critic>, description=<goal>, prompt=<the returned instructions>) to actually run the critic subagent; (3) the task tool will block until the critic finishes and returns its verdict as a tool result; (4) then call aion_critic_verdict to record the verdict into governance state. Skipping step (2) means the critic never runs.",
       args: {
         critic: z.enum(["ts-critic", "c-critic"]),
         goal: z.string().describe("Specific question or goal for the critic"),
@@ -36,7 +36,7 @@ export function createCriticTools(args: CreateToolsArgs): Partial<AionTools> {
         const unresolved = args?.unresolved_blockers ?? []
         m.trace.appendEvent(
           "critic.review",
-          `${args.critic} dispatch: ${goal.slice(0, 200)}`,
+          `${args.critic} dispatch prepared (dispatchId=${dispatchId}): ${goal.slice(0, 200)}`,
           {
             dispatchId,
             critic: args.critic,
@@ -46,22 +46,31 @@ export function createCriticTools(args: CreateToolsArgs): Partial<AionTools> {
           },
           args.critic,
         )
+
+        // Build the instruction payload that the main agent MUST pass to the
+        // `task` tool. The task tool is the ONLY way to actually run a subagent
+        // in OpenCode — this tool just prepares the prompt.
+        const instructions = [
+          `READ-ONLY: review the listed evidence_artifacts: ${evidence.join(", ") || "(none)"}`,
+          `ANSWER: ${goal}`,
+          unresolved.length > 0
+            ? `REBUT unresolved_blockers: ${unresolved.join(", ")}`
+            : "",
+          `OUTPUT schema:`,
+          `- verdict: allow-stop | absolutely-cannot-stop-now | rebuttal-mode | rollback`,
+          `- unresolved_blockers: [{ id, description, evidence, forbidden_action, unblock_condition }]`,
+          `- why_not_stop: explicit justification for not closing the task`,
+          `- next_call: which agent / skill should be called next`,
+        ].filter(Boolean).join("\n")
+
         return JSON.stringify(
           {
             dispatchId,
             critic: args.critic,
-            instructions: [
-              `READ-ONLY: review the listed evidence_artifacts: ${evidence.join(", ") || "(none)"}`,
-              `ANSWER: ${goal}`,
-              unresolved.length > 0
-                ? `REBUT unresolved_blockers: ${unresolved.join(", ")}`
-                : "",
-              `OUTPUT schema:`,
-              `- verdict: allow-stop | absolutely-cannot-stop-now | rebuttal-mode | rollback`,
-              `- unresolved_blockers: [{ id, description, evidence, forbidden_action, unblock_condition }]`,
-              `- why_not_stop: explicit justification for not closing the task`,
-              `- next_call: which agent / skill should be called next`,
-            ].filter(Boolean),
+            status: "PAYLOAD_READY_NOT_DISPATCHED",
+            warning: "The critic has NOT been dispatched yet. This tool only prepared the instruction payload.",
+            next_action_required: `Call task(subagent_type="${args.critic}", description="${goal.slice(0, 120).replace(/"/g, "'")}", prompt=${JSON.stringify(instructions)}) NOW in this same turn. The task tool will block until the critic finishes. Do NOT end your turn without making this task call.`,
+            instructions,
           },
           null,
           2,
