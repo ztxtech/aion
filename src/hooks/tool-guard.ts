@@ -22,6 +22,17 @@ import { warn, info } from "../shared/logger"
 import { notifyFromCtx } from "../shared/notify-tui"
 import { existsSync, readFileSync } from "node:fs"
 import { join, relative, resolve } from "node:path"
+import {
+  isLegalDispatch,
+  legalDispatchesFrom,
+  recordDispatch,
+  requiresPreReview,
+  parseReportback,
+  recordWorkerDone,
+  resetWorkerProgress,
+  type DispatchableAgent,
+  type WorkerAgent,
+} from "../scheduling/state-machine"
 
 // All leakage pattern checks (path + content) are centralized in
 // `managers.enforce.leakageCheck()` (see create-managers.ts). The hook here
@@ -438,6 +449,163 @@ export function createToolGuardBeforeHook(args: CreateHooksArgs): AionToolExecut
           })
         }
       }
+
+      // === G1. Scheduling state-machine edge check (HARD GATE) ===
+      // The serial-loop model requires dispatches to follow the state graph
+      // in src/scheduling/state-machine.ts. Dispatching an agent that is not
+      // on a legal edge from the current phase is a violation. We trace, warn,
+      // and toast — but do NOT throw, because throwing triggers OpenCode's
+      // doom_loop protection and the main agent would lose the diagnostic.
+      // The combination of trace + toast + persistent system-prompt injection
+      // gives the main agent enough signal to self-correct on the next round.
+      //
+      // ESCALATION (R5 enforce): if a pending next_call has been ignored for
+      // >= NEXT_CALL_IGNORE_THRESHOLD rounds (set in system-transform.ts),
+      // we upgrade to a HARD throw — the only legal dispatch becomes the
+      // requested agent. This forces compliance when soft warn fails.
+      const NEXT_CALL_IGNORE_THRESHOLD = 2
+      const pendingNextCall = m.state.governance.pendingNextCall
+      const ignoredRounds = m.state.governance.pendingNextCallIgnoredRounds
+      const isEscalated = pendingNextCall !== null && ignoredRounds >= NEXT_CALL_IGNORE_THRESHOLD
+      if (isEscalated && subagentType !== pendingNextCall) {
+        m.trace.appendEvent(
+          "scheduling.dispatch",
+          `G1 ESCALATED throw: main agent dispatching ${subagentType} but pending next_call=${pendingNextCall} has been ignored ${ignoredRounds + 1} rounds`,
+          { phase: m.phase.current(), agent: subagentType, pendingNextCall, ignoredRounds },
+          "main-agent",
+        )
+        throw new Error(
+          `[aion] G1 escalation: a worker proposed next_call=${pendingNextCall} ${ignoredRounds + 1} rounds ago and you have not honored it. Dispatch ${pendingNextCall} (or ts-critic for its pre-review) now. No other dispatch is allowed until this is resolved.`,
+        )
+      }
+
+      if (subagentType) {
+        const phase = m.phase.current()
+        const agent = subagentType as DispatchableAgent
+        const legal = isLegalDispatch(phase, agent)
+        const progressNote = recordDispatch(agent, phase)
+        m.trace.appendEvent(
+          "scheduling.dispatch",
+          `G1 dispatch: phase=${phase} agent=${agent} legal=${legal} (${progressNote})`,
+          { phase, agent, legal, progress: progressNote, round: m.state.rounds.current },
+          "main-agent",
+        )
+
+        // If the main agent IS honoring the pending next_call, clear it.
+        if (pendingNextCall && subagentType === pendingNextCall) {
+          m.state.governance.pendingNextCall = null
+          m.state.governance.pendingNextCallReason = null
+          m.state.governance.pendingNextCallIgnoredRounds = 0
+          m.state.governance.lastInjectedNextCall = null
+          m.trace.appendEvent(
+            "scheduling.dispatch",
+            `G1: pending next_call=${pendingNextCall} honored and cleared`,
+            { honoredAgent: pendingNextCall },
+            "main-agent",
+          )
+        }
+
+        if (!legal) {
+          // Pre-review gate: special-case for workers. Even if dispatch is
+          // on a legal edge, a worker's FIRST dispatch requires a prior
+          // ts-critic pre-review.
+          let preReviewMissing = false
+          if (agent === "requirements-analyst" || agent === "information-collector" || agent === "coder") {
+            if (requiresPreReview(agent as WorkerAgent)) {
+              preReviewMissing = true
+            }
+          }
+          const reason = preReviewMissing
+            ? `${agent} requires a ts-critic pre-review before its first dispatch. Dispatch ts-critic first.`
+            : `${agent} is not on a legal edge from phase=${phase}. Legal: ${legalDispatchesFrom(phase)}`
+          warn(`[aion] G1 scheduling violation: ${reason}`)
+          notifyFromCtx(m.ctx, {
+            variant: "warning",
+            title: "Scheduling violation",
+            message: reason,
+            duration: 8000,
+          })
+        } else {
+          // Edge is legal — but still check pre-review requirement for workers.
+          if (agent === "requirements-analyst" || agent === "information-collector" || agent === "coder") {
+            if (requiresPreReview(agent as WorkerAgent)) {
+              m.trace.appendEvent(
+                "scheduling.pre_review_missing",
+                `G1 soft warn: ${agent} dispatched without pre-review (phase=${phase})`,
+                { phase, agent },
+                "main-agent",
+              )
+              notifyFromCtx(m.ctx, {
+                variant: "warning",
+                title: `Missing pre-review for ${agent}`,
+                message: `The serial-loop contract requires ts-critic to review BEFORE ${agent}'s first dispatch. Consider dispatching ts-critic next round if you skipped it.`,
+                duration: 7000,
+              })
+            }
+          }
+        }
+      }
+    }
+
+    // === G2. Main-agent work-guard (SOFT WARN per user decision) ===
+    // The main agent's role is dispatch + integration + governance, NOT
+    // implementation. When the main agent calls write/edit/bash on project
+    // source files (anything outside .opencode/memory/, todo, trace), warn.
+    // This is SOFT (not throw) because: (a) emergency self-fix is a legitimate
+    // escape hatch (see aion/default.md:106); (b) throwing triggers doom_loop.
+    // The signal is: trace event + TUI toast + console.warn. The main agent's
+    // own role-boundary prompt section reinforces this every turn.
+    if (toolName === "write" || toolName === "Write" || toolName === "edit" || toolName === "Edit" || toolName === "apply_patch") {
+      const toolArgs = (output as { args?: Record<string, unknown> }).args ?? {}
+      const filePath = String(toolArgs.filePath ?? toolArgs.path ?? toolArgs.target ?? "")
+      // Allow writes to: .opencode/memory/, trace.md, todo-map, aion tooling.
+      // These are orchestration files, not project source.
+      const isOrchestrationFile =
+        filePath.includes(".opencode/memory/") ||
+        filePath.endsWith("trace.md") ||
+        filePath.endsWith("todo-map.md") ||
+        filePath.endsWith("completion-gate.md")
+      if (!isOrchestrationFile) {
+        m.trace.appendEvent(
+          "role.work_violation",
+          `G2 soft warn: main agent editing project file ${filePath} — should dispatch coder`,
+          { tool: toolName, filePath },
+          "main-agent",
+        )
+        // Soft signal only — no throw, no block. The role-boundary prompt
+        // section in aion/default.md is the primary enforcement; this toast
+        // is a real-time nudge so the user can see the violation happening.
+        notifyFromCtx(m.ctx, {
+          variant: "warning",
+          title: "Main agent doing worker's job",
+          message: `Editing ${filePath} — this is coder's responsibility. If this is an emergency self-fix, dispatch coder to verify immediately after. Otherwise, cancel and dispatch.`,
+          duration: 7000,
+        })
+      }
+    }
+    if (toolName === "bash" || toolName === "Bash") {
+      const bashArgs = (output as { args?: Record<string, unknown> }).args ?? {}
+      const command = String(bashArgs.command ?? bashArgs.cmd ?? "")
+      // Code-modifying bash patterns (sed/awk/cat<<EOF/redirect to source file).
+      // Read-only commands (ls, cat for reading, grep, git status) are fine.
+      const codeModifying =
+        /\b(sed|awk|perl|python3?\s+-c)\b.*\s(-i|--in-place)\b/i.test(command) ||
+        /cat\s+<<\s*(EOF|END|AION)/i.test(command) ||
+        /\btee\b\s+/i.test(command) && /\.(ts|js|mjs|py|json|jsonc|md)$/i.test(command)
+      if (codeModifying) {
+        m.trace.appendEvent(
+          "role.work_violation",
+          `G2 soft warn: main agent running code-modifying bash — should dispatch coder`,
+          { tool: toolName, command: command.slice(0, 200) },
+          "main-agent",
+        )
+        notifyFromCtx(m.ctx, {
+          variant: "warning",
+          title: "Main agent doing worker's job",
+          message: `Code-modifying bash detected. This is coder's responsibility. Dispatch coder instead.`,
+          duration: 7000,
+        })
+      }
     }
 
     if (rawName.startsWith("aion_") && !AION_SAFETY_TOOLS.has(rawName)) {
@@ -549,6 +717,49 @@ export function createToolGuardAfterHook(args: CreateHooksArgs): AionToolExecute
         personality.onCriticVerdict(
           String(toolArgs.critic ?? ""),
           String(toolArgs.verdict ?? ""),
+        )
+      }
+    }
+
+    // === G3. Reportback protocol enforcement ===
+    // Every worker dispatch returns free text. We parse it for:
+    //   - status (done | blocker | need-info | rejected)
+    //   - next_call (worker-proposed next agent; main agent MUST honor)
+    //   - unresolved issues (carried into next round's prompt per R4)
+    // If a worker reports back done, mark it done in the state machine.
+    // If next_call is non-null, store it for the system-transform hook to
+    // inject into the next round's prompt (main agent reads it and dispatches
+    // accordingly).
+    if (toolName === "task" && outputText) {
+      const taskArgs = (output as { args?: Record<string, unknown> }).args ?? {}
+      const subagentType = String(taskArgs.subagent_type ?? "")
+      const isWorker =
+        subagentType === "requirements-analyst" ||
+        subagentType === "information-collector" ||
+        subagentType === "coder"
+      if (isWorker) {
+        const rb = parseReportback(outputText)
+        if (rb.status === "done") {
+          recordWorkerDone(subagentType as WorkerAgent)
+        }
+        if (rb.nextCall !== null) {
+          m.state.governance.pendingNextCall = String(rb.nextCall)
+          m.state.governance.pendingNextCallReason = rb.nextCallReason ?? null
+        }
+        if (rb.unresolvedIssues.length > 0) {
+          m.state.governance.pendingUnresolvedIssues = rb.unresolvedIssues
+        }
+        m.trace.appendEvent(
+          "reportback.parsed",
+          `G3 parsed ${subagentType} reportback: status=${rb.status}, nextCall=${rb.nextCall ?? "(none)"}, unresolved=${rb.unresolvedIssues.length}`,
+          {
+            agent: subagentType,
+            status: rb.status,
+            nextCall: rb.nextCall,
+            unresolvedCount: rb.unresolvedIssues.length,
+            unresolvedSample: rb.unresolvedIssues.slice(0, 3),
+          },
+          "main-agent",
         )
       }
     }

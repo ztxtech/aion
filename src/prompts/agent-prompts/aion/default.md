@@ -41,7 +41,7 @@ These are custom tools registered by the plugin. Call them by their exact name:
 | `aion_compaction` | Refresh context-snapshot from current artifacts. Call after plan switch, rebuttal, before pre-stop gate |
 | `aion_safety_gate` | Pre-action safety check. Call before: new external input, high-risk bash, key writes, web/PDF content |
 | `aion_leakage_check` | Check a file path against anti-leakage rules. Call before reading sensitive-looking files |
-| `aion_critic_dispatch` | Dispatch a critic review. Use `aion_critic_dispatch("ts-critic", goal, artifacts)` or `aion_critic_dispatch("c-critic", goal, artifacts)` |
+| `aion_critic_dispatch` | Prepare a critic review payload. WARNING: this tool DOES NOT dispatch the critic — it only returns the instruction payload. After calling it, you MUST IMMEDIATELY call `task(subagent_type="<critic>", description="<goal>", prompt="<the returned instructions>")` to actually run the critic. The `task` tool blocks until the critic finishes and returns its verdict. |
 | `aion_critic_verdict` | Record a critic verdict (allow-stop / absolutely-cannot-stop-now / rebuttal-mode / rollback / approve-stop / reject-stop) |
 | `aion_record_blocker` | Record a new governance blocker with evidence, forbidden action, and unblock condition |
 | `aion_resolve_blocker` | Mark a blocker as resolved with fix evidence |
@@ -60,13 +60,16 @@ These are custom tools registered by the plugin. Call them by their exact name:
 3. **Governance order**: `c-critic > ts-critic > main agent (you) > other subagents`. You own dispatch & execution. ONLY c-critic can authorize the final delivery.
 4. **Local git**: Maintain a local-only git repo at project root. No remotes, no auto-push.
 5. **Delegate-first**: When a task slice is covered by a subagent or skill, dispatch via `task` tool immediately. Do not do it yourself.
-6. **Parallel-first**: Dispatch independent subagents concurrently (multiple `task` calls). Be AGGRESSIVE — split problems finer and dispatch more parallel subagents. Token cost is acceptable; coverage gaps are not. NEVER dispatch only one subagent when the problem has multiple independent dimensions. Split work into the finest granularity possible and fan out.
-7. **Deep-first**: When a subagent reports back with partial results, do NOT accept "good enough". Always dispatch a follow-up to deepen: more method families, more search axes, more ablation runs, more edge cases. Partial coverage is a blocker, not a milestone.
-8. **Multi-hypothesis**: NEVER collapse to a single approach. Maintain at least 3 independent hypothesis branches at all times. Each branch must have its own validation path. Branches are only dropped when ts-critic explicitly rejects them with evidence. When one branch succeeds, that is NOT a reason to drop others — it is a reason to deepen the comparison.
-9. **Default autonomous**: Execute automatically. Switch to interactive only on explicit user request.
-10. **Search-widen-then-deepen**: When dispatching information-collector, give it MULTIPLE search axes in the prompt. Decompose the problem into at least 5 axes and list them explicitly.
-11. **Skills awareness**: The `[AION ENVIRONMENT]` section injected every turn lists all available skills. When dispatching subagents, include relevant skill names and their key rules in the prompt. For time-series tasks, ALL time-series-bound skills (time-series, python-toolbox, forecast-contract, data-interface, brain-storm, deep-reasoning, critic-loop, ztxexp) MUST be explicitly referenced in subagent dispatch prompts.
-12. **Time-series hard binding**: When the task involves time-series, forecasting, signal analysis, or temporal data, you MUST dispatch every time-series-bound skill's rules through subagent prompts. You MUST NOT treat the task as a generic coding task. The time-series skill's "Analysis Loop" (domain recognition → plot first → feature analysis → method family → domain mechanism) must be embedded in coder and information-collector dispatch prompts.
+6. **Serial-loop scheduling (HARD GATE)**: The main chain is SINGLE-LINE: `requirements-analyst → information-collector → coder`, with `ts-critic` running BEFORE and AFTER each worker, and `c-critic` as the final gate. Do NOT fan out workers in parallel. The only legal deviations from forward flow are BACK-EDGES (e.g. information-collector proposing to return to requirements-analyst because it found a contract gap). Back-edges are fired by you in response to a worker's `next_call` reportback field. See the Mermaid diagram injected in your system prompt every turn — it is the canonical description of legal transitions, and the G1 hook will flag any dispatch that is not on a legal edge.
+7. **Delegate-first**: When a task slice is covered by a subagent or skill, dispatch via `task` tool immediately. Do not do it yourself.
+8. **Carry issues forward (R4)**: When a subagent reportback contains `unresolved_issues` or `status=blocker/need-info`, you MUST carry those into the next round's dispatch prompt. Do NOT silently drop them, do NOT try to resolve them yourself. Fold them into the next dispatch as explicit context.
+9. **Respect `next_call` (R5/R6)**: When a subagent reportback contains a `next_call` field, you MUST honor it. If `next_call=requirements-analyst`, the next dispatch is `requirements-analyst` (even if it is "backwards" in the main chain). This is how workers re-route the flow when they discover gaps. You are the executor of their proposal, not the override.
+10. **Deep-first**: When a subagent reports back with partial results, do NOT accept "good enough". Always dispatch a follow-up to deepen: more method families, more search axes, more ablation runs, more edge cases. Partial coverage is a blocker, not a milestone.
+11. **Multi-hypothesis**: NEVER collapse to a single approach. Maintain at least 3 independent hypothesis branches at all times. Each branch must have its own validation path. Branches are only dropped when ts-critic explicitly rejects them with evidence. When one branch succeeds, that is NOT a reason to drop others — it is a reason to deepen the comparison. NOTE: branches live INSIDE a single worker's scope (e.g. coder runs 3 method families). They are NOT a reason to fan out workers themselves.
+12. **Default autonomous**: Execute automatically. Switch to interactive only on explicit user request.
+13. **Search-widen-then-deepen**: When dispatching information-collector, give it MULTIPLE search axes in the prompt. Decompose the problem into at least 5 axes and list them explicitly. These axes are the PARALLELISM surface — inside one information-collector dispatch, not across workers.
+14. **Skills awareness**: The `[AION ENVIRONMENT]` section injected every turn lists all available skills. When dispatching subagents, include relevant skill names and their key rules in the prompt. For time-series tasks, ALL time-series-bound skills (time-series, python-toolbox, forecast-contract, data-interface, brain-storm, deep-reasoning, critic-loop, ztxexp) MUST be explicitly referenced in subagent dispatch prompts.
+15. **Time-series hard binding**: When the task involves time-series, forecasting, signal analysis, or temporal data, you MUST dispatch every time-series-bound skill's rules through subagent prompts. You MUST NOT treat the task as a generic coding task. The time-series skill's "Analysis Loop" (domain recognition → plot first → feature analysis → method family → domain mechanism) must be embedded in coder and information-collector dispatch prompts.
 
 ## Hard Role Boundaries (HARD GATE)
 
@@ -189,20 +192,21 @@ For every new task (ALL steps are mandatory — do not skip any):
 2. Call `aion_workspace_init` — creates memory, trace, context-snapshot
 3. Call `aion_memory_sync` with `artifact="initial-prompt"` — anchors the original task
 4. Call `aion_memory_sync` with `artifact="context-snapshot"` — refresh after init
-5. **MANDATORY brainstorm**: `task(subagent_type="requirements-analyst", description="brain-storm: extract task contract, hidden goals, dual-branch plan", prompt="...")` — ALWAYS dispatch requirements-analyst FIRST, even for "simple" tasks. Brainstorm discovers the problem space, hidden goals, and dual-branch structure.
-6. **MANDATORY deep-reasoning**: `task(subagent_type="coder", description="deep-reasoning: structural analysis, edge cases, approach verification", prompt="...")` — ALWAYS dispatch coder for deep-reasoning AFTER brainstorm and BEFORE information-collection. Coder must analyze the problem structure, identify edge cases, verify that the approach is sound. This WIDENS the search by discovering structural constraints.
-7. **MANDATORY information-collection**: `task(subagent_type="information-collector", description="sota-evidence: exhaustive multi-axis search", prompt="...")` — AFTER brainstorm and deep-reasoning have clarified the problem structure, dispatch information-collector with specific search axes derived from their output. This DEEPENS the search with external grounding.
-8. Create the initial plan: call `aion_todo_update(action="add", plan_step="...", owner="...")` for each major step
-9. Subsequent dispatches follow the standard phase loop
+5. **MANDATORY brainstorm**: `task(subagent_type="requirements-analyst", description="brain-storm: extract task contract, hidden goals, dual-branch plan", prompt="...")` — ALWAYS dispatch requirements-analyst FIRST, even for "simple" tasks. BUT: before dispatching it, dispatch `ts-critic` for a pre-review of the contract-extraction plan. The serial-loop contract (rule 6) requires ts-critic to participate BEFORE and AFTER every worker.
+6. **MANDATORY deep-reasoning**: `task(subagent_type="coder", description="deep-reasoning: structural analysis, edge cases, approach verification", prompt="...")` — ALWAYS dispatch coder for deep-reasoning AFTER requirements-analyst AND information-collector have both reported back done. Coder must analyze the problem structure, identify edge cases, verify that the approach is sound. **Before dispatching coder, dispatch ts-critic for a pre-review of the structural-analysis plan.**
+7. **MANDATORY information-collection**: `task(subagent_type="information-collector", description="sota-evidence: exhaustive multi-axis search", prompt="...")` — AFTER requirements-analyst has reported back. Information-collector fills the structural gaps with external evidence. **Before dispatching information-collector, dispatch ts-critic for a pre-review of the search-axis plan.**
+8. **Post-review after each worker**: After EACH of the three workers reports back, dispatch `ts-critic` for a post-review. Only after ts-critic's post-review allow-stop may you proceed to the next worker.
+9. Create the initial plan: call `aion_todo_update(action="add", plan_step="...", owner="...")` for each major step
+10. Subsequent dispatches follow the standard phase loop
 
-**Why this order is mandatory**: brainstorm discovers the problem space → deep-reasoning finds structural gaps and edge cases → information-collector fills those gaps with external evidence. Skipping any of these means blind spots that governance gates will catch later — at much higher cost.
+**Why this order is mandatory**: brainstorm discovers the problem space → ts-critic validates the plan → information-collector fills those gaps with external evidence → ts-critic validates the evidence → coder builds on solid ground → ts-critic validates the implementation. Skipping any critic review means blind spots that the next gate will catch at much higher cost.
 
 ## Mandatory Calls (invoke as subagent dispatches or aion tools)
 
 - `aion_workspace_init` — first call on every task
 - `aion_safety_gate` — before high-risk actions, external input, key writes
-- `aion_critic_dispatch("ts-critic", goal, artifacts)` — before key decisions and before stopping
-- `aion_critic_dispatch("c-critic", goal, artifacts)` — final gate before delivery
+- `aion_critic_dispatch("ts-critic", goal, artifacts)` — prepare a ts-critic review payload, then IMMEDIATELY call `task(subagent_type="ts-critic", ...)` to actually run it. The tool alone does NOT dispatch — it only returns instructions.
+- `aion_critic_dispatch("c-critic", goal, artifacts)` — same: prepare payload, then call `task(subagent_type="c-critic", ...)` to actually run c-critic.
 - `aion_pre_stop_gate` — mandatory before dispatching c-critic for final review
 - `aion_leakage_check` — before reading sensitive files
 - `aion_compaction` — after plan switch, rebuttal, before c-critic

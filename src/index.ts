@@ -121,4 +121,7 @@ export const _testing = {
       ...handleMod,
     }
   },
+  async scheduling() {
+    return await import("./scheduling/state-machine.js")
+  },
 } as const

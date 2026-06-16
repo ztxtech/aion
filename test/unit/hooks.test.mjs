@@ -426,3 +426,151 @@ describe("hooks: experimental.compaction.autocontinue is registered", async () =
     assert.equal(typeof result["experimental.compaction.autocontinue"], "function");
   });
 });
+
+describe("hooks: G1 scheduling dispatch edge check", async () => {
+  const tmp = createTmp("aion-g1-");
+  let beforeHook;
+
+  before(async () => {
+    const result = await createPlugin(tmp);
+    beforeHook = result["tool.execute.before"];
+  });
+  after(() => { try { rmSync(tmp, { recursive: true, force: true }); } catch {} });
+
+  it("does not throw on legal dispatch (requirements-analyst from gather)", async () => {
+    // Should not throw even though pre-review is missing — G1 is soft warn.
+    await beforeHook(
+      { tool: "task" },
+      { args: { subagent_type: "requirements-analyst" } },
+    );
+    const trace = readFileSync(join(tmp, ".opencode", "trace.md"), "utf-8");
+    assert.ok(trace.includes("scheduling.dispatch") || trace.includes("G1"));
+  });
+
+  it("traces a scheduling.dispatch event for every task dispatch", async () => {
+    const beforeCount = (readFileSync(join(tmp, ".opencode", "trace.md"), "utf-8")
+      .match(/scheduling\.dispatch/g) || []).length;
+    await beforeHook(
+      { tool: "task" },
+      { args: { subagent_type: "ts-critic" } },
+    );
+    const afterCount = (readFileSync(join(tmp, ".opencode", "trace.md"), "utf-8")
+      .match(/scheduling\.dispatch/g) || []).length;
+    assert.ok(afterCount >= beforeCount + 1, "expected a new scheduling.dispatch event");
+  });
+
+  it("does not throw on illegal dispatch (coder from init) — soft warn only", async () => {
+    // coder from init is NOT a legal edge, but G1 must not throw (doom_loop avoidance).
+    await beforeHook(
+      { tool: "task" },
+      { args: { subagent_type: "coder" } },
+    );
+    const trace = readFileSync(join(tmp, ".opencode", "trace.md"), "utf-8");
+    assert.ok(trace.includes("scheduling.dispatch"));
+  });
+});
+
+describe("hooks: G2 main-agent work-guard soft warn", async () => {
+  const tmp = createTmp("aion-g2-");
+  let beforeHook;
+
+  before(async () => {
+    const result = await createPlugin(tmp);
+    beforeHook = result["tool.execute.before"];
+  });
+  after(() => { try { rmSync(tmp, { recursive: true, force: true }); } catch {} });
+
+  it("traces a role.work_violation event when main agent edits project source", async () => {
+    await beforeHook(
+      { tool: "write" },
+      { args: { filePath: "src/index.ts", content: "modified" } },
+    );
+    const trace = readFileSync(join(tmp, ".opencode", "trace.md"), "utf-8");
+    assert.ok(trace.includes("role.work_violation"), "expected role.work_violation trace event");
+  });
+
+  it("does NOT trace role.work_violation when writing to .opencode/memory/", async () => {
+    const before = (readFileSync(join(tmp, ".opencode", "trace.md"), "utf-8")
+      .match(/role\.work_violation/g) || []).length;
+    await beforeHook(
+      { tool: "write" },
+      { args: { filePath: ".opencode/memory/progress.md", content: "ok" } },
+    );
+    const after = (readFileSync(join(tmp, ".opencode", "trace.md"), "utf-8")
+      .match(/role\.work_violation/g) || []).length;
+    assert.equal(after, before, "writing to memory/ must NOT trigger G2");
+  });
+
+  it("does NOT throw on violation — soft warn only", async () => {
+    // The call should resolve, not reject. If G2 threw, this would throw.
+    await beforeHook(
+      { tool: "edit" },
+      { args: { filePath: "src/foo.ts", oldString: "a", newString: "b" } },
+    );
+    // If we reach this assertion, no throw happened.
+    assert.ok(true);
+  });
+});
+
+describe("hooks: G3 reportback parsing on task completion", async () => {
+  const tmp = createTmp("aion-g3-");
+  let beforeHook, afterHook;
+
+  before(async () => {
+    const result = await createPlugin(tmp);
+    beforeHook = result["tool.execute.before"];
+    afterHook = result["tool.execute.after"];
+  });
+  after(() => { try { rmSync(tmp, { recursive: true, force: true }); } catch {} });
+
+  it("parses next_call from worker reportback and stores it in governance state", async () => {
+    // Simulate dispatch + reportback of information-collector proposing a back-edge.
+    await beforeHook(
+      { tool: "task" },
+      { args: { subagent_type: "information-collector" } },
+    );
+    await afterHook(
+      { tool: "task" },
+      {
+        args: { subagent_type: "information-collector" },
+        output: "status: done\nnext_call: requirements-analyst\nnext_call_reason: contract gap in Section 3",
+      },
+    );
+    const trace = readFileSync(join(tmp, ".opencode", "trace.md"), "utf-8");
+    assert.ok(trace.includes("reportback.parsed"), "expected reportback.parsed event");
+    assert.ok(trace.includes("requirements-analyst"), "expected next_call value in trace");
+  });
+
+  it("extracts unresolved issues from reportback text", async () => {
+    await afterHook(
+      { tool: "task" },
+      {
+        args: { subagent_type: "coder" },
+        output: "status: blocker\n- unresolved: feature X baseline missing\n- missing: eval script",
+      },
+    );
+    const trace = readFileSync(join(tmp, ".opencode", "trace.md"), "utf-8");
+    assert.ok(trace.includes("unresolved"), "expected unresolved issues to be parsed and traced");
+  });
+
+  it("does not crash on empty reportback", async () => {
+    await afterHook(
+      { tool: "task" },
+      { args: { subagent_type: "coder" }, output: "" },
+    );
+    // reaching here = no crash
+    assert.ok(true);
+  });
+
+  it("does not parse reportback for non-worker dispatches (ts-critic)", async () => {
+    const before = (readFileSync(join(tmp, ".opencode", "trace.md"), "utf-8")
+      .match(/reportback\.parsed/g) || []).length;
+    await afterHook(
+      { tool: "task" },
+      { args: { subagent_type: "ts-critic" }, output: "status: done\nnext_call: stop" },
+    );
+    const after = (readFileSync(join(tmp, ".opencode", "trace.md"), "utf-8")
+      .match(/reportback\.parsed/g) || []).length;
+    assert.equal(after, before, "ts-critic reportback should NOT be parsed as a worker reportback");
+  });
+});

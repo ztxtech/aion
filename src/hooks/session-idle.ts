@@ -27,48 +27,47 @@ You MUST now follow this EXACT sequence. Do NOT skip any step:
 2. Call aion_workspace_init with the user's original task prompt
 3. Call aion_memory_sync with artifact="initial-prompt"
 4. Call aion_memory_sync with artifact="context-snapshot"
-5. MANDATORY BRAINSTORM: dispatch task(subagent_type="requirements-analyst", description="brain-storm: extract task contract, hidden goals, dual-branch plan", prompt="...") — ALWAYS, no exceptions
-6. MANDATORY DEEP-REASONING: dispatch task(subagent_type="coder", description="deep-reasoning: structural analysis, edge cases, approach verification", prompt="...") — AFTER brainstorm has clarified the problem, ALWAYS
-7. MANDATORY INFORMATION COLLECTION: dispatch task(subagent_type="information-collector", description="sota-evidence: exhaustive multi-axis search", prompt="...") — AFTER deep-reasoning has identified structural gaps, ALWAYS
-8. After all three report back, call aion_compaction, then move to ts-pre-review
-Do NOT skip brainstorm, deep-reasoning, or information-collection. They are ALL mandatory for every task, even "simple" ones.`,
+5. MANDATORY (serial-loop contract): dispatch ts-critic for a pre-review of the contract-extraction plan
+6. MANDATORY: dispatch task(subagent_type="requirements-analyst", description="brain-storm: extract task contract, hidden goals, dual-branch plan", prompt="...") — only after the ts-critic pre-review
+7. MANDATORY: dispatch ts-critic for a post-review of requirements-analyst's contract
+Do NOT skip the pre- and post- ts-critic reviews. Do NOT fan out workers in parallel. The main chain is single-line: requirements-analyst → information-collector → coder, with ts-critic before and after each.`,
 
   gather: `[AION PHASE: GATHER]
-Requirements and information are still being collected. You MUST verify ALL THREE mandatory subagent dispatches have occurred:
-- brainstorm (requirements-analyst) → discover problem space, hidden goals
-- deep-reasoning (coder) → structural analysis, edge cases
-- information-collector → exhaustive external evidence gathering
-If ANY of these has NOT been dispatched yet, dispatch it NOW.
-After ALL THREE have reported back:
-1. Call aion_compaction to merge findings into context-snapshot
-2. Create the initial plan with aion_todo_update
-3. Call aion_critic_dispatch("ts-critic", goal="pre-implementation review", artifacts=[...])
-4. Then transition to ts-pre-review phase
-Do NOT shortcut to implementation without completing all three dispatches.`,
+You are mid-chain in the serial loop. Verify where you are:
+- If requirements-analyst has NOT reported back done: dispatch ts-critic (pre-review if not yet), then dispatch requirements-analyst.
+- If requirements-analyst is done but information-collector is NOT: dispatch ts-critic (post-review of requirements-analyst, then pre-review of information-collector), then dispatch information-collector.
+- If both are done: dispatch ts-critic (post-review of information-collector), then transition to ts-pre-review.
+Do NOT fan out requirements-analyst AND information-collector concurrently. The serial-loop contract requires one-at-a-time with ts-critic between them.`,
 
   "ts-pre-review": `[AION PHASE: TS-PRE-REVIEW]
-ts-critic is reviewing the plan before implementation. You MUST wait for ts-critic's verdict by calling aion_critic_dispatch("ts-critic", goal, artifacts) if not already dispatched.
-- If ts-critic returns "absolutely-cannot-stop-now" or "rebuttal-mode": address blockers, then dispatch coder or gather more info as needed
-- If ts-critic returns "allow-stop" for the plan: transition to implement phase and dispatch coder
-- Call aion_critic_verdict to record the ts-critic verdict
-IMPORTANT: ts-critic's verdict for THIS phase is about the PLAN quality, not closeout. A "allow-stop" here means "plan is good enough to implement", not "task is done".`,
+ts-critic should be reviewing the plan before coder dispatch. Two-step flow:
+1. Call aion_critic_dispatch("ts-critic", goal, artifacts) to prepare the review payload.
+2. IMMEDIATELY call task(subagent_type="ts-critic", description="<goal>", prompt="<the returned instructions>") to ACTUALLY RUN ts-critic. The task tool blocks until ts-critic finishes.
+3. After ts-critic's result comes back, call aion_critic_verdict to record its verdict.
+- If ts-critic returns "absolutely-cannot-stop-now" or "rebuttal-mode": address blockers, then dispatch information-collector (or requirements-analyst for contract-level issues) as needed
+- If ts-critic returns "allow-stop" for the plan: transition to implement phase (dispatch ts-critic pre-review of coder, then coder)
+IMPORTANT: aion_critic_dispatch alone does NOT run the critic. You MUST follow it with a task() call in the SAME turn.`,
 
   implement: `[AION PHASE: IMPLEMENT]
-coder is (or should be) implementing. You MUST:
-1. Dispatch coder via task(subagent_type="coder", description="...", prompt="...") with all context from requirements, information, and ts-critic pre-review
-2. Wait for coder to report back
-3. After coder reports, call aion_compaction, then dispatch ts-critic for post-implementation review:
-   aion_critic_dispatch("ts-critic", goal="post-implementation review", artifacts=[list all output files])
-4. Then transition to ts-post-review phase
-If coder reports blockers or needs more info, loop back to gather phase.`,
+You are at the coder step of the serial loop. You MUST:
+1. (If not done yet) Dispatch ts-critic for a pre-review of the implementation plan
+2. Dispatch coder via task(subagent_type="coder", description="...", prompt="...") with all context from requirements, information, and ts-critic pre-review
+3. Wait for coder to report back
+4. After coder reports, dispatch ts-critic for a post-review of the implementation
+5. Then transition to ts-post-review phase
+If coder reports blockers or needs more info, loop back to gather phase. If coder's reportback next_call=requestments-analyst or information-collector, honor it (back-edge).`,
 
   "ts-post-review": `[AION PHASE: TS-POST-REVIEW]
-ts-critic is reviewing implementation results. You MUST wait for ts-critic's verdict.
-- If ts-critic returns "absolutely-cannot-stop-now" or "rebuttal-mode": address blockers, re-dispatch coder or information-collector as needed, then come back here
+ts-critic should be reviewing coder's implementation results. Two-step flow:
+1. Call aion_critic_dispatch("ts-critic", goal, artifacts) to prepare the review payload.
+2. IMMEDIATELY call task(subagent_type="ts-critic", description="<goal>", prompt="<the returned instructions>") to ACTUALLY RUN ts-critic.
+3. After ts-critic's result comes back, call aion_critic_verdict to record its verdict.
+- If ts-critic returns "absolutely-cannot-stop-now" or "rebuttal-mode": address blockers, re-dispatch coder (or information-collector for evidence-gap back-edges) as needed, then come back here
 - If ts-critic returns "allow-stop": you are cleared to attempt closeout
 - Call aion_pre_stop_gate to check all stop conditions
 - If pre_stop_gate returns allowStop=true: transition to c-critic-final phase
-- If pre_stop_gate has blockers: loop back to implement or gather as appropriate`,
+- If pre_stop_gate has blockers: loop back to implement or gather as appropriate
+IMPORTANT: aion_critic_dispatch alone does NOT run the critic. You MUST follow it with a task() call in the SAME turn.`,
 
   "c-critic-final": `[AION PHASE: C-CRITIC-FINAL]
 This is the FINAL governance gate. c-critic has the HIGHEST authority. You MUST:
@@ -80,11 +79,11 @@ This is the FINAL governance gate. c-critic has the HIGHEST authority. You MUST:
 NEVER skip this phase. c-critic has the highest authority and MUST be the final check.`,
 
   "loop-back": `[AION PHASE: LOOP-BACK]
-A critic has rejected and identified blockers. You MUST restart from gathering:
-1. Dispatch task(subagent_type="requirements-analyst", description="Rebuild problem list with blockers", prompt="The following blockers were identified: [list blockers]. Rebuild the task contract addressing these gaps.")
-2. Dispatch task(subagent_type="information-collector", description="Gather missing evidence", prompt="The following gaps were identified: [list gaps]. Search for evidence to fill them.")
-3. After new info is collected, go through ts-pre-review → implement → ts-post-review → c-critic-final again
-This is a MANDATORY loop, not an optional step. Do not shortcut.`,
+A critic has rejected and identified blockers. You MUST restart the serial loop from the appropriate upstream point:
+1. If the blocker is contract-level: dispatch task(subagent_type="requirements-analyst", description="Rebuild problem list with blockers", prompt="...")
+2. If the blocker is evidence-level: dispatch task(subagent_type="information-collector", description="Gather missing evidence", prompt="...")
+3. After the upstream worker reports back, go through ts-pre-review → implement → ts-post-review → c-critic-final again
+This is a MANDATORY loop, not an optional step. Do not shortcut. Do not fan out workers — restart the serial chain one step at a time.`,
 
   done: `[AION PHASE: DONE]
 c-critic has authorized the final delivery. All governance gates have passed. You MUST:

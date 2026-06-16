@@ -74,6 +74,16 @@ export type GovernanceState = {
   languageResolved: "unset" | "en" | "zh-reason-en-deliver" | "zh-deliver" | "bilingual"
   languageSource: "session-start" | "user-toggle" | "config-default" | null
   tuiTodoSyncPending: boolean
+  /** G3: pending next_call from the most recent worker reportback. The main agent MUST honor this on the next dispatch. */
+  pendingNextCall: string | null
+  /** G3: reason attached to the pending next_call (for trace + prompt injection). */
+  pendingNextCallReason: string | null
+  /** G3: unresolved issues from the most recent reportback that must be carried into the next round. */
+  pendingUnresolvedIssues: string[]
+  /** G3 escalation: how many consecutive rounds a pending next_call has been injected but ignored. Above threshold, G1 hook upgrades to throw. */
+  pendingNextCallIgnoredRounds: number
+  /** G3 escalation: the value of pendingNextCall that is being ignored, so the counter persists across the one-shot clear. */
+  lastInjectedNextCall: string | null
 }
 
 export type UnresolvedBlocker = {
@@ -118,6 +128,10 @@ export type TraceEvent = {
     | "hf.info"
     | "hf.ingest"
     | "hf.suggest"
+    | "scheduling.dispatch"
+    | "scheduling.pre_review_missing"
+    | "role.work_violation"
+    | "reportback.parsed"
   payload?: Record<string, unknown>
   message: string
 }
@@ -249,6 +263,11 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
       languageResolved: "unset",
       languageSource: null,
       tuiTodoSyncPending: false,
+      pendingNextCall: null,
+      pendingNextCallReason: null,
+      pendingUnresolvedIssues: [],
+      pendingNextCallIgnoredRounds: 0,
+      lastInjectedNextCall: null,
     },
     branches: new Map(),
     _lastIntent: "general",

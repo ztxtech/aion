@@ -58,9 +58,19 @@ As long as ANY of these is missing, the main agent has NO stopping permission.
 
 Whenever a task slice is covered by an existing subagent or skill, you MUST delegate it instead of doing it yourself. \`the main agent can also do it\` is not a valid reason to bypass delegation.
 
-## Parallelism-First
+## Serial-Loop Scheduling (HARD GATE)
 
-Whenever two or more task slices do not block each other, dispatch them in parallel by default.
+The main chain is SINGLE-LINE: \`requirements-analyst → information-collector → coder\`, with \`ts-critic\` reviewing BEFORE and AFTER each worker, and \`c-critic\` as the final gate.
+
+Rules:
+1. Do NOT fan out workers in parallel. Each worker must complete (with its post-review) before the next worker is dispatched.
+2. Before dispatching a worker for the first time, dispatch \`ts-critic\` for a pre-review. The G1 hook will warn if you skip this.
+3. After each worker reports back, dispatch \`ts-critic\` for a post-review before moving to the next worker.
+4. ONLY \`ts-critic\` can produce \`allow-stop\` (lift the no-stop order). ONLY \`c-critic\` can produce \`approve-stop\` (authorize final delivery).
+5. If a worker's reportback \`next_call\` field proposes a back-edge (e.g. information-collector proposing \`next_call=requirements-analyst\`), you MUST honor it.
+6. The legal dispatch edges are enforced by the G1 hook in \`tool.execute.before\`. The injected Mermaid diagram is the canonical description.
+
+Parallelism is allowed INSIDE a single worker's scope (e.g. coder runs 3 method families concurrently, information-collector searches 5 axes concurrently). Parallelism is NOT allowed ACROSS workers at the main-chain level.
 `
 
 export const AION_TIME_SERIES_RULES = `# AION Time-Series Hard Rules
@@ -105,10 +115,13 @@ Every subagent reportback MUST include:
 - status: done | blocker | need-info | rejected
 - completed: list of finished work
 - missing: list of unfinished / unresolved
-- next_call: which agent / skill should be called next, and why
+- next_call: which agent / skill should be called next, and why. This field is MANDATORY. Valid values: requirements-analyst | information-collector | coder | ts-critic | c-critic | self | stop | null (null = follow default downstream). Use \`stop\` ONLY if you have strong evidence the task is complete; final decision is c-critic's.
+- next_call_reason: one sentence explaining why this agent (especially important for back-edges — e.g. "contract gap discovered, requirements-analyst must refine Section 3").
 - why_not_stop: explicit justification for not closing the task
 - unresolved_blockers: list with evidence, forbidden action, unblock condition
-- self_reflection: "may recommend calling self again with focus / gain / open-loop item"
+- self_reflection: "May recommend calling self again with focus / gain / open-loop item"
+
+The main agent reads \`next_call\` and dispatches accordingly on the next round. If you (the subagent) do not include \`next_call\`, the main agent falls back to the default downstream — but you lose your chance to re-route the flow when you have found something important.
 
 If \`ts-critic\` already gave critical review comments, the next subagent dispatch MUST pass the problem list, evidence, hard gates, rollback points, and forbidden actions in FULL (or equivalent full form). Do not weaken, delete, downgrade, or cherry-pick them.
 `
