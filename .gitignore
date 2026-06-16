@@ -8,6 +8,9 @@ Icon
 .Trashes
 .fseventsd
 
+# local agent preferences (not for commit)
+AGENTS.md
+
 # build
 dist/
 .opencode/plugins/aion.js
