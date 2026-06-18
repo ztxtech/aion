@@ -13,7 +13,7 @@
 
 ## 📰 News
 
-- **2026-06-18** — **v0.7.1**：移除团队模式，调度模型严格串行（`requirements-analyst → information-collector → coder`，每段由 `ts-critic` 前后夹击）。TUI TodoList 现每轮从 todo-map 自动同步，一旦右面板落后于磁盘 map 即注入带 payload 的强制同步提醒。
+- **2026-06-18** — **v0.7.2**：`aion-ts init` 现在会把 17 个 AION skill（`brain-storm`、`time-series`、`critic-loop` 等）拷贝到目标项目的 `.opencode/skills/`，LLM 才能真正通过 `skill` 工具调用它们。Release tarball 也内置了 skills。同时：G1 在 `phase=done` 状态下从软告警升级为硬抛错，c-critic 批准 stop 后 loop 立刻收尾。
 - **2026-06-14** — AION 已重构为 OpenCode 的编译型 TypeScript 插件（一行命令安装）。
 
 ---

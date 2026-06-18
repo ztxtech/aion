@@ -13,7 +13,7 @@
 
 ## 📰 News
 
-- **2026-06-18** — **v0.7.1**: Team mode removed; scheduling is now strictly serial (`requirements-analyst → information-collector → coder`, each sandwiched between `ts-critic` reviews). The TUI todo list now syncs automatically from the todo-map every round, with a payload-bearing reminder whenever the map drifts ahead of the panel.
+- **2026-06-18** — **v0.7.2**: `aion-ts init` now copies the 17 AION skills (`brain-storm`, `time-series`, `critic-loop`, …) into the target project, so the LLM can actually invoke them via the `skill` tool. The release tarball ships them too. Also: G1 hard-throws (not just warns) on any dispatch from `phase=done`, so the loop ends immediately after c-critic approves stop.
 - **2026-06-14** — AION is now a compiled TypeScript plugin for OpenCode (one-command install).
 
 ---
