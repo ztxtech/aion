@@ -13,6 +13,7 @@
 
 ## 📰 News
 
+- **2026-06-18** — **v0.7.0**: Team mode removed; scheduling is now strictly serial (`requirements-analyst → information-collector → coder`, each sandwiched between `ts-critic` reviews). The TUI todo list now syncs automatically from the todo-map every round, with a payload-bearing reminder whenever the map drifts ahead of the panel.
 - **2026-06-14** — AION is now a compiled TypeScript plugin for OpenCode (one-command install).
 
 ---
@@ -87,8 +88,7 @@ aion/
 │   │   └── c-critic.ts         #   Final-gate cold-start critic
 │   ├── config/                 # Zod schema + config loader
 │   ├── hooks/                  # 11 OpenCode lifecycle hooks
-│   ├── tools/                  # 15 AION tools (critic, memory, safety...)
-│   ├── team/                   # Team-mode coordination (mailbox, tasks, tmux)
+│   ├── tools/                  # 20 AION tools (critic, memory, safety...)
 │   ├── prompts/                # Governance constants + agent prompt loader
 │   └── shared/                 # Logger, JSONC parser, utils, personality
 ├── bin/
@@ -281,9 +281,9 @@ Skills serve the workspace and execution layers — providing evidence collectio
 
 ---
 
-## 🛠️ Tools (20 AION + 14 Team = 34)
+## 🛠️ Tools (20 AION)
 
-AION tools are programmable primitives invoked by the agents. All return JSON strings and are auto-traced. Team tools are conditionally registered when `teamMode.enabled = true`.
+AION tools are programmable primitives invoked by the agents. All return JSON strings and are auto-traced.
 
 | Category | Tools | Purpose |
 | --- | --- | --- |
@@ -294,7 +294,6 @@ AION tools are programmable primitives invoked by the agents. All return JSON st
 | **Plan** | `aion_todo_update` | Plan-step ↔ OpenCode TODO mapping with stop-impact analysis |
 | **Session** | `aion_set_interactive_mode`, `aion_set_language` | User-mode toggles driven by session-start question |
 | **Hugging Face** | `aion_hf_search`, `aion_hf_info`, `aion_hf_ingest`, `aion_hf_suggest` | Zero-dependency HF Hub REST integration. Cached 24h under `.opencode/hf-cache/` |
-| **Team** | `team_create`, `team_delete`, `team_send_message`, `team_status`, `team_list`, `team_task_*`, `team_inbox*`, `team_shutdown_*`, `team_approve_shutdown`, `team_reject_shutdown` | Multi-agent parallel coordination (lead + members) |
 
 ### Ablation & Statistical Rigor (HARD GATES)
 

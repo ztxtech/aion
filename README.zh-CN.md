@@ -13,6 +13,7 @@
 
 ## 📰 News
 
+- **2026-06-18** — **v0.7.0**：移除团队模式，调度模型严格串行（`requirements-analyst → information-collector → coder`，每段由 `ts-critic` 前后夹击）。TUI TodoList 现每轮从 todo-map 自动同步，一旦右面板落后于磁盘 map 即注入带 payload 的强制同步提醒。
 - **2026-06-14** — AION 已重构为 OpenCode 的编译型 TypeScript 插件（一行命令安装）。
 
 ---
@@ -87,8 +88,7 @@ aion/
 │   │   └── c-critic.ts         #   最终门禁冷启动 critic
 │   ├── config/                 # Zod schema + 配置加载
 │   ├── hooks/                  # 11 个 OpenCode 生命周期钩子
-│   ├── tools/                  # 15 个 AION 工具（critic, memory, safety...）
-│   ├── team/                   # 团队模式协调（mailbox, tasks, tmux）
+│   ├── tools/                  # 20 个 AION 工具（critic, memory, safety...）
 │   ├── prompts/                # 治理常量 + agent prompt 加载
 │   └── shared/                 # 日志、JSONC 解析、工具函数、个性系统
 ├── bin/
@@ -281,9 +281,9 @@ c-critic > ts-critic > 主 agent > 其他子 agent
 
 ---
 
-## 🛠️ 工具清单（20 AION + 14 Team = 34）
+## 🛠️ 工具清单（20 AION）
 
-AION 工具是 Agent 调用的可编程原语。全部返回 JSON 字符串，并自动写入 trace。Team 工具仅在 `teamMode.enabled = true` 时注册。
+AION 工具是 Agent 调用的可编程原语。全部返回 JSON 字符串，并自动写入 trace。
 
 | 类别 | 工具 | 用途 |
 | --- | --- | --- |
@@ -294,7 +294,6 @@ AION 工具是 Agent 调用的可编程原语。全部返回 JSON 字符串，�
 | **计划** | `aion_todo_update` | Plan-step ↔ OpenCode TODO 映射 + 停止影响分析 |
 | **会话** | `aion_set_interactive_mode`、`aion_set_language` | 用户模式切换（由 session-start 问题驱动） |
 | **Hugging Face** | `aion_hf_search`、`aion_hf_info`、`aion_hf_ingest`、`aion_hf_suggest` | 零依赖 HF Hub REST 集成，24h 缓存在 `.opencode/hf-cache/` |
-| **Team** | `team_create`、`team_delete`、`team_send_message`、`team_status`、`team_list`、`team_task_*`、`team_inbox*`、`team_shutdown_*` | 多 Agent 并行协作（lead + members） |
 
 ### 消融实验与统计严格性（硬性门禁）
 
