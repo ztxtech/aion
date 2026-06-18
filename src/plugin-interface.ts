@@ -2,8 +2,6 @@
  * Assembles the final {@link PluginInstance} object that OpenCode consumes.
  *
  * Responsibilities:
- *   - Flatten the tool map: AION core tools + (optionally) team tools are
- *     merged into a single record so OpenCode sees them at the top level.
  *   - Wrap every hook in a try/catch boundary. Hooks that fail are either
  *     re-thrown (when AION itself raised a tagged "[aion]" error) or
  *     swallowed with a warning so a single misbehaving hook cannot crash
@@ -33,16 +31,7 @@ export function createAionPluginInterface(args: CreatePluginInterfaceArgs): Plug
 
   const aionAgents = buildAionAgents({})
 
-  const flatTools: ToolsRecord = {}
-  for (const [name, def] of Object.entries(tools)) {
-    if (name === "team") continue
-    flatTools[name] = def as ToolsRecord[string]
-  }
-  if (tools.team) {
-    for (const [name, def] of Object.entries(tools.team)) {
-      flatTools[name] = def as ToolsRecord[string]
-    }
-  }
+  const flatTools: ToolsRecord = { ...(tools as ToolsRecord) }
 
   const interfaceHooks: PluginInstance = {
     "tool.execute.before": async (input, output) => {
@@ -163,9 +152,7 @@ export function createAionPluginInterface(args: CreatePluginInterfaceArgs): Plug
 
   info("[aion] plugin interface assembled", {
     agentNames: Object.keys(aionAgents),
-    aionToolCount: Object.keys(flatTools).length - (tools.team ? Object.keys(tools.team).length : 0),
-    teamToolCount: tools.team ? Object.keys(tools.team).length : 0,
-    teamModeEnabled: config.teamMode.enabled,
+    aionToolCount: Object.keys(flatTools).length,
     trace_path: managers.workspace.tracePath(),
     snapshot_path: managers.workspace.snapshotPath(),
   })

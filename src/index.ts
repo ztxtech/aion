@@ -7,7 +7,7 @@
  *   2. Bootstrap the on-disk workspace (memory files, trace, snapshot)
  *   3. Build the personality handle (TUI quips)
  *   4. Create the central manager bag (state, trace, governance, ...)
- *   5. Register all AION tools (critic, memory, safety, team, ...)
+ *   5. Register all AION tools (critic, memory, safety, ...)
  *   6. Register all OpenCode hooks (tool-guard, compaction, chat, ...)
  *   7. Assemble the final PluginInstance returned to OpenCode
  *
@@ -73,9 +73,7 @@ const aionPlugin: Plugin = async (input, _options) => {
   })
 
   info("[aion] plugin loaded", {
-    teamModeEnabled: config.teamMode.enabled,
     aionToolCount: Object.keys(tools).length,
-    teamToolCount: tools.team ? Object.keys(tools.team).length : 0,
     hookCount: Object.keys(hooks).length,
   })
 

@@ -96,9 +96,8 @@ describe("governance: tool guard safety tools set", async () => {
     }
   });
 
-  it("does not contain team tools", () => {
-    assert.ok(!AION_SAFETY_TOOLS.has("team_create"));
-    assert.ok(!AION_SAFETY_TOOLS.has("team_status"));
+  it("does not contain unknown tools", () => {
+    assert.ok(!AION_SAFETY_TOOLS.has("aion_does_not_exist"));
   });
 });
 
@@ -153,16 +152,5 @@ describe("governance: workspace bootstrap", async () => {
         `${f} should exist`,
       );
     }
-  });
-
-  it("creates team mode directories when enabled", () => {
-    assert.ok(
-      existsSync(join(tmpRoot, ".aion", "teams")),
-      ".aion/teams should exist",
-    );
-    assert.ok(
-      existsSync(join(tmpRoot, ".aion", "runtime")),
-      ".aion/runtime should exist",
-    );
   });
 });

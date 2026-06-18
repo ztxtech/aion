@@ -25,7 +25,6 @@ describe("aion-ts init CLI", () => {
   it("creates aion.jsonc with all default-on settings", () => {
     assert.ok(existsSync(target.aionConfigPath), "aion.jsonc should exist");
     const content = readFileSync(target.aionConfigPath, "utf8");
-    assert.match(content, /"teamMode"\s*:/);
     assert.match(content, /"governance"\s*:/);
     assert.match(content, /"leakage"\s*:/);
     assert.match(content, /"autoContinue"\s*:/);

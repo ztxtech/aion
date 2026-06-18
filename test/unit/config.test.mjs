@@ -29,8 +29,8 @@ describe("config: default config when no aion.jsonc", async () => {
 
   after(() => { try { rmSync(tmp, { recursive: true, force: true }); } catch {} });
 
-  it("loads with default teamMode enabled", () => {
-    assert.ok(result.tool?.team_create, "default config should enable team mode");
+  it("loads with aion safety tools enabled", () => {
+    assert.ok(result.tool?.aion_safety_gate, "aion tools should be registered by default");
   });
 
   it("loads with default governance enabled", () => {
@@ -48,24 +48,6 @@ describe("config: default config when no aion.jsonc", async () => {
 
 describe("config: aion.jsonc overrides", async () => {
   const bundle = await importBundle();
-
-  it("disables team mode when configured", async () => {
-    const tmp = createTmp();
-    writeFileSync(join(tmp, ".opencode", "aion.jsonc"), JSON.stringify({
-      teamMode: { enabled: false },
-    }));
-
-    const result = await bundle.default.server({
-      directory: tmp,
-      client: undefined,
-      project: undefined,
-      $: undefined,
-    }, {});
-
-    assert.ok(!result.tool?.team_create, "team tools should not be registered");
-    assert.ok(result.tool?.aion_safety_gate, "non-team tools should still exist");
-    try { rmSync(tmp, { recursive: true, force: true }); } catch {}
-  });
 
   it("custom trace path is used", async () => {
     const tmp = createTmp();
@@ -112,14 +94,14 @@ describe("config: aion.jsonc overrides", async () => {
       $: undefined,
     }, {});
 
-    assert.ok(result.tool?.team_create, "should fall back to defaults");
+    assert.ok(result.tool?.aion_safety_gate, "should fall back to defaults");
     try { rmSync(tmp, { recursive: true, force: true }); } catch {}
   });
 
   it("falls back to defaults on schema-invalid config", async () => {
     const tmp = createTmp();
     writeFileSync(join(tmp, ".opencode", "aion.jsonc"), JSON.stringify({
-      teamMode: { enabled: "not-a-boolean" },
+      autoContinue: { enabled: "not-a-boolean" },
     }));
 
     const result = await bundle.default.server({

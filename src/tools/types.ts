@@ -1,10 +1,9 @@
 /**
  * Tool name union and record type for all AION tools.
  *
- * The 15 core tools (prefixed `aion_`) cover governance, memory, safety,
+ * The 20 tools (prefixed `aion_`) cover governance, memory, safety,
  * workspace lifecycle, critic dispatch, experiment management (ztxexp),
- * and interactive-mode control. Team tools (`team_*`) are registered
- * separately and flattened at the plugin-interface level.
+ * interactive-mode control, language, and Hugging Face dataset access.
  */
 import type { AionManagers } from "../create-managers"
 import type { PluginContext, ToolsRecord } from "../plugin/types"

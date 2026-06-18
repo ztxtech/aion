@@ -5,7 +5,7 @@
   //   <project-root>/.opencode/aion.jsonc
   //
   // Schema is auto-validated against aionConfigSchema; missing keys fall
-  // back to defaults. See docs/guide/team-mode.md for the team_mode block.
+  // back to defaults.
 
   "enabled": true,
 
@@ -51,19 +51,5 @@
     "requirePrecheckForNewInput": true,
     "requirePrecheckForHighRiskActions": true,
     "requirePrecheckForKeyWrites": true
-  },
-
-  "teamMode": {
-    // OFF by default. Enable to register the 12+ team_* tools at plugin load.
-    "enabled": true,
-    "tmuxVisualization": false,
-    "maxParallelMembers": 4,
-    "maxMembers": 8,
-    "maxMessagesPerRun": 10000,
-    "maxWallClockMinutes": 120,
-    "maxMemberTurns": 500,
-    "messagePayloadMaxBytes": 32768,
-    "recipientUnreadMaxBytes": 262144,
-    "mailboxPollIntervalMs": 3000
   }
 }

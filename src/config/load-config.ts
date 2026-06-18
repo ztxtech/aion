@@ -8,9 +8,6 @@
  *
  * `syncReadAionConfig` is the synchronous variant used by code paths that
  * cannot await (e.g. during module evaluation).
- *
- * Side effect: when `CMUX_SOCKET_PATH` is set and team mode is on, tmux
- * visualization is force-enabled so panes render inside cmux sessions.
  */
 import { existsSync, readFileSync } from "node:fs"
 import { aionConfigSchema, type AionConfig } from "./types"
@@ -77,18 +74,6 @@ const DEFAULT_CONFIG: AionConfig = {
     heartbeatMaxMs: 180_000,
     maxHeartbeatsPerSession: 12,
   },
-  teamMode: {
-    enabled: true,
-    tmuxVisualization: true,
-    maxParallelMembers: 6,
-    maxMembers: 8,
-    maxMessagesPerRun: 20000,
-    maxWallClockMinutes: 240,
-    maxMemberTurns: 800,
-    messagePayloadMaxBytes: 65536,
-    recipientUnreadMaxBytes: 524288,
-    mailboxPollIntervalMs: 2000,
-  },
   interactiveMode: {
     enabled: false,
     granularity: "autonomous",
@@ -138,10 +123,6 @@ export async function loadAionConfig(
     }
     config = validated.data
     break
-  }
-
-  if (process.env.CMUX_SOCKET_PATH && config.teamMode.enabled) {
-    config.teamMode.tmuxVisualization = true
   }
 
   return config

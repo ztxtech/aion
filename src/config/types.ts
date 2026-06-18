@@ -6,10 +6,6 @@
  * always yields a valid {@link AionConfig}. The schema is the single source
  * of truth — `load-config.ts` validates against it and falls back to
  * defaults on any parse / validation failure.
- *
- * Also exports the team-mode membership sets:
- *   - {@link AION_TEAM_ELIGIBLE_AGENTS} — agents allowed to be team members
- *   - {@link AION_TEAM_HARD_REJECT}     — critics that may never be members
  */
 import { z } from "zod"
 
@@ -23,20 +19,6 @@ export const AION_AGENT_NAMES = [
 ] as const
 
 export type AionAgentName = (typeof AION_AGENT_NAMES)[number]
-
-export const teamModeConfigSchema = z.object({
-  enabled: z.boolean().default(true),
-  tmuxVisualization: z.boolean().default(true),
-  maxParallelMembers: z.number().int().min(1).max(8).default(6),
-  maxMembers: z.number().int().min(1).max(8).default(8),
-  maxMessagesPerRun: z.number().int().min(1).default(20000),
-  maxWallClockMinutes: z.number().int().min(1).default(240),
-  maxMemberTurns: z.number().int().min(1).default(800),
-  baseDir: z.string().optional(),
-  messagePayloadMaxBytes: z.number().int().min(1024).default(65536),
-  recipientUnreadMaxBytes: z.number().int().min(1024).default(524288),
-  mailboxPollIntervalMs: z.number().int().min(500).default(2000),
-})
 
 export const aionConfigSchema = z.object({
   enabled: z.boolean().default(true),
@@ -165,18 +147,6 @@ export const aionConfigSchema = z.object({
     heartbeatMaxMs: 180_000,
     maxHeartbeatsPerSession: 12,
   }),
-  teamMode: teamModeConfigSchema.default({
-    enabled: true,
-    tmuxVisualization: true,
-    maxParallelMembers: 6,
-    maxMembers: 8,
-    maxMessagesPerRun: 20000,
-    maxWallClockMinutes: 240,
-    maxMemberTurns: 800,
-    messagePayloadMaxBytes: 65536,
-    recipientUnreadMaxBytes: 524288,
-    mailboxPollIntervalMs: 2000,
-  }),
   hfDatasets: z.object({
     enabled: z.boolean().default(true).describe("Master switch for the aion_hf_* tool family. Off = hide all 4 tools."),
     cacheTtlMs: z.number().int().min(0).default(24 * 60 * 60 * 1000).describe("TTL for HF Hub API cache (.opencode/hf-cache/)."),
@@ -194,17 +164,5 @@ export const aionConfigSchema = z.object({
   }),
 })
 
-export type TeamModeConfig = z.infer<typeof teamModeConfigSchema>
 export type AionConfig = z.infer<typeof aionConfigSchema>
 export type AionPluginConfig = AionConfig
-
-export const AION_TEAM_ELIGIBLE_AGENTS = new Set<AionAgentName>([
-  "aion",
-  "requirements-analyst",
-  "coder",
-])
-
-export const AION_TEAM_HARD_REJECT = new Set<AionAgentName>([
-  "ts-critic",
-  "c-critic",
-])

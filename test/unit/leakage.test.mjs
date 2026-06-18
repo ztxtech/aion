@@ -374,7 +374,6 @@ describe("leakage: safety tools whitelist", async () => {
   });
 
   it("non-safety tools are NOT in the set", () => {
-    assert.ok(!AION_SAFETY_TOOLS.has("team_create"));
     assert.ok(!AION_SAFETY_TOOLS.has("aion_todo_update_get"));
     assert.ok(!AION_SAFETY_TOOLS.has("aion_user_check_unknown"));
   });

@@ -41,7 +41,7 @@ describe("intent: chat.message hook saves initial prompt", async () => {
     assert.equal(typeof loadResult["experimental.chat.system.transform"], "function");
   });
 
-  it("messages.transform hook is registered when team mode is on", () => {
+  it("messages.transform hook is registered", () => {
     assert.ok(loadResult["experimental.chat.messages.transform"], "messages.transform should be registered");
   });
 

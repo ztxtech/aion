@@ -7,7 +7,6 @@
  *   - .opencode/memory/     (8 markdown templates: progress, features,
  *                            decisions, todo-map, completion-gate, positive,
  *                            negative, relation)
- *   - .aion/teams + runtime (only when team mode is enabled)
  *   - trace.md + context-snapshot.md starter files
  *
  * Existing files are never overwritten — the check is `!existsSync`.
@@ -26,16 +25,6 @@ export function bootstrapWorkspace(directory: string, config: AionConfig): void 
     join(directory, ".opencode"),
     memoryDir,
   ]
-
-  if (config.teamMode.enabled) {
-    const aionBase = config.teamMode.baseDir
-      ? (config.teamMode.baseDir.startsWith("/") ? config.teamMode.baseDir : join(directory, config.teamMode.baseDir))
-      : join(directory, ".aion")
-    dirs.push(
-      join(aionBase, "teams"),
-      join(aionBase, "runtime"),
-    )
-  }
 
   for (const dir of dirs) {
     if (!existsSync(dir)) {

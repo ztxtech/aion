@@ -47,20 +47,6 @@ const DEFAULT_AION_CONFIG = `{
     "delaySeconds": 2
   },
 
-  "teamMode": {
-    // Team mode: 1 lead coordinates multiple subagents in parallel
-    "enabled": true,
-    "tmuxVisualization": true,
-    "maxParallelMembers": 6,
-    "maxMembers": 8,
-    "maxMessagesPerRun": 20000,
-    "maxWallClockMinutes": 240,
-    "maxMemberTurns": 800,
-    "messagePayloadMaxBytes": 65536,
-    "recipientUnreadMaxBytes": 524288,
-    "mailboxPollIntervalMs": 2000
-  },
-
   "trace": {
     // Tracing: append every tool call to .opencode/trace.md
     "enabled": true,

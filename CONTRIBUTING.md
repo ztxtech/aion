@@ -88,12 +88,11 @@ The compiled bundle lands at `.opencode/plugins/aion.js`; symlink or copy it int
 ```
 src/
   agents/        # role definitions (requirements-analyst, information-collector, coder, ts-critic, c-critic, …)
-  tools/         # 20 AION + 14 Team tools
+  tools/         # 20 AION tools
   hooks/         # OpenCode lifecycle hooks (leakage gate, runtime events, …)
   prompts/       # shared prompt fragments
   shared/        # utility code
   plugin/        # plugin assembly
-  team/          # Team-mode coordination tools
 .opencode/skills/   # 17 skills (time-series, report-writing, github-search, …)
 test/
   unit/          # *.test.mjs — fast feedback

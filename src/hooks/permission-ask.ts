@@ -1,12 +1,11 @@
 /**
  * `permission.ask` hook — auto-approval boundary.
  *
- * All `aion_*` and `team_*` tools are auto-allowed (they are internal
- * governance / state tools that pose no external risk). Research tools
- * (`webfetch`, `bash`) are also auto-allowed so the information-collector
- * agent can fetch many URLs without triggering OpenCode's doom_loop
- * permission-escalation. Everything else falls through to OpenCode's
- * default ask/deny flow.
+ * All `aion_*` tools are auto-allowed (they are internal governance / state
+ * tools that pose no external risk). Research tools (`webfetch`, `bash`) are
+ * also auto-allowed so the information-collector agent can fetch many URLs
+ * without triggering OpenCode's doom_loop permission-escalation. Everything
+ * else falls through to OpenCode's default ask/deny flow.
  */
 import type { CreateHooksArgs } from "../create-hooks"
 import type { AionPermissionAskHook } from "./types"
@@ -26,20 +25,6 @@ const AUTO_APPROVE_TOOLS = new Set([
   "aion_ztxexp_init",
   "aion_ztxexp_validate",
   "aion_ztxexp_run",
-  "team_create",
-  "team_delete",
-  "team_status",
-  "team_list",
-  "team_send_message",
-  "team_inbox",
-  "team_inbox_ack",
-  "team_shutdown_request",
-  "team_approve_shutdown",
-  "team_reject_shutdown",
-  "team_task_create",
-  "team_task_list",
-  "team_task_get",
-  "team_task_update",
 ])
 
 function normalizeToolName(name: string): string {
@@ -55,7 +40,7 @@ export function createPermissionAskHook(args: CreateHooksArgs): AionPermissionAs
   return async function permissionAsk(input, output) {
     const toolName = normalizeToolName((input as { tool_name?: string }).tool_name ?? "")
 
-    if (AUTO_APPROVE_TOOLS.has(toolName) || toolName.startsWith("aion_") || toolName.startsWith("team_")) {
+    if (AUTO_APPROVE_TOOLS.has(toolName) || toolName.startsWith("aion_")) {
       output.status = "allow"
       info("[aion] permission.ask: auto-approved", {
         tool: toolName,

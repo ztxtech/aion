@@ -3,9 +3,7 @@
  *
  * Calls every individual tool factory (ztxexp, critic, memory, safety,
  * workspace, governance, todo, user-check) and spreads the results into a
- * single {@link AionTools} record. When team mode is enabled the team toolset
- * is attached under a nested `team` key so it can be flattened separately by
- * the plugin interface.
+ * single {@link AionTools} record.
  */
 import type { AionManagers } from "./create-managers"
 import type { AionTools } from "./tools/types"
@@ -19,7 +17,6 @@ import { createTodoTools } from "./tools/todo"
 import { createInteractiveModeTool } from "./tools/user-check"
 import { createLanguageTool } from "./tools/language"
 import { createHfDatasetsTools } from "./tools/hf-datasets"
-import { createTeamTools } from "./team/tools"
 import type { PluginContext, ToolsRecord } from "./plugin/types"
 import type { AionConfig } from "./config/types"
 
@@ -29,12 +26,12 @@ export type CreateToolsArgs = {
   managers: AionManagers
 }
 
-export type CreatedTools = AionTools & { team?: ReturnType<typeof createTeamTools> }
+export type CreatedTools = AionTools
 
 export function createAllAionTools(args: CreateToolsArgs): CreatedTools {
   const { ctx, config, managers } = args
 
-  const aionTools: AionTools = {
+  return {
     ...(createZtxexpTools({ ctx, config, managers }) as AionTools),
     ...(createCriticTools({ ctx, config, managers }) as AionTools),
     ...(createMemoryTools({ ctx, config, managers }) as AionTools),
@@ -46,16 +43,4 @@ export function createAllAionTools(args: CreateToolsArgs): CreatedTools {
     ...(createLanguageTool({ ctx, config, managers }) as AionTools),
     ...(createHfDatasetsTools({ ctx, config, managers }) as AionTools),
   }
-
-  const result: CreatedTools = { ...aionTools }
-  if (config.teamMode.enabled) {
-    result.team = createTeamTools({
-      directory: ctx.directory,
-      teamMode: config.teamMode,
-      trace: managers.trace as unknown as {
-        appendEvent: (event: string, data: Record<string, unknown>) => void
-      },
-    })
-  }
-  return result
 }
