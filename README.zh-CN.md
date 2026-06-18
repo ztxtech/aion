@@ -13,7 +13,7 @@
 
 ## 📰 News
 
-- **2026-06-18** — **v0.7.0**：移除团队模式，调度模型严格串行（`requirements-analyst → information-collector → coder`，每段由 `ts-critic` 前后夹击）。TUI TodoList 现每轮从 todo-map 自动同步，一旦右面板落后于磁盘 map 即注入带 payload 的强制同步提醒。
+- **2026-06-18** — **v0.7.1**：移除团队模式，调度模型严格串行（`requirements-analyst → information-collector → coder`，每段由 `ts-critic` 前后夹击）。TUI TodoList 现每轮从 todo-map 自动同步，一旦右面板落后于磁盘 map 即注入带 payload 的强制同步提醒。
 - **2026-06-14** — AION 已重构为 OpenCode 的编译型 TypeScript 插件（一行命令安装）。
 
 ---

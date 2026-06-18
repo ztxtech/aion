@@ -13,7 +13,7 @@
 
 ## 📰 News
 
-- **2026-06-18** — **v0.7.0**: Team mode removed; scheduling is now strictly serial (`requirements-analyst → information-collector → coder`, each sandwiched between `ts-critic` reviews). The TUI todo list now syncs automatically from the todo-map every round, with a payload-bearing reminder whenever the map drifts ahead of the panel.
+- **2026-06-18** — **v0.7.1**: Team mode removed; scheduling is now strictly serial (`requirements-analyst → information-collector → coder`, each sandwiched between `ts-critic` reviews). The TUI todo list now syncs automatically from the todo-map every round, with a payload-bearing reminder whenever the map drifts ahead of the panel.
 - **2026-06-14** — AION is now a compiled TypeScript plugin for OpenCode (one-command install).
 
 ---

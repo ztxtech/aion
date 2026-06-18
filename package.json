@@ -1,6 +1,6 @@
 {
   "name": "aion-ts-plugin",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "AION - Time-Series Harness Plugin for OpenCode. Multi-agent orchestration with governance, leakage prevention, and experiment management.",
   "main": "./dist/index.js",
   "types": "dist/index.d.ts",
