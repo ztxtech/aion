@@ -19,6 +19,7 @@
 import type { CreateHooksArgs } from "../create-hooks"
 import type { AionToolExecuteBeforeHook, AionToolExecuteAfterHook } from "./types"
 import { warn, info } from "../shared/logger"
+import { nowIso } from "../shared/utils"
 import { notifyFromCtx } from "../shared/notify-tui"
 import { existsSync, readFileSync } from "node:fs"
 import { join, relative, resolve } from "node:path"
@@ -146,23 +147,6 @@ const AION_SAFETY_TOOLS = new Set([
 ])
 
 const ZTXEXP_BOUNDARY_DIRS = new Set(["data", "evaluation", "exp", "model", "module", "scripts", "outputs"])
-
-const AION_TEAM_TOOLS = new Set([
-  "team_create",
-  "team_delete",
-  "team_status",
-  "team_list",
-  "team_send_message",
-  "team_inbox",
-  "team_inbox_ack",
-  "team_shutdown_request",
-  "team_approve_shutdown",
-  "team_reject_shutdown",
-  "team_task_create",
-  "team_task_list",
-  "team_task_get",
-  "team_task_update",
-])
 
 export function createToolGuardBeforeHook(args: CreateHooksArgs): AionToolExecuteBeforeHook {
   const { managers } = args
@@ -612,10 +596,6 @@ export function createToolGuardBeforeHook(args: CreateHooksArgs): AionToolExecut
       warn("[aion] tool.execute.before: unknown aion_* tool, allowing but logging", { tool: rawName })
     }
 
-    if (rawName.startsWith("team_") && !AION_TEAM_TOOLS.has(rawName)) {
-      warn("[aion] tool.execute.before: unknown team_* tool, allowing but logging", { tool: rawName })
-    }
-
     return
   }
 }
@@ -824,8 +804,10 @@ export function createToolGuardAfterHook(args: CreateHooksArgs): AionToolExecute
       )
     }
 
-    // === TUI TODO sync: when todowrite is called, clear the pending flag ===
+    // === TUI TODO sync: when todowrite is called, clear the pending flag and
+    //     record the sync timestamp so system-transform can detect future drift. ===
     if (toolName === "todowrite" || toolName === "TodoWrite") {
+      m.state.governance.tuiTodoLastSyncedAt = nowIso()
       if (m.state.governance.tuiTodoSyncPending) {
         m.state.governance.tuiTodoSyncPending = false
         m.trace.appendEvent(

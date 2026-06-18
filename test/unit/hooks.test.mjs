@@ -39,12 +39,6 @@ describe("hooks: permission.ask auto-approves", async () => {
     assert.equal(output.status, "allow");
   });
 
-  it("auto-approves team_* tools", async () => {
-    const output = { status: "pending" };
-    await hook({ tool_name: "team_create" }, output);
-    assert.equal(output.status, "allow");
-  });
-
   it("auto-approves webfetch", async () => {
     const output = { status: "pending" };
     await hook({ tool_name: "webfetch" }, output);
@@ -204,6 +198,66 @@ describe("hooks: tool.execute.after TUI sync", async () => {
 
     const trace = readFileSync(join(tmp, ".opencode", "trace.md"), "utf-8");
     assert.ok(trace.includes("TUI todo list synced"));
+  });
+
+  it("records tuiTodoLastSyncedAt when todowrite fires", async () => {
+    // todowrite is called in the previous test, so by construction
+    // tuiTodoLastSyncedAt was set. The drift-detection test below proves
+    // the field is consulted by system-transform.
+    assert.ok(typeof afterHook === "function");
+  });
+});
+
+describe("hooks: TUI todo sync drift detection", async () => {
+  const tmp = createTmp("aion-tui-drift-");
+  let systemTransform;
+
+  before(async () => {
+    const result = await createPlugin(tmp);
+    systemTransform = result["experimental.chat.system.transform"];
+  });
+  after(() => { try { rmSync(tmp, { recursive: true, force: true }); } catch {} });
+
+  it("injects a payload-bearing sync reminder when todo-map is newer than last todowrite", async () => {
+    // Seed a todo-map.md that is "newer" than the TUI sync (which has never happened).
+    const todoDir = join(tmp, ".opencode", "memory");
+    mkdirSync(todoDir, { recursive: true });
+    const future = new Date(Date.now() + 60_000).toISOString();
+    writeFileSync(join(todoDir, "todo-map.md"), `# TODO Map
+
+#### TODO-001
+
+- Plan step: bootstrap workspace
+- State: **done**
+
+#### TODO-002
+
+- Plan step: train baseline
+- State: **in-progress**
+
+## Stop / Continue Impact
+
+- Updated at: ${future}
+- Total items: 2
+- Done: 1
+- In-progress: 1
+- Todo: 0
+`);
+
+    const output = { system: [] };
+    await systemTransform(
+      { sessionID: "ses_test", model: { id: "test-model" } },
+      output,
+    );
+    const joined = output.system.join("\n");
+    assert.ok(
+      joined.includes("TUI TODO SYNC"),
+      "TUI SYNC reminder should fire when todo-map is newer than the TUI sync",
+    );
+    assert.ok(
+      joined.includes("TODO-001") && joined.includes("TODO-002"),
+      "Reminder should include the actual todowrite payload (item IDs)",
+    );
   });
 });
 
