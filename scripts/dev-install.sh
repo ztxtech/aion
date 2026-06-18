@@ -9,6 +9,7 @@
 #   - ~/.local/lib/aion/aion.js    (the plugin bundle aion-init.js copies)
 #   - ~/.local/lib/aion/aion-init.js
 #   - ~/.local/lib/aion/aion-theme.json
+#   - ~/.local/lib/aion/skills/    (17 AION skills)
 #
 # When you edit source under src/ and want to test it inside a project that
 # was set up via `aion-ts init <dir> --force`, you need the latest bundle to
@@ -83,6 +84,16 @@ if [ -f "$CLI_SRC" ]; then
   cp "$CLI_SRC" "$LIB_DIR/aion-init.js"
   chmod +x "$LIB_DIR/aion-init.js"
   ok "cli         → $LIB_DIR/aion-init.js"
+fi
+
+# 3. Push the 17 AION skills. The plugin's system prompt references them by
+# name (brain-storm, time-series, critic-loop, …), so a fresh `aion-ts init`
+# needs to find them at <bundle-dir>/../skills or similar.
+SKILLS_SRC="$REPO_ROOT/.opencode/skills"
+if [ -d "$SKILLS_SRC" ]; then
+  rm -rf "$LIB_DIR/skills"
+  cp -R "$SKILLS_SRC" "$LIB_DIR/skills"
+  ok "skills      → $LIB_DIR/skills ($(ls "$LIB_DIR/skills" | wc -l | tr -d ' ') entries)"
 fi
 
 # 3. Done — tell the user what to do next.

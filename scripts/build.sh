@@ -124,23 +124,28 @@ info "packing release tarball: $TARBALL"
 rm -rf release
 mkdir -p release
 
-# Create a staging dir, copy the 3 artifacts, then tar
+# Create a staging dir, copy the 4 artifacts, then tar
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 
-mkdir -p "$STAGE/plugins" "$STAGE/themes" "$STAGE/bin"
+mkdir -p "$STAGE/plugins" "$STAGE/themes" "$STAGE/bin" "$STAGE/skills"
 cp .opencode/plugins/aion.js "$STAGE/plugins/aion.js"
 cp .opencode/themes/aion.json "$STAGE/themes/aion.json"
 cp dist/bin/aion-init.js "$STAGE/bin/aion-init.js"
+# Copy the 17 AION skills so a fresh `aion-ts init` finds them.
+# Use tar to preserve the directory layout; fall back silently if missing.
+if [ -d ".opencode/skills" ]; then
+  tar -cf - -C .opencode skills | tar -xf - -C "$STAGE"
+fi
 
-tar -czf "$TARBALL" -C "$STAGE" plugins themes bin
+tar -czf "$TARBALL" -C "$STAGE" plugins themes bin skills
 ok "$TARBALL ($(du -h "$TARBALL" | cut -f1))"
 
 echo ""
 ok "build + pack complete"
 echo ""
 echo "  Tarball:  $TARBALL"
-echo "  Contents: plugins/aion.js, themes/aion.json, bin/aion-init.js"
+echo "  Contents: plugins/aion.js, themes/aion.json, bin/aion-init.js, skills/<17-skill-dirs>"
 echo ""
 echo "  To create a GitHub Release and attach the tarball:"
 echo "    gh release create v$VERSION $TARBALL --target dev --title \"v$VERSION\" --notes \"Release v$VERSION\""

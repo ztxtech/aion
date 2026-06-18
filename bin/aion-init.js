@@ -4,7 +4,7 @@
 //   target-dir: optional, defaults to process.cwd()
 //   --force:    required to overwrite an existing .opencode/plugins/aion.js
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, statSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, statSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
@@ -163,6 +163,10 @@ Behavior:
   3. Copies a commented default config to <target>/.opencode/aion.jsonc.
      The bundle is fully self-contained — no external npm dependencies
      are needed.
+  4. Copies the 17 AION skills (brain-storm, time-series, critic-loop, …)
+     into <target>/.opencode/skills/. The plugin's system prompt
+     references these by name, so they must be present on disk for the
+     "skill" tool to find them. Existing skills are kept unless --force.
 
 This installer only touches files inside <target-dir>. It does not modify any
 global OpenCode configuration.
@@ -338,6 +342,66 @@ function installTheme(bundlePath, target) {
   console.log(`  [ok] copied theme   → ${dest}`);
 }
 
+function findSkillsDir(bundlePath) {
+  // Skills are shipped in the source repo under .opencode/skills/ and
+  // next to the installed bundle (e.g. ~/.local/lib/aion/skills/).
+  const candidates = [
+    join(dirname(bundlePath), "..", ".opencode", "skills"),
+    join(dirname(bundlePath), "..", "skills"),
+    join(dirname(bundlePath), "skills"),
+  ];
+  for (const p of candidates) {
+    if (existsSync(p) && statSync(p).isDirectory()) return p;
+  }
+  return null;
+}
+
+function installSkills(bundlePath, target, force) {
+  const src = findSkillsDir(bundlePath);
+  if (!src) {
+    console.log("  [skip] skills dir not found in source — skipping");
+    return;
+  }
+  const destDir = join(target, ".opencode", "skills");
+  ensureDir(destDir);
+
+  let copied = 0;
+  let skipped = 0;
+  for (const entry of readdirSync(src, { withFileTypes: true })) {
+    if (!entry.isDirectory() && !entry.name.endsWith(".md")) continue;
+    const from = join(src, entry.name);
+    const to = join(destDir, entry.name);
+    if (existsSync(to) && !force) {
+      skipped += 1;
+      continue;
+    }
+    if (entry.isDirectory()) {
+      copyDirRecursive(from, to);
+    } else {
+      copyFileSync(from, to);
+    }
+    copied += 1;
+  }
+  if (copied > 0) {
+    console.log(`  [ok] copied ${copied} skill(s) → ${destDir}${skipped > 0 ? ` (${skipped} kept existing)` : ""}`);
+  } else if (skipped > 0) {
+    console.log(`  [skip] ${skipped} skill(s) already present at ${destDir} (use --force to overwrite)`);
+  }
+}
+
+function copyDirRecursive(from, to) {
+  ensureDir(to);
+  for (const entry of readdirSync(from, { withFileTypes: true })) {
+    const srcPath = join(from, entry.name);
+    const destPath = join(to, entry.name);
+    if (entry.isDirectory()) {
+      copyDirRecursive(srcPath, destPath);
+    } else {
+      copyFileSync(srcPath, destPath);
+    }
+  }
+}
+
 async function main() {
   const argv = process.argv.slice(2);
   if (argv.length === 0 || argv.includes("--help") || argv.includes("-h")) {
@@ -405,6 +469,7 @@ async function main() {
   await ensureOpencodeJson(target);
   await ensureAionConfig(target);
   installTheme(bundle, target);
+  installSkills(bundle, target, args.force);
 
   banner("Done");
   console.log("  Next steps:");
