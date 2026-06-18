@@ -213,7 +213,7 @@ function discoverEnvironment(directory: string): string | null {
   sections.push("When the task involves time-series as a major dimension, you MUST reference these skills in your dispatch prompts and apply their rules throughout the flow.")
 
   if (sections.length === 0) return null
-  return `[AION ENVIRONMENT — Available in this OpenCode session]\n${sections.join("\n")}\n\nYou MAY use any of these agents, MCP servers, and skills to accomplish the task. When dispatching subagents, include relevant skill names and rules in the prompt so they can leverage them too.`
+  return `[AION ENVIRONMENT — Available in this OpenCode session]\n${sections.join("\n")}\n\nYou MAY use any of these agents, MCP servers, and skills to accomplish the task. Subagents have full access to the \`skill\` tool (and MCP servers, bash, websearch, webfetch, etc.) — do NOT pre-load skill content yourself and stuff it into dispatch prompts. Instead, tell subagents which skills are relevant and let them call \`skill()\` on demand. This keeps your context clean and lets subagents load exactly what they need.`
 }
 
 export function createSystemTransformHook(args: CreateHooksArgs): AionSystemTransformHook {

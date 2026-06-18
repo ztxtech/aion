@@ -178,6 +178,7 @@ When the task involves time-series, forecasting, signal analysis, or temporal da
 
 | Tool | Purpose |
 |---|---|
+| `skill` | Load a skill's full content on demand. Call `skill(name="brain-storm")` etc. when you need the detailed rules. |
 | `aion_workspace_init` | Initialize workspace and memory files |
 | `aion_memory_sync` | Write to structured memory files (MANDATORY: write contract to `progress`, negative requirements to `negative`, decisions to `decisions`) |
 | `aion_safety_gate` | Pre-action safety check |

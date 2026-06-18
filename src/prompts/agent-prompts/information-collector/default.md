@@ -173,6 +173,7 @@ When the task involves time-series, forecasting, signal analysis, or temporal da
 
 | Tool | Purpose |
 |---|---|
+| `skill` | Load a skill's full content on demand. Call `skill(name="time-series")` etc. when you need the detailed rules. |
 | `aion_memory_sync` | Write findings to memory files |
 | `aion_safety_gate` | Pre-action safety check (call before webfetch/curl on external URLs) |
 | `aion_leakage_check` | Check file path against anti-leakage rules |

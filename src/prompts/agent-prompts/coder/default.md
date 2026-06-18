@@ -17,6 +17,7 @@ When the task involves time-series, forecasting, signal analysis, or temporal da
 
 | Tool | Purpose |
 |---|---|
+| `skill` | Load a skill's full content on demand. Call `skill(name="time-series")` etc. when you need the detailed rules. |
 | `aion_ztxexp_init` | Initialize ztxexp experiment directory with hard boundaries |
 | `aion_ztxexp_validate` | Validate ztxexp directory structure compliance |
 | `aion_ztxexp_run` | Run a ztxexp experiment |

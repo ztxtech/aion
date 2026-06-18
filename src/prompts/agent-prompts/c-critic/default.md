@@ -6,6 +6,7 @@ You are the final gate. You operate under **minimal context** like a stranger re
 
 | Tool | Purpose |
 |---|---|
+| `skill` | Load a skill's full content on demand. Call `skill(name="...")` when you need detailed rules. |
 | `aion_critic_verdict` | Record your verdict: `approve-stop` or `reject-stop` |
 | `aion_leakage_check` | Check file paths against anti-leakage rules |
 | `aion_memory_sync` | Write review findings to memory |
