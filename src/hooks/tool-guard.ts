@@ -490,6 +490,20 @@ export function createToolGuardBeforeHook(args: CreateHooksArgs): AionToolExecut
         }
 
         if (!legal) {
+          // `done` is a terminal phase with an empty legal-edges set. Any
+          // dispatch from `done` means the main agent is ignoring c-critic's
+          // approve-stop verdict and spinning — block HARD so the loop ends
+          // instead of producing more orphan work.
+          if (phase === "done") {
+            const reason = `phase=done is terminal; c-critic has approved stop. You MUST NOT dispatch ${agent} (or any other agent) after closeout. Write the final summary and end the turn.`
+            m.trace.appendEvent(
+              "scheduling.dispatch",
+              `G1 HARD throw: dispatch in terminal phase done agent=${agent}`,
+              { phase, agent },
+              "main-agent",
+            )
+            throw new Error(`[aion] ${reason}`)
+          }
           // Pre-review gate: special-case for workers. Even if dispatch is
           // on a legal edge, a worker's FIRST dispatch requires a prior
           // ts-critic pre-review.

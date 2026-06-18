@@ -522,6 +522,30 @@ describe("hooks: G1 scheduling dispatch edge check", async () => {
     const trace = readFileSync(join(tmp, ".opencode", "trace.md"), "utf-8");
     assert.ok(trace.includes("scheduling.dispatch"));
   });
+
+  it("HARD-throws on any dispatch after phase=done (terminal)", async () => {
+    // Use a fresh plugin instance so the phase transition applies to the
+    // same state that the before-hook consults (the outer describe's
+    // beforeHook is bound to a different state bag).
+    const tmp2 = createTmp("aion-g1-done-");
+    const result = await createPlugin(tmp2);
+    // Transition to phase=done via c-critic approve-stop.
+    await result["tool.execute.after"](
+      { tool: "aion_critic_verdict" },
+      { args: { critic: "c-critic", verdict: "approve-stop" }, output: JSON.stringify({ ok: true }) },
+    );
+    // Any task() dispatch must now HARD-throw — no more agents after closeout.
+    const before = result["tool.execute.before"];
+    await assert.rejects(
+      () => before(
+        { tool: "task" },
+        { args: { subagent_type: "coder" } },
+      ),
+      /phase=done is terminal/,
+      "G1 must hard-throw when dispatching from phase=done",
+    );
+    try { rmSync(tmp2, { recursive: true, force: true }); } catch {}
+  });
 });
 
 describe("hooks: G2 main-agent work-guard soft warn", async () => {
