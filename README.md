@@ -49,7 +49,18 @@ Existing benchmarks and agent-centered systems each capture only part of the shi
 
 AION addresses this gap as a **time-series harness** built on [OpenCode](https://github.com/anomalyco/opencode). It structures work through specialized agents — requirement analysis, evidence collection, implementation, and layered review — with protocols that govern dispatch, report-back, rebuttal, and stop-go decisions.
 
-Time-series specialization enters through **temporal grounding**, **knowledge-grounded search**, and **layered reliability checks**, allowing the system to work with open-ended evidence while preserving output legality and stop discipline.
+---
+
+## ⏱️ Why a Time-Series Harness?
+
+Most general-purpose harnesses break down on time-series work because they were not designed for it. AION is specialized end-to-end so that the failure modes below do not slip into the final answer.
+
+- **Hidden temporal leakage.** Future timestamps, horizon crossings, or label leakage from later windows. AION uses **temporal grounding** — explicit window contracts and time-aware validation — to keep a forecast honest with respect to the horizon.
+- **Weak method awareness.** Picking a model before knowing the benchmark, regime, or sample size. AION uses **knowledge-grounded search** so evidence collection is organized around actual time-series method families, baselines, and SOTA instead of generic web results.
+- **Unreliable stopping.** Stopping at the first plausible answer or after a fixed round count. AION uses **layered reliability checks** — critic gates and pre-stop review — to enforce a real stop discipline.
+- **Open-ended evidence without legality.** Free-form evidence that drifts into unsupported claims. AION keeps evidence-bound outputs so each conclusion traces to a real source on disk.
+
+Together these let AION work with open-ended time-series evidence while preserving output legality and stop discipline.
 
 ---
 
