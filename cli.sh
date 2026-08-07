@@ -70,8 +70,8 @@ ENABLE_EXPORT=0
 CUSTOM_DEBUG_DIR=""
 CUSTOM_PROMPT=""
 
-DEFAULT_INITIAL_PROMPT="Begin with a one-line Jarvis-style cold-open naming what you are and what you are about to investigate. Then immediately invoke the context-init skill and run the task end-to-end. Do not narrate steps, do not announce 'I will now do X', do not pause for confirmation — just do the work. The task is in example/aion-medical-demo/medical/task.md, the visual evidence is in example/aion-medical-demo/medical/docs/reference/, the visual handling rules are in the 'Operating Notes' section at the bottom of task.md. Open plots with the macOS 'open' command when the analysis calls for it, hold long enough to actually read them, then 'killall Preview' and continue. Treat this run as autonomous: only stop when c-critic has signed off."
-DEFAULT_CONTINUE_PROMPT="Continue the autonomous run. Open plots with 'open' when the analysis calls for it, hold long enough to read them, then 'killall Preview' and continue. Do not narrate steps, do not pause for confirmation, do not stop until c-critic has signed off."
+DEFAULT_INITIAL_PROMPT="Read the root task files and the .opencode contract first. Classify the task, load only the native skills required for the current task, delegate work to the matching agents, and complete the task end-to-end. Treat this run as autonomous unless a material user decision is required. Stop only after the configured critic gates approve."
+DEFAULT_CONTINUE_PROMPT="Continue the current run from the latest context snapshot. Preserve the evidence chain, use the matching agent or skill for the next slice, and stop only after the configured critic gates approve."
 
 # ---- Parse arguments ----
 while [[ $# -gt 0 ]]; do

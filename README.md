@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/static/images/aion-banner.gif" alt="AION — Time-Series Harness" width="100%"/>
+</p>
+
 <h1 align="center">
   <img src="https://img.shields.io/badge/AION-Time_Series_Harness-7C3AED?style=for-the-badge&logo=openai&logoColor=white" alt="AION" />
 </h1>
@@ -7,14 +11,17 @@
   <a href="README.zh-CN.md"><strong>简体中文</strong></a>
 </p>
 
+## News
+
+**2026-08-07 — AION moves from a heavyweight fixed workflow to adaptive execution with aggressively compressed context.**
+
 **AION** is a time-series harness — an explicit control layer that connects task specification, runtime execution, and result assessment into one stable process for next-generation time-series workloads.
 
-Time-series research is moving beyond fixed forecasting benchmarks toward tasks that combine prediction, contextual reasoning, tool use, and structured decision support. AION formalizes these as triples of _task file, workspace, and validation interface_, and organizes the entire system around four stacked layers: **task** (what to solve), **workspace** (what evidence and tools are available), **execution** (how the system acts under constraints), and **review** (whether outputs pass validity, temporal, and completeness checks before progress is accepted).
+Time-series research is moving beyond fixed forecasting benchmarks toward tasks that combine prediction, contextual reasoning, tool use, and structured decision support. AION formalizes these as triples of _task file, workspace, and validation interface_, organizing the system around multi-agent dispatch with layered review gates.
 
 <p align="center">
   <a href="#-quick-start"><img src="https://img.shields.io/badge/Quick_Start-3_min-blue?style=for-the-badge" alt="Quick Start"></a>
-  <a href="#-four-layer-architecture"><img src="https://img.shields.io/badge/Layers-4-10B981?style=for-the-badge" alt="Layers"></a>
-  <a href="#-skills"><img src="https://img.shields.io/badge/Skills-17-8B5CF6?style=for-the-badge" alt="Skills"></a>
+  <a href="#-components"><img src="https://img.shields.io/badge/Components-8B5CF6?style=for-the-badge" alt="Components"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" alt="License"></a>
   <a href="https://arxiv.org/abs/2605.25045"><img src="https://img.shields.io/badge/arXiv-2605.25045-B31B1B?style=for-the-badge&logo=arxiv&logoColor=white" alt="arXiv"></a>
 </p>
@@ -26,6 +33,9 @@ Time-series research is moving beyond fixed forecasting benchmarks toward tasks 
   <img src="https://img.shields.io/badge/Protocols-8-06B6D4?style=flat" alt="Protocols">
   <img src="https://img.shields.io/badge/Evals-5_Gates-EC4899?style=flat" alt="Evals">
   <img src="https://img.shields.io/badge/Time_Series-Harness-7C3AED?style=flat" alt="Time Series">
+  <img src="https://img.shields.io/badge/Task_Levels-L0--L3-FF6B6B?style=flat" alt="Task Levels">
+  <img src="https://img.shields.io/badge/Context-20K_Startup_Budget-06B6D4?style=flat" alt="Context Budget">
+  <img src="https://img.shields.io/badge/Version-1.0.0-111827?style=flat" alt="Version 1.0.0">
   <a href="https://github.com/ztxtech/aion"><img src="https://img.shields.io/github/stars/ztxtech/aion?style=social" alt="GitHub stars"></a>
   <img src="https://img.shields.io/github/last-commit/ztxtech/aion?color=orange" alt="Last Commit">
   <a href="https://deepwiki.com/ztxtech/aion"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
@@ -37,20 +47,15 @@ Time-series research is moving beyond fixed forecasting benchmarks toward tasks 
 
 Existing benchmarks and agent-centered systems each capture only part of the shift toward next-generation time-series tasks: benchmarks usually simplify the task too early, while agents alone do not provide temporal contracts, evidence discipline, or reliable stopping criteria.
 
-AION addresses this gap as a **time-series harness** built on [OpenCode](https://github.com/anomalyco/opencode):
-
-- **Task layer** — Formalizes next-generation time-series tasks as triples of _task file, workspace, and validation interface_
-- **Workspace layer** — Provides structured evidence collection, tool orchestration, and persistent memory for open-ended research
-- **Execution layer** — Constrains multi-agent runtime with protocols, governance hierarchy, context compaction, and safety gates
-- **Review layer** — Enforces validity, temporal, and completeness checks before progress is accepted; no output leaves the system without passing layered critics
+AION addresses this gap as a **time-series harness** built on [OpenCode](https://github.com/anomalyco/opencode). It structures work through specialized agents — requirement analysis, evidence collection, implementation, and layered review — with protocols that govern dispatch, report-back, rebuttal, and stop-go decisions.
 
 Time-series specialization enters through **temporal grounding**, **knowledge-grounded search**, and **layered reliability checks**, allowing the system to work with open-ended evidence while preserving output legality and stop discipline.
 
 ---
 
-## 🏗️ Four-Layer Architecture
+## 🏗️ Architecture
 
-AION organizes everything around four stacked layers — each layer constrains the one below it: **task** (what to solve), **workspace** (what evidence and tools are available), **execution** (how the system acts under constraints), and **review** (whether outputs pass validity, temporal, and completeness checks before progress is accepted).
+AION organizes work through named agents, native OpenCode skills, runtime protocols, memory files, evaluation contracts, and a fail-closed CLI runner. The main agent adapts the route to task level and model capability; `ts-critic` and `c-critic` remain the review backbone.
 
 ### Directory Structure
 
@@ -63,31 +68,18 @@ AION organizes everything around four stacked layers — each layer constrains t
 │   ├── coder.md              # Implementation, experiments & delivery
 │   ├── ts-critic.md          # Time-series expert + Pareto governance
 │   └── c-critic.md           # Final minimal-context cold-start critic
-├── skills/           # 17 reusable skills
-│   ├── context-init/         # Manual workspace bootstrap
-│   ├── workspace-init/       # Auto workspace initialization
-│   ├── plan/                 # Complex task planning
-│   ├── brain-storm/          # Multi-angle analysis
-│   ├── deep-reasoning/       # Multi-step reasoning & debate
-│   ├── critic-loop/          # Review & rollback judgment
-│   ├── time-series/          # Unified TS review framework
-│   ├── data-interface/       # 4-type data entry contract
-│   ├── forecast-contract/    # Forecast output validation
-│   ├── report-writing/       # Experiment reports & formal docs
-│   ├── python-toolbox/       # Python tool priors
-│   ├── ztxexp/               # Experiment directory & plotting protocol
-│   ├── github-search/        # GitHub first-hand evidence search
-│   ├── pdf-intake/           # Safe PDF extraction
-│   ├── safety-gate/          # Automated safety pre-check
-│   ├── evolution/            # Capability gap → new agent/skill
-│   └── template/             # Empty skill skeleton
-├── rules/            # Shared rules (auto-loaded)
-│   ├── core.md               # Boundaries, trace, placeholders
-│   ├── opencode.md           # OpenCode docs & repo links
-│   ├── agent-autonomy.md     # Subagent autonomy constraints
-│   ├── experiment.md         # Benchmark-first experiment rules
-│   ├── time-series.md        # Shared TS rules
-│   └── websearch.md          # Web search fallback chain
+├── skills/            # Native OpenCode skills, loaded on demand
+│   ├── workspace-init/       # Runtime bootstrap, memory, and trace
+│   ├── safety/               # Input and action safety checks
+│   ├── search/               # Multi-axis external evidence collection
+│   ├── planning/             # Planning and branch management
+│   ├── ts-core/              # Time-series task and validation rules
+│   ├── experiment/           # Benchmark-first experiment execution
+│   ├── report/               # Evidence-bound report delivery
+│   └── pdf-intake/           # Read-only PDF extraction
+├── rules/            # Kernel rules
+│   ├── core.md               # Kernel: governance, task levels, model profile, memory
+│   └── opencode.md           # OpenCode docs & repo reference
 ├── protocols/        # 8 runtime protocols
 │   ├── dispatch.md           # Subagent dispatch contract
 │   ├── reportback.md         # Report-back contract
@@ -249,26 +241,26 @@ bash cli.sh --max-continues 10
 
 ### Prompting For Autonomous vs Interactive Use
 
-`cli.sh` already includes a default prompt that starts with `context-init` — the harness bootstrap entry point. If you run `bash cli.sh`, you get the full harness initialized automatically.
+The native OpenCode entry point is `.opencode/agents/agent.md`; load skills through OpenCode's `skill` tool and run the current CLI runner with `opencode run --agent agent`.
 
-If you write your own prompt instead of using the default `cli.sh` prompt, make the intended execution strategy explicit AND start with `context-init` so the agent does not have to guess either:
+If you write your own prompt instead of using the default `cli.sh` prompt, make the intended execution strategy explicit and refer to the native `.opencode/agents/agent.md` entry point:
 
-- For non-interactive autonomous execution, include `context-init` and declare the mode:
+- For non-interactive autonomous execution, read the root task files and `.opencode` contract first and declare the mode:
 
 ```text
-Start the project with the context-init skill. Read the root task files and the .opencode contract first. Treat this run as run plus autonomous: keep the workflow human-free, prefer local detection over upfront questions, and only stop when no skill and no agent can propose any further action, defect, or rollback point.
+Read the root task files and the `.opencode` contract first. Treat this run as `run + autonomous`: keep routine decisions human-free and stop only after the configured critic gates approve.
 ```
 
 - For interactive TUI collaboration, say that the user wants to participate only in real forks:
 
 ```text
-Start the project with the context-init skill. Run this in tui plus interactive mode. Do local detection first, keep routine decisions autonomous, and only ask me when there are multiple equally reasonable options that would materially change the later path.
+Read the root task files and the `.opencode` contract first. Run this in `tui + interactive` mode: keep routine decisions autonomous and ask only at material forks.
 ```
 
 - For interactive TUI with minimal interruption, make that explicit too:
 
 ```text
-Start the project with the context-init skill. Run this in tui plus autonomous mode. I want to watch the session, but I do not want routine environment or workflow questions unless there is a real decision fork.
+Read the root task files and the `.opencode` contract first. Run this in `tui + autonomous` mode: I want to observe the session without routine workflow questions.
 ```
 
 For Python environments, a good interactive prompt should ask the agent to detect first and only escalate real ambiguity, for example:
@@ -305,16 +297,14 @@ See [`example/aion-medical-demo/README.md`](example/aion-medical-demo/README.md)
 
 ## 🤝 Agent Roles
 
-Agents span all four layers — from task parsing through execution orchestration to layered review:
-
-| Agent                     | Primary Layer         | Role                                                                                           |
-| ------------------------- | --------------------- | ---------------------------------------------------------------------------------------------- |
-| **agent**                 | Execution             | Main orchestrator — dispatches subagents, enforces review gates, drives to close               |
-| **requirements-analyst**  | Task                  | Reads tasks & workspace materials, extracts goals, inputs & constraints                        |
-| **information-collector** | Workspace             | Supplements SOTA, top-venue papers, official implementations & domain knowledge                |
-| **coder**                 | Workspace + Execution | Implementation, experiments, delivery & visualization                                          |
-| **ts-critic**             | Review                | Time-series method review + Pareto stop/governance — highest governance gate before `c-critic` |
-| **c-critic**              | Review                | Final minimal-context cold-start critique — ultimate governance authority                      |
+| Agent | Role |
+|-------|------|
+| **agent** | Main orchestrator — dispatches subagents, enforces review gates, drives to close |
+| **requirements-analyst** | Reads tasks & workspace materials, extracts goals, inputs & constraints |
+| **information-collector** | Supplements SOTA, top-venue papers, official implementations & domain knowledge |
+| **coder** | Implementation, experiments, delivery & visualization |
+| **ts-critic** | Time-series method review + Pareto stop/governance — highest governance gate before `c-critic` |
+| **c-critic** | Final minimal-context cold-start critique — ultimate governance authority |
 
 ### Governance Order
 
@@ -330,35 +320,40 @@ More specifically, role boundaries default to `delegate to the role that already
 
 ---
 
-## 🔧 Skills (17)
+## 📦 Components
 
-Skills serve the workspace and execution layers — providing evidence collection, tool orchestration, and domain priors:
+Each component has one concrete responsibility and follows OpenCode's native discovery rules:
 
-| Skill                 | Layer     | Description                                           |
-| --------------------- | --------- | ----------------------------------------------------- |
-| **context-init**      | Workspace | Manual workspace bootstrap and task start             |
-| **workspace-init**    | Workspace | Automated workspace initialization and memory seeding |
-| **plan**              | Execution | Complex task planning with branch management          |
-| **brain-storm**       | Workspace | Multi-angle analysis with branch IDs                  |
-| **deep-reasoning**    | Execution | Multi-step reasoning with dependency chains           |
-| **critic-loop**       | Review    | Review and rollback judgment                          |
-| **time-series**       | Workspace | Unified time-series review framework                  |
-| **data-interface**    | Task      | 4-type data entry contract (file / DB / loader / API) |
-| **forecast-contract** | Review    | Forecast output controllability & validity checks     |
-| **report-writing**    | Workspace | Experiment reports and formal document output         |
-| **python-toolbox**    | Workspace | Python tool selection priors                          |
-| **ztxexp**            | Workspace | Experiment directory structure & plotting protocol    |
-| **github-search**     | Workspace | GitHub first-hand engineering evidence retrieval      |
-| **pdf-intake**        | Workspace | Safe PDF and scanned document extraction              |
-| **safety-gate**       | Review    | Automated safety pre-check                            |
-| **evolution**         | Execution | Capability gap detection → new agent/skill creation   |
-| **template**          | Workspace | Empty skill skeleton for new skills                   |
+| Component | Path | Responsibility |
+|--------|-------------|-------------|
+| **Main agent** | `agents/agent.md` | Classifies task level, routes work, compacts context, and enforces gates |
+| **Specialist agents** | `agents/*.md` | Requirements, evidence collection, coding, time-series review, and final critique |
+| **Native skills** | `skills/<name>/SKILL.md` | On-demand capabilities discovered by OpenCode's `skill` tool |
+| **Runtime protocols** | `protocols/*.md` | Dispatch, reportback, rebuttal, compaction, memory sync, and stop/go rules |
+| **Memory and trace** | `memory/template/`, `trace.md` | Per-run evidence, snapshots, decisions, and reusable findings |
+| **Evaluation contracts** | `evals/*.md` | Test suites, graders, scorecards, regression, and release gates |
+| **CLI entry point** | `cli.sh` | Launches OpenCode in run or TUI mode with an explicit prompt and optional session export |
+
+### Task Level Classification
+
+The main agent classifies every task before dispatch:
+
+| Level | Signal | Flow | Context |
+|-------|--------|------|---------|
+| **L0** trivial | Single-file edit, format fix, simple query | Direct execution | Minimal |
+| **L1** light | Clear task, no external search | Main agent + ≤1 specialist | Small |
+| **L2** standard | Multi-step, needs search/experiment | RA → IC → coder + critic gates | Standard |
+| **L3** full | Benchmark, formal report, multi-branch | Full chain + pre-stop gate | Full |
+
+### Model-Adaptive Execution
+
+The driving model can select a lighter or heavier route: stronger models may skip unnecessary planning depth while weaker models retain fuller planning and critic coverage; governance order and final review gates are never removed.
 
 ---
 
 ## 📋 Protocols (8)
 
-Protocols constrain the execution layer — governing how agents communicate, escalate, and compact context:
+Protocols constrain execution — governing how agents communicate, escalate, and compact context:
 
 | Protocol           | Purpose                                                                                        |
 | ------------------ | ---------------------------------------------------------------------------------------------- |
@@ -375,7 +370,7 @@ Protocols constrain the execution layer — governing how agents communicate, es
 
 ## 🧠 Memory & Trace
 
-AION maintains two complementary tracking systems across the workspace layer:
+AION maintains two complementary tracking systems:
 
 - **`.opencode/trace.md`** — Per-task execution trace: key decisions, failure reviews, and delivery checkpoints
 - **`.opencode/memory/`** — Cross-task persistent memory: positive/negative findings, agent relationships, decisions, features
@@ -388,7 +383,7 @@ Memory and git serve different purposes: memory handles abstract experience and 
 
 ## 📡 CLI Reference
 
-`cli.sh` provides a CLI entry point for automated run-mode execution with auto-continue:
+`cli.sh` provides the public CLI entry point for OpenCode run or TUI execution with optional auto-continue.
 
 ```bash
 bash cli.sh [OPTIONS]
@@ -428,7 +423,7 @@ bash cli.sh --mode tui --no-auto-continue
 
 ## 🛡️ Key Constraints
 
-The harness enforces hard boundaries across all four layers:
+The harness enforces hard boundaries across the system:
 
 - **No knowledge/data leakage** — Future information, labels, hidden-set content, and private data must never leak into features, code, logs, or outputs
 - **Ruthless skepticism** — A single success or metric gain is not proof of reliability; active investigation of leakage, spurious correlation, overfitting, and unverified assumptions is mandatory

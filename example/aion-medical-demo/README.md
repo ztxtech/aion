@@ -21,12 +21,12 @@ The clinical case (`medical/`) is identical in spirit to a normal AION project. 
 
 ## The goal: trigger every AION feature in one run
 
-The clinical case under `medical/` is intentionally **saturated** so that a single AION run touches every layer of the harness:
+The clinical case under `medical/` is intentionally **saturated** so that a single AION run touches every relevant component of the harness:
 
-- **All 6 agents** — orchestrator + requirements-analyst, information-collector, brain-storm, deep-reasoning, plan, coder, ts-critic, c-critic
-- **All 17 skills** — context-init, requirements-analyst, information-collector, brain-storm, deep-reasoning, plan, coder, ts-critic, c-critic, time-series, forecast-contract, data-interface, ztxexp, customise-opencode, markitdown, safety-gate, report-writing
-- **All 8 protocols** — orchestration, requirements-extraction, multi-axis-research, brainstorm, plan, ts-critic governance, c-critic final gate, sealed-report
-- **All 5 governance gates** — pre-experiment (ts-critic), post-experiment (ts-critic), rebuttal round, pre-stop (c-critic), final cold-close (c-critic)
+- **Agent components** — `agent`, `requirements-analyst`, `information-collector`, `coder`, `ts-critic`, and `c-critic`
+- **Native skills** — `workspace-init`, `safety`, `search`, `planning`, `ts-core`, `experiment`, `report`, and `pdf-intake`
+- **Runtime protocols** — dispatch, reportback, rebuttal, stop-go, lifecycle, memory-sync, runtime-events, and compaction
+- **Governance gates** — pre-experiment review, post-experiment review, rebuttal, pre-stop critique, and final cold-close
 
 See `medical/FEATURE_TRIGGER_MAP.md` for the full 22-feature trigger map with the exact `task.md` phrases that fire each feature.
 

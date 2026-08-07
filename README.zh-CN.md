@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/static/images/aion-banner.gif" alt="AION — Time-Series Harness" width="100%"/>
+</p>
+
 <h1 align="center">
   <img src="https://img.shields.io/badge/AION-时间序列_Harness-7C3AED?style=for-the-badge&logo=openai&logoColor=white" alt="AION" />
 </h1>
@@ -7,14 +11,17 @@
   <a href="README.zh-CN.md"><strong>简体中文</strong></a>
 </p>
 
+## News
+
+**2026-08-07 — AION 从厚重的固定流程转向自适应执行，并极致压缩初始上下文。**
+
 **AION** 是一个时间序列 harness — 一个将任务规格、运行时执行与结果评估连接成一个稳定流程的显式控制层，面向下一代时间序列工作负载。
 
-时间序列研究正在超越固定预测 benchmark，转向结合预测、上下文推理、工具使用和结构化决策支持的任务。AION 将这些任务形式化为*任务文件、工作空间与验证接口*的三元组，并将整个系统围绕四个堆叠层组织：**任务层**（要解决什么）、**工作空间层**（有哪些证据和工具）、**执行层**（系统如何在约束下行动）和**审查层**（输出是否通过有效性、时间性和完整性检查后才被接受）。
+时间序列研究正在超越固定预测 benchmark，转向结合预测、上下文推理、工具使用和结构化决策支持的任务。AION 将这些任务形式化为*任务文件、工作空间与验证接口*的三元组，通过多 agent 调度与分层审查门禁来组织系统。
 
 <p align="center">
   <a href="#-快速开始"><img src="https://img.shields.io/badge/快速开始-3分钟-blue?style=for-the-badge" alt="Quick Start"></a>
-  <a href="#-四层架构"><img src="https://img.shields.io/badge/层级-4层-10B981?style=for-the-badge" alt="Layers"></a>
-  <a href="#-技能清单"><img src="https://img.shields.io/badge/技能-17个-8B5CF6?style=for-the-badge" alt="Skills"></a>
+  <a href="#-组件"><img src="https://img.shields.io/badge/组件-8B5CF6?style=for-the-badge" alt="Components"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/许可证-MIT-yellow?style=for-the-badge" alt="License"></a>
   <a href="https://arxiv.org/abs/2605.25045"><img src="https://img.shields.io/badge/arXiv-2605.25045-B31B1B?style=for-the-badge&logo=arxiv&logoColor=white" alt="arXiv"></a>
 </p>
@@ -26,6 +33,9 @@
   <img src="https://img.shields.io/badge/协议-8个-06B6D4?style=flat" alt="Protocols">
   <img src="https://img.shields.io/badge/评测-5道门禁-EC4899?style=flat" alt="Evals">
   <img src="https://img.shields.io/badge/时间序列-Harness-7C3AED?style=flat" alt="Time Series">
+  <img src="https://img.shields.io/badge/任务分级-L0--L3-FF6B6B?style=flat" alt="Task Levels">
+  <img src="https://img.shields.io/badge/上下文-20K启动预算-06B6D4?style=flat" alt="Context Budget">
+  <img src="https://img.shields.io/badge/版本-1.0.0-111827?style=flat" alt="Version 1.0.0">
   <a href="https://github.com/ztxtech/aion"><img src="https://img.shields.io/github/stars/ztxtech/aion?style=social" alt="GitHub stars"></a>
   <img src="https://img.shields.io/github/last-commit/ztxtech/aion?color=orange" alt="Last Commit">
   <a href="https://deepwiki.com/ztxtech/aion"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
@@ -37,20 +47,15 @@
 
 现有的 benchmark 和 agent 系统各自只捕捉了向下一代时间序列任务转变的一部分：benchmark 通常过早简化任务，而单纯的 agent 不提供时间约束、证据纪律或可靠的停止标准。
 
-AION 作为基于 [OpenCode](https://github.com/anomalyco/opencode) 的**时间序列 harness** 来填补这一空白：
-
-- **任务层** — 将下一代时间序列任务形式化为*任务文件、工作空间与验证接口*的三元组
-- **工作空间层** — 为开放式研究提供结构化证据收集、工具编排和持久记忆
-- **执行层** — 通过协议、治理层级、上下文压缩和安全门禁约束多 agent 运行时
-- **审查层** — 在进度被接受前强制执行有效性、时间性和完整性检查；没有输出可以在不通过分层 critic 的情况下离开系统
+AION 作为基于 [OpenCode](https://github.com/anomalyco/opencode) 的**时间序列 harness** 来填补这一空白。它通过专业化 agent — 需求分析、证据收集、实现、分层审查 — 来组织工作，并通过协议管理调度、回传、rebuttal 和停止/继续决策。
 
 时间序列专业化通过**时间性奠基**、**知识引导的搜索**和**分层可靠性检查**进入系统，使系统能够在开放证据下工作，同时保持输出的合法性和停止纪律。
 
 ---
 
-## 🏗️ 四层架构
+## 🏗️ 架构
 
-AION 围绕四个堆叠层组织一切 — 每一层约束其下方的一层：**任务层**（要解决什么）、**工作空间层**（有哪些证据和工具）、**执行层**（系统如何在约束下行动）和**审查层**（输出是否通过有效性、时间性和完整性检查后才被接受）。
+AION 通过专业化 agent、OpenCode 原生 skill、运行时协议、记忆文件、评测契约和 fail-closed CLI runner 来组织工作。主 agent 根据任务等级和模型能力自适应安排路径；`ts-critic` 和 `c-critic` 保留为审查骨干。
 
 ### 目录结构
 
@@ -63,31 +68,18 @@ AION 围绕四个堆叠层组织一切 — 每一层约束其下方的一层：*
 │   ├── coder.md              # 实现、实验与交付
 │   ├── ts-critic.md          # 时间序列专家 + Pareto 治理
 │   └── c-critic.md           # 最终最小上下文冷启动批判
-├── skills/           # 17 个可复用技能
-│   ├── context-init/         # 手动起手并开始任务
-│   ├── workspace-init/       # 自动工作区初始化
-│   ├── plan/                 # 复杂任务计划
-│   ├── brain-storm/          # 多角度分析
-│   ├── deep-reasoning/       # 多步推理与辩论
-│   ├── critic-loop/          # 审查与回退判断
-│   ├── time-series/          # 时间序列统一审查框架
-│   ├── data-interface/       # 四类数据入口契约
-│   ├── forecast-contract/    # 预测输出可控性与有效性校验
-│   ├── report-writing/       # 实验报告与正式文档输出
-│   ├── python-toolbox/       # Python 工具先验库
-│   ├── ztxexp/               # 实验目录结构与出图协议
-│   ├── github-search/        # GitHub 一手工程证据检索
-│   ├── pdf-intake/           # PDF / 扫描件安全提取
-│   ├── safety-gate/          # 自动化安全预检
-│   ├── evolution/            # 能力缺口 → 新 agent/skill 创建
-│   └── template/             # 空 skill 骨架
-├── rules/            # 共享规则（自动加载）
-│   ├── core.md               # 包边界、trace、占位符
-│   ├── opencode.md           # OpenCode 文档与仓库链接
-│   ├── agent-autonomy.md     # 子 agent 自主性约束
-│   ├── experiment.md         # Benchmark-first 实验规则
-│   ├── time-series.md        # 时间序列共享规则
-│   └── websearch.md          # 网页搜索回退链
+├── skills/            # OpenCode 原生 skill，按需加载
+│   ├── workspace-init/       # 运行时、记忆与 trace 初始化
+│   ├── safety/               # 输入与动作安全检查
+│   ├── search/               # 多轴外部证据收集
+│   ├── planning/             # 计划与分支管理
+│   ├── ts-core/              # 时间序列任务与验证规则
+│   ├── experiment/           # benchmark-first 实验执行
+│   ├── report/               # 证据约束的报告交付
+│   └── pdf-intake/           # 只读 PDF 提取
+├── rules/            # 核心规则
+│   ├── core.md               # 内核：治理、任务分级、模型适配、记忆
+│   └── opencode.md           # OpenCode 文档与仓库参考
 ├── protocols/        # 8 个运行时协议
 │   ├── dispatch.md           # 子 agent 派单契约
 │   ├── reportback.md         # 回传契约
@@ -249,26 +241,26 @@ bash cli.sh --max-continues 10
 
 ### 自动 / 交互场景下怎么写 Prompt
 
-`cli.sh` 已经内置了以 `context-init` 开头的默认 prompt — 这是 harness 引导入口。运行 `bash cli.sh` 即可自动完成完整的 harness 初始化。
+`cli.sh` 已经内置公开的 OpenCode run/TUI 入口。运行 `bash cli.sh` 即可启动当前 harness。
 
-如果你不想直接使用 `cli.sh` 默认 prompt，而是自己写提示词，建议**同时包含 `context-init` 入口**并把期望的执行策略明确写出来，避免 agent 自己猜。
+如果自己写提示词，应明确执行策略，并先读取原生 `.opencode/agents/agent.md` 入口，避免 agent 自己猜测。
 
-- 对非交互、自动执行，包含 `context-init` 并注明模式：
+- 对非交互、自动执行，先读取根目录任务文件和 `.opencode` 合约，并注明模式：
 
 ```text
-请以 context-init 技能启动项目。先读取根目录任务文件和 .opencode 合约。请按 run + autonomous 模式执行：保持 human-free，优先做本地探测，不要为了常规环境或流程选择先问我；只有当确实缺少只有我才知道的信息时才停下来。
+请先读取根目录任务文件和 `.opencode` 合约。请按 `run + autonomous` 模式执行：常规流程不需要询问我，只有配置好的 critic 门禁批准后才停止。
 ```
 
 - 对交互式 TUI 协作，明确说明你只想参与真实分叉：
 
 ```text
-请以 context-init 技能启动项目。请按 tui + interactive 模式执行：先做本地探测，常规默认动作仍由你自己决定；只有当存在多个同样合理且会实质影响后续路径的候选方案时，再向我发起简洁确认。
+请先读取根目录任务文件和 `.opencode` 合约。请按 `tui + interactive` 模式执行：常规动作自行决定，只有重要分叉才询问我。
 ```
 
 - 如果你想在 TUI 里看过程，但不希望它频繁问你，也可以直接写：
 
 ```text
-请以 context-init 技能启动项目。请按 tui + autonomous 模式执行：我希望观察过程，但不希望你为了常规环境或流程选择频繁打断我；只有真实分叉才需要提醒。
+请先读取根目录任务文件和 `.opencode` 合约。请按 `tui + autonomous` 模式执行：我希望观察过程，但不希望被常规流程打断。
 ```
 
 对 Python 环境，一个更好的交互式提示词写法是要求 agent 先探测、后上交分叉，例如：
@@ -305,16 +297,14 @@ opencode
 
 ## 🤝 Agent 角色
 
-Agent 横跨全部四层 — 从任务解析到执行编排再到分层审查：
-
-| Agent                     | 主要层级            | 职责                                                                  |
-| ------------------------- | ------------------- | --------------------------------------------------------------------- |
-| **agent**                 | 执行层              | 主控 — 调度子 agent、执行审查门禁、驱动收口                           |
-| **requirements-analyst**  | 任务层              | 读取任务与工作区材料，抽取目标、输入与约束                            |
-| **information-collector** | 工作空间层          | 补齐 SOTA、顶会顶刊、官方实现与领域知识                               |
-| **coder**                 | 工作空间层 + 执行层 | 实现、实验、交付与可视化                                              |
-| **ts-critic**             | 审查层              | 时间序列方法审查 + Pareto 继续/停止治理 — `c-critic` 之前的最高治理门 |
-| **c-critic**              | 审查层              | 最终最小上下文冷启动批判 — 系统最高治理权                             |
+| Agent | 职责 |
+|-------|------|
+| **agent** | 主控 — 调度子 agent、执行审查门禁、驱动收口 |
+| **requirements-analyst** | 读取任务与工作区材料，抽取目标、输入与约束 |
+| **information-collector** | 补齐 SOTA、顶会顶刊、官方实现与领域知识 |
+| **coder** | 实现、实验、交付与可视化 |
+| **ts-critic** | 时间序列方法审查 + Pareto 继续/停止治理 — `c-critic` 之前的最高治理门 |
+| **c-critic** | 最终最小上下文冷启动批判 — 系统最高治理权 |
 
 ### 治理顺序
 
@@ -330,35 +320,40 @@ c-critic > ts-critic > 主 agent > 其他子 agent
 
 ---
 
-## 🔧 技能清单（17 个）
+## 📦 组件
 
-技能服务于工作空间层和执行层 — 提供证据收集、工具编排和领域先验：
+每个组件只承担一个明确职责，并遵循 OpenCode 的原生发现规则：
 
-| 技能                  | 层级       | 描述                                             |
-| --------------------- | ---------- | ------------------------------------------------ |
-| **context-init**      | 工作空间层 | 手动工作区引导和任务启动                         |
-| **workspace-init**    | 工作空间层 | 自动工作区初始化与记忆种子                       |
-| **plan**              | 执行层     | 带分支管理的复杂任务计划                         |
-| **brain-storm**       | 工作空间层 | 多角度分析与 branch ID                           |
-| **deep-reasoning**    | 执行层     | 带依赖链的多步推理                               |
-| **critic-loop**       | 审查层     | 审查与回退判断                                   |
-| **time-series**       | 工作空间层 | 时间序列统一审查框架                             |
-| **data-interface**    | 任务层     | 四类数据入口契约（文件 / 数据库 / Loader / API） |
-| **forecast-contract** | 审查层     | 预测输出可控性与有效性检查                       |
-| **report-writing**    | 工作空间层 | 实验报告与正式文档输出                           |
-| **python-toolbox**    | 工作空间层 | Python 工具选型先验                              |
-| **ztxexp**            | 工作空间层 | 实验目录结构与出图协议                           |
-| **github-search**     | 工作空间层 | GitHub 一手工程证据检索                          |
-| **pdf-intake**        | 工作空间层 | 安全 PDF 与扫描件提取                            |
-| **safety-gate**       | 审查层     | 自动化安全预检                                   |
-| **evolution**         | 执行层     | 能力缺口检测 → 新 agent/skill 创建               |
-| **template**          | 工作空间层 | 空 skill 骨架                                    |
+| 组件 | 路径 | 职责 |
+|------|------|------|
+| **主 agent** | `agents/agent.md` | 任务分级、路径调度、上下文压缩与门禁执行 |
+| **专业 agent** | `agents/*.md` | 需求分析、证据收集、编码、时间序列评审与最终批判 |
+| **原生 skill** | `skills/<name>/SKILL.md` | 由 OpenCode `skill` 工具按需发现和加载的能力 |
+| **运行时协议** | `protocols/*.md` | 调度、回传、rebuttal、压缩、记忆同步与停止/继续规则 |
+| **记忆与 trace** | `memory/template/`、`trace.md` | 单次运行证据、快照、决策与可复用发现 |
+| **评测契约** | `evals/*.md` | 测试套件、评分器、计分卡、回归和发布门禁 |
+| **CLI 入口** | `cli.sh` | 以 run 或 TUI 模式启动 OpenCode，支持显式提示词和 session 导出 |
+
+### 任务分级
+
+主 agent 在调度前对每个任务进行分类：
+
+| 级别 | 信号 | 流程 | 上下文 |
+|------|------|------|--------|
+| **L0** 简单 | 单文件编辑、格式修复、简单查询 | 直接执行 | 最小 |
+| **L1** 轻量 | 明确任务、无需外部搜索 | 主 agent + ≤1 个专家 | 小 |
+| **L2** 标准 | 多步骤、需要搜索/实验 | RA → IC → coder + critic 门禁 | 标准 |
+| **L3** 完整 | 基准测试、正式报告、多分支 | 完整链 + 预停止门 | 完整 |
+
+### 模型自适应执行
+
+驱动模型可以选择更轻或更重的路径：强模型可以跳过不必要的计划深度，弱模型保留更完整的计划和 critic 覆盖；治理顺序和最终评审门禁不会被移除。
 
 ---
 
 ## 📋 协议清单（8 个）
 
-协议约束执行层 — 管理 agent 如何通信、升级和压缩上下文：
+协议约束执行 — 管理 agent 如何通信、升级和压缩上下文：
 
 | 协议               | 用途                                                                         |
 | ------------------ | ---------------------------------------------------------------------------- |
@@ -375,7 +370,7 @@ c-critic > ts-critic > 主 agent > 其他子 agent
 
 ## 🧠 记忆与 Trace
 
-AION 在工作空间层维护两套互补的追踪系统：
+AION 维护两套互补的追踪系统：
 
 - **`.opencode/trace.md`** — 单次任务执行 trace：关键决策、失败复盘和交付检查点
 - **`.opencode/memory/`** — 跨任务持久记忆：正面/负面发现、agent 关系、决策、特征
@@ -388,7 +383,7 @@ AION 在工作空间层维护两套互补的追踪系统：
 
 ## 📡 CLI 参考
 
-`cli.sh` 提供了一个 CLI 入口，用于自动化 run-mode 执行与自动续跑：
+`cli.sh` 提供公开 CLI 入口，用于 OpenCode 的 run 或 TUI 执行，并支持可选的自动续跑：
 
 ```bash
 bash cli.sh [OPTIONS]
@@ -428,7 +423,7 @@ bash cli.sh --mode tui --no-auto-continue
 
 ## 🛡️ 核心约束
 
-Harness 在全部四层强制执行硬性边界：
+Harness 在整个系统中强制执行硬性边界：
 
 - **禁止知识/数据泄露** — 未来信息、标签、隐藏集内容和私有数据绝不能泄露到特征、代码、日志或输出中
 - **彻底的怀疑主义** — 单次成功或指标提升不是可靠的证据；必须主动排查泄露、伪相关、过拟合和未验证假设
