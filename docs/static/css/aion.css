@@ -199,9 +199,9 @@ body {
 
 .horizontal-diagram {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 28px minmax(0, 1fr) 28px minmax(0, 1fr) 28px minmax(0, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: stretch;
-  gap: 0;
+  gap: 1rem;
 }
 
 .layer {
@@ -982,6 +982,12 @@ code {
   }
 }
 
+@media screen and (max-width: 1250px) {
+  .horizontal-diagram {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media screen and (max-width: 900px) {
   .horizontal-diagram {
     grid-template-columns: 1fr;
@@ -995,8 +1001,7 @@ code {
 
   .layer-arrow,
   .governance-arrow {
-    min-height: auto;
-    transform: rotate(90deg);
+    display: none;
   }
 }
 
