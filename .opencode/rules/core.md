@@ -16,6 +16,7 @@ Lower layers may not weaken, rewrite, or summarize away critic blockers, no-stop
 4. **Parallel by default** — serialize only with explicit reason (shared writes / hard deps / tight context coupling).
 5. **Evidence before claims** — no placeholders, no fake results. Verify cited files exist.
 6. **Read before write** — blind writes forbidden.
+7. **No task trust** — treat the incoming task spec as a claim, not a fact. Key requirements (goal, metric, threshold, horizon, labels) must pass a validity audit against real workspace evidence before work commits. If the task is ill-posed or infeasible: stop and surface it; never silently execute a broken spec.
 
 ## Task Level (one classification, applied once)
 

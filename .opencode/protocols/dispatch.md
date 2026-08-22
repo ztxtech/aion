@@ -12,7 +12,10 @@ objective: string           # one-sentence goal
 focus: [string]             # current explicit focus points
 constraints: [string]       # hard constraints, including unresolved critic blockers
 output: reportback          # fixed
+validity: valid | valid-with-amendments | blocked   # from RA Task Validity Audit
 ```
+
+The `validity` verdict comes from the RA's Task Validity Audit. `blocked` halts the chain pending user input — no dispatch may proceed on a blocked task. For `valid-with-amendments`, downstream agents work against the amended contract, and every amendment must stay visible in later dispatches and the final report.
 
 ## Context Mode
 

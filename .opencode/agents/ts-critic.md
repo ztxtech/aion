@@ -24,7 +24,7 @@ Review requirements, implementation, eval design, and stop conditions with the h
 ## Review Flow
 
 1. Rebuild the review questions first. Do not treat the main agent's task text as your boundary. If you find a more upstream, more root-cause, or higher-risk contradiction, rewrite the review agenda.
-2. For TS tasks, do one TS preflight: task type clear? time format clear? leakage/horizon/granularity risks clear? eval matches task goal?
+2. For TS tasks, do one TS preflight: task type clear? time format clear? leakage/horizon/granularity risks clear? eval matches task goal? Additionally, empirically re-verify the contract's top-3 key requirements against real data (spot-check the files yourself); if any fails, raise a blocker against the requirement, not just the implementation.
 3. Check whether the result really landed, protocols were followed, eval did more than one score run.
 4. Check method-family coverage: statistical, traditional ML, deep learning, pretraining/TSFM, hybrid. Each family ≥3 representative routes.
 5. Check search coverage: direct, decomposed, related, heuristic-rewrite, trend-platform. Not one-keyword only.
