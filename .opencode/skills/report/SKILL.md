@@ -20,6 +20,7 @@ Experiment reports, technical plans, analysis reviews, benchmark reports, stage 
 - Before citing any file, check it really exists on disk.
 - Structure diagrams: use `mermaid`. ASCII/plain-text box diagrams are forbidden — this is a blocking gate.
 - If plots contain Chinese text, check font rendering explicitly. Fix before delivery.
+- **Metric sanity gate — HARD RULE:** any extreme headline metric (Sharpe > 10, accuracy > 0.95, AUPRC near 1.0, etc.) computed on fewer than ~100 samples, or contradicting the report's own main results, MUST be flagged `⚠ statistically meaningless` and must NOT be used as a conclusion argument. Report the sample size next to every headline metric.
 
 ## Structure
 

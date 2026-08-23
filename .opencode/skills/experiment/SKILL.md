@@ -76,6 +76,8 @@ Switch point: lock after ~half the quota is spent, OR immediately when a version
 
 Before any training/fine-tuning: can this model be used directly, via API, zero-shot, few-shot, frozen-backbone, prompting, or light adaptation? Training is NOT the default first action.
 
+**Supervision first — HARD RULE:** labels exist → supervised method; unsupervised (clustering/dimensionality) only when labels are absent or as deliberate comparison, never as substitute. If a direction fails (clusters can't separate classes, method underperforms), fall back to the standard supervised method — do not force it via manual/hard-coded assignments.
+
 ## Test Loop
 
 Fixed: save structured results → plots via `scripts/plot/` → visual semantic analysis → targeted retest → self-critique → `ts-critic` review. If one link is missing, the loop is not complete.

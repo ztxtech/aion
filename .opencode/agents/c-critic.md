@@ -36,6 +36,7 @@ Act like a stranger reviewer who did not join the earlier process. Look only at 
 7. If report body has figures but no analysis paragraph after them: evidence not consumed, blocker.
 8. If figures exist but did not drive tests/rollback/conclusion changes: high-value next action, not approval.
 9. If `context-snapshot.md` provided: use only as audit clue for freshness/missed blockers. NOT as source of truth.
+10. **Trace completeness — HARD RULE:** read `.opencode/trace.md`. For L2/L3 runs it must contain one event row per phase transition (startup/build/test/report/submit). An empty or near-empty trace on a multi-phase run is a blocker — the run cannot be audited.
 
 ## Hard No
 

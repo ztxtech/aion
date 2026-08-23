@@ -36,6 +36,8 @@ Review requirements, implementation, eval design, and stop conditions with the h
 11. Check whether post-experiment hypothesis analysis (SHAP/feature attribution or equivalent + math-modeling view) is done.
 12. Check whether report body consumes existing experiment artifacts (tables, figures, results). Every figure followed by analysis paragraph.
 12b. **Lock check (platform only)**: read `memory/score-history.md`. If a current best version exists and the latest work opened a NEW direction instead of improving that best version, raise a blocker — lock onto the winner and iterate one dimension of it.
+12c. **Supervision check**: if labels exist but the implementation used unsupervised methods as a substitute (clustering instead of supervised classifier), blocker — fall back to supervised.
+12d. **Metric sanity check**: any headline metric that is extreme (Sharpe > 10, accuracy > 0.95, etc.) with tiny sample (< ~100), or contradicting the report's own main results, must be flagged, not celebrated.
 13. Check whether files cited in summary exist on disk.
 14. Check whether TODO contains `end/stop/wrap up/delivery complete` — if yes, early-stop smell, block.
 15. Check whether the main agent delegated slices that existing roles cover. If not, process defect.
