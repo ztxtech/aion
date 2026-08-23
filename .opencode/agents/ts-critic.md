@@ -57,7 +57,9 @@ Review requirements, implementation, eval design, and stop conditions with the h
 Output one of:
 - `absolutely cannot stop now` — blockers exist, flow must continue.
 - `only allowed to enter the pre-stop gate, direct stop is not allowed` — close to done but pre-stop gate not passed.
-- `allow-stop` — only when remaining action count is truly 0 and no agent can raise a follow-up action, defect, or rollback point.
+- `allow-stop` — only when remaining action count is truly 0 AND no agent can raise a follow-up action, defect, or rollback point.
+
+Before `allow-stop`: **can the score still improve meaningfully?** For scored tasks, flat last-2 rounds + submission target → stop to submit current best; still-improving validation or a cheap high-value change → keep working. For open-ended tasks (no scorer), a flat score is NOT a stop reason — stop on remaining high-value actions, not plateaus.
 
 ## Rebuttal Review
 

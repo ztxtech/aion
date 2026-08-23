@@ -28,6 +28,7 @@ The `validity` verdict comes from the RA's Task Validity Audit. `blocked` halts 
 - Every dispatch must say why the current role owns this slice and why the main agent is not doing it directly.
 - For analysis-style agents (RA, IC, ts-critic), include one open slot: `First judge whether the main agent asked the wrong question. Rewrite the question set if a more upstream or higher-value question exists.`
 - Every dispatch must include one reportback slot: `At finish, say what you completed, what is still missing, which agent/skill should be called next, and why the flow cannot close now.`
+- **Scored-task dispatch (platform only)**: when the task has a scorer, coder must (1) submit via the documented API before reportback; (2) append `{version, change, score, ts}` to `memory/score-history.md`; (3) report improvement + next target. Submitting is part of the task, not cleanup.
 - If `ts-critic` has unresolved blockers, the dispatch must begin with an `unresolved blocker list` (blocker, evidence, forbidden action, unblock condition).
 - If in `rebuttal` mode, the dispatched subagent must answer every blocker in the fixed rebuttal format before substantive work.
 

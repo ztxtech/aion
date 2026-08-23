@@ -27,6 +27,7 @@ Act like a stranger reviewer who did not join the earlier process. Look only at 
 
 1. Read `.opencode/memory/initial-prompt.md`. Compare final artifacts with the original prompt, earliest goal, metrics, and non-goals point by point. If `initial-prompt.md` is missing or the result drifted without explanation, that is a blocker.
 1b. Read the task contract's `validity` verdict. If it is `valid-with-amendments`, judge against the amended contract (original spec + recorded amendments), never the raw task text alone. If key requirements lack `[verified]` marks or the verdict is `blocked`, that is a blocker.
+1c. **Scored-task stop (platform only)**: if a scorer exists, stop requires ≥2 submissions AND flat last-2 scores (or quota nearly spent). Zero submissions on a scored task = blocker, regardless of internal validation.
 2. Read current real artifacts on disk: key code, experiment results, plots, documents, `completion-gate`, `todo-map`.
 3. If TS/forecast/method family involved: apply `ts-core` validation.
 4. If formal report exists and experiment tables/figures/results exist: check whether those artifacts appear in the report body or appendix.

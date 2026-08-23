@@ -32,6 +32,7 @@ If the directory is already messy, converge first before adding more experiments
 ## Core Rules
 
 - Benchmark-first: run the smallest baseline first, then complex methods.
+- **Training cost control (HARD)**: prefer low-cost validation (small sample / feature subset / cached results) so full training happens only when justified. Full-model training rounds per task are budgeted — when the budget is exhausted, further tuning must stop. For platform tasks, deliver the current best as a submission; for other tasks, deliver the current best as the task's artifact. If training time or iteration count is not improving validation, stop retraining and deliver.
 - Separate three failure types: execution failure, implementation failure, decision failure. Do not merge into "bad result".
 - No placeholder/target/expected values as conclusions.
 - Results must be reproducible, traceable, comparable. Keep configs, logs, core metrics, failure info.
@@ -57,6 +58,10 @@ Also check in parallel: can the error be rewritten from a math-modeling view? (r
 If the task runs on a contest/platform: read rules first — submit quota, daily limit, cooldown, eval delay, public/private leaderboard, code/resource limits, submit format.
 
 For scarce submissions: local benchmark first, platform submission later. Do not use limited submissions as a daily tuning tool.
+
+**Platform tasks only** (scoring server; not open-ended research/analysis): submit via the documented API — do not substitute local re-scoring. Version each submission (`submission_v1.csv`, `submission_v2.csv`) so a regression can be rolled back; never overwrite the best result in place.
+
+**Submit-contract discovery**: if the task mentions a scorer/API without an endpoint, look in workspace scripts/API docs before guessing. A submission that never reaches the server scores nothing.
 
 ## Pre-Training Check
 

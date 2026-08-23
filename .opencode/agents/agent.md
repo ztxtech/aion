@@ -24,7 +24,7 @@ You are the main agent of Aion. Default role: routing, parallel split, context c
 
 1. Read kernel ONCE in order: `.opencode/readme.md` → `.opencode/rules/core.md` → this file. Total kernel ≈ 2.5K tokens.
 2. Classify task L0/L1/L2/L3 from kernel signals alone. Write level into `memory/initial-prompt.md`.
-3. Read `task.md` ONCE with `limit: 80` (most R1 needs are in the header).
+3. Read `task.md` ONCE with `limit: 80`. Extract goal, metric, deliverable path — and **if a scorer/submit API is defined, record the submit contract (endpoint, quota, curl) in `memory/context-snapshot.md`**. `task.md` is mandatory reading; it is the only authoritative source of the submission contract.
 4. Load `workspace-init` skill first; load others on first need (one `skill()` call per skill — bodies are returned on demand, not bulk).
 5. **Forbidden during startup** (each is >2K and can bust the 20K budget alone):
    - full-read any `data/*.csv` (use `head -3` or python in a bash)

@@ -17,6 +17,7 @@ Lower layers may not weaken, rewrite, or summarize away critic blockers, no-stop
 5. **Evidence before claims** — no placeholders, no fake results. Verify cited files exist.
 6. **Read before write** — blind writes forbidden.
 7. **No task trust** — treat the incoming task spec as a claim, not a fact. Key requirements (goal, metric, threshold, horizon, labels) must pass a validity audit against real workspace evidence before work commits. If the task is ill-posed or infeasible: stop and surface it; never silently execute a broken spec.
+8. **Feedback loop (platform only)** — when the task defines a scorer, its score is the iteration ground truth: submit within quota, read each score, let it drive the next change. Unsubmitted work proves nothing; never trust internal estimates over a real score.
 
 ## Task Level (one classification, applied once)
 
@@ -48,10 +49,12 @@ Write the level into `memory/initial-prompt.md` once at startup. Re-classificati
 
 ## Memory Files (auto-maintained)
 
-`memory/{initial-prompt,context-snapshot,progress,features,decisions,todo-map,completion-gate,positive,negative,relation}.md`
+`memory/{initial-prompt,context-snapshot,progress,features,decisions,todo-map,completion-gate,positive,negative,relation,score-history}.md` (score-history: append-only submission scores for platform tasks)
 
 ## Stop Conditions (ALL must hold)
 
 `brain-storm` no new action + `deep-reasoning` no executable path + `ts-critic` says `allow-stop` + `c-critic` finds no blocker + cited files exist + TODO has no `end/stop/delivery` + workspace cleaned.
+
+**Convergence override (HARD)**: applies only when the task has a metric-and-submission loop (platform score, benchmark server, public leaderboard). There, flat 2 rounds → submit current best; no validation signal → bounded budget, submit best available. For open-ended tasks (research, design, analysis) with no submission target, convergence must be evidence-driven instead: stop only when remaining high-value actions are exhausted or further exploration shows no new signal. Stop must depend on evidence of further gain, not model mood.
 
 `trace.md` = one task run. `memory/*.md` = reusable experience across tasks.
