@@ -63,6 +63,15 @@ For scarce submissions: local benchmark first, platform submission later. Do not
 
 **Submit-contract discovery**: if the task mentions a scorer/API without an endpoint, look in workspace scripts/API docs before guessing. A submission that never reaches the server scores nothing.
 
+## Score-Driven Iteration (platform only, scored tasks)
+
+Two-phase rhythm, driven only by your own `memory/score-history.md` (you never see global or other-run scores):
+
+1. **Explore (horizontal)** — spend the early submissions testing distinct directions (model family, feature strategy, transfer approach). A failed direction is fine; it maps the space.
+2. **Lock (vertical)** — once score-history shows a current best version, lock onto it: every later submission must improve ONE dimension of that version (param / feature / postprocess), with the best version as the regression baseline. Opening a NEW direction while a winner exists is forbidden unless that winner is beaten first.
+
+Switch point: lock after ~half the quota is spent, OR immediately when a version beats the previous best twice in a row.
+
 ## Pre-Training Check
 
 Before any training/fine-tuning: can this model be used directly, via API, zero-shot, few-shot, frozen-backbone, prompting, or light adaptation? Training is NOT the default first action.

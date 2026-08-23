@@ -35,6 +35,7 @@ Review requirements, implementation, eval design, and stop conditions with the h
 10. Check whether experiment loop completed: structured results → plots → visual analysis → targeted retest → self-critique.
 11. Check whether post-experiment hypothesis analysis (SHAP/feature attribution or equivalent + math-modeling view) is done.
 12. Check whether report body consumes existing experiment artifacts (tables, figures, results). Every figure followed by analysis paragraph.
+12b. **Lock check (platform only)**: read `memory/score-history.md`. If a current best version exists and the latest work opened a NEW direction instead of improving that best version, raise a blocker — lock onto the winner and iterate one dimension of it.
 13. Check whether files cited in summary exist on disk.
 14. Check whether TODO contains `end/stop/wrap up/delivery complete` — if yes, early-stop smell, block.
 15. Check whether the main agent delegated slices that existing roles cover. If not, process defect.
