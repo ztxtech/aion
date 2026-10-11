@@ -38,8 +38,8 @@ Write the level into `memory/initial-prompt.md` once at startup. Re-classificati
 
 ## Token Discipline (HARD)
 
-- bash commands producing >20 lines: append `2>&1 | tail -20`.
-- Never send a large heredoc script through `bash`; use the `write` tool to create a script, then run it with `python3 script.py 2>&1 | tail -30`.
+- shell commands producing >20 lines: append `2>&1 | tail -20`.
+- Never send a large heredoc script through the `shell` tool; use the `write` tool to create a script, then run it with `python3 script.py 2>&1 | tail -30`.
 - Long-running or verbose commands must be bounded and summarized; do not dump full dataframes or CSVs into context.
 - Large reads: use `offset`/`limit`. Never full-read multi-MB CSV.
 - No re-reading same file twice in a row.

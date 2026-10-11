@@ -52,7 +52,7 @@ Examples:
   bash __SCRIPT_NAME__ -m openai/gpt-4.1 --max-continues 10 --debug
 
 Prerequisites:
-  1. Install OpenCode:     curl -fsSL https://opencode.ai/install | bash
+  1. Install OpenCode V2:  curl -fsSL https://opencode.ai/v2/install | bash
   2. Add AION to project:  git clone https://github.com/ztxtech/aion.git .opencode
   3. Configure:            create opencode.json (see README.md)
 HELP

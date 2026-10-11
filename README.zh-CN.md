@@ -27,7 +27,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/OpenCode-≥0.9-blue?logo=terminal&logoColor=white" alt="OpenCode">
+  <img src="https://img.shields.io/badge/OpenCode-V2-blue?logo=terminal&logoColor=white" alt="OpenCode">
   <img src="https://img.shields.io/badge/Python-≥3.10-3776AB?logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/多Agent-6个角色-F59E0B?style=flat" alt="Multi-Agent">
   <img src="https://img.shields.io/badge/协议-8个-06B6D4?style=flat" alt="Protocols">
@@ -156,19 +156,13 @@ brew install git curl python3
 ### 1. 安装 OpenCode
 
 ```bash
-# 一键安装（YOLO）
-curl -fsSL https://opencode.ai/install | bash
+# 一键安装（YOLO，V2）
+curl -fsSL https://opencode.ai/v2/install | bash
 
 # 包管理器安装
-npm i -g opencode-ai@latest        # 或 bun/pnpm/yarn
-scoop install opencode             # Windows
-choco install opencode             # Windows
-brew install anomalyco/tap/opencode # macOS 和 Linux（推荐，始终最新）
-brew install opencode              # macOS 和 Linux（官方 brew 公式，更新较慢）
-sudo pacman -S opencode            # Arch Linux（稳定版）
-paru -S opencode-bin               # Arch Linux（AUR 最新版）
-mise use -g opencode               # 任意系统
-nix run nixpkgs#opencode           # 或 github:anomalyco/opencode（最新开发分支）
+npm install -g @opencode/cli       # 或 bun/pnpm/yarn
+brew install anomalyco/tap/opencode-v2 # macOS 和 Linux
+paru -S opencode-beta              # Arch Linux（AUR）
 ```
 
 ### 2. 配置 OpenCode

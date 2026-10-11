@@ -74,7 +74,7 @@ sleep "$((BASE + RANDOM % JITTER))"
 
 4. Long Bash / experiment runs
 
-- If the built-in bash tool shows something like `bash tool terminated command after exceeding timeout 300000 ms`, first adjust timeout with the official CLI docs before blaming the experiment itself.
+- If the built-in shell tool shows something like `shell tool terminated command after exceeding timeout 300000 ms`, first adjust timeout with the official CLI docs before blaming the experiment itself.
 - The official OpenCode CLI environment variable is `OPENCODE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS`, used to set the default timeout for bash commands in milliseconds.
 - For long-running experiments, set it clearly before starting OpenCode, for example 2 days:
 
@@ -90,7 +90,7 @@ OPENCODE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS=172800000 opencode
 ```
 
 - `172800000` milliseconds means 2 days.
-- If the experiment is very long, very noisy, or needs continuous watching, still prefer scripting the training / experiment and combining it with `tmux` / `screen` / background runs / structured logs on disk, instead of blocking all long jobs inside one synchronous bash tool call.
+- If the experiment is very long, very noisy, or needs continuous watching, still prefer scripting the training / experiment and combining it with `tmux` / `screen` / background runs / structured logs on disk, instead of blocking all long jobs inside one synchronous shell tool call.
 - When the task clearly contains long experiments, the main agent and `coder` should explicitly check whether this variable is already set in the environment. If not, they should warn or add it before the command, then start the long job.
 
 4.1 Session continue and non-interactive runs
