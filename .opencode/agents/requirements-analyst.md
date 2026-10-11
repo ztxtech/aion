@@ -1,17 +1,19 @@
 ---
 description: "Read the task and workspace material, extract goals, input assets, evaluation standards, and key gaps."
 mode: subagent
-permission:
-  "*": allow
-  external_directory: allow
-  task:
-    "*": deny
-  bash:
-    "*": allow
-  edit: deny
-  webfetch: deny
-  skill:
-    "*": allow
+permissions:
+  - action: external_directory
+    resource: "*"
+    effect: allow
+  - action: subagent
+    resource: "*"
+    effect: deny
+  - action: edit
+    resource: "*"
+    effect: deny
+  - action: webfetch
+    resource: "*"
+    effect: deny
 ---
 
 # Requirements Analyst

@@ -27,7 +27,7 @@ Time-series research is moving beyond fixed forecasting benchmarks toward tasks 
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/OpenCode-≥0.9-blue?logo=terminal&logoColor=white" alt="OpenCode">
+  <img src="https://img.shields.io/badge/OpenCode-V2-blue?logo=terminal&logoColor=white" alt="OpenCode">
   <img src="https://img.shields.io/badge/Python-≥3.10-3776AB?logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/Multi_Agent-6_Roles-F59E0B?style=flat" alt="Multi-Agent">
   <img src="https://img.shields.io/badge/Protocols-8-06B6D4?style=flat" alt="Protocols">
@@ -156,19 +156,13 @@ brew install git curl python3
 ### 1. Install OpenCode
 
 ```bash
-# YOLO
-curl -fsSL https://opencode.ai/install | bash
+# YOLO (V2)
+curl -fsSL https://opencode.ai/v2/install | bash
 
 # Package managers
-npm i -g opencode-ai@latest        # or bun/pnpm/yarn
-scoop install opencode             # Windows
-choco install opencode             # Windows
-brew install anomalyco/tap/opencode # macOS and Linux (recommended, always up to date)
-brew install opencode              # macOS and Linux (official brew formula, updated less)
-sudo pacman -S opencode            # Arch Linux (Stable)
-paru -S opencode-bin               # Arch Linux (Latest from AUR)
-mise use -g opencode               # Any OS
-nix run nixpkgs#opencode           # or github:anomalyco/opencode for latest dev branch
+npm install -g @opencode/cli       # or bun/pnpm/yarn
+brew install anomalyco/tap/opencode-v2 # macOS and Linux
+paru -S opencode-beta              # Arch Linux (AUR)
 ```
 
 ### 2. Configure OpenCode

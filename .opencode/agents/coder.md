@@ -1,17 +1,13 @@
 ---
 description: "Implementation, experiments, scripts, data handling, validation output, and deliverables."
 mode: subagent
-permission:
-  "*": allow
-  external_directory: allow
-  task:
-    "*": deny
-  bash:
-    "*": allow
-  edit: allow
-  webfetch: allow
-  skill:
-    "*": allow
+permissions:
+  - action: external_directory
+    resource: "*"
+    effect: allow
+  - action: subagent
+    resource: "*"
+    effect: deny
 ---
 
 # Coder

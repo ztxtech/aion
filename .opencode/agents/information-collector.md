@@ -1,18 +1,16 @@
 ---
 description: "Multi-axis search for external evidence, SOTA routes, top papers, official implementations, and domain knowledge."
 mode: subagent
-permission:
-  "*": allow
-  external_directory: allow
-  task:
-    "*": deny
-  bash:
-    "*": allow
-  edit: deny
-  websearch: allow
-  webfetch: allow
-  skill:
-    "*": allow
+permissions:
+  - action: external_directory
+    resource: "*"
+    effect: allow
+  - action: subagent
+    resource: "*"
+    effect: deny
+  - action: edit
+    resource: "*"
+    effect: deny
 ---
 
 # Information Collector
