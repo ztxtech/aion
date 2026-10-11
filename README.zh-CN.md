@@ -199,6 +199,17 @@ opencode run --agent agent "你的任务描述"
 opencode run --agent agent -m anthropic/claude-sonnet-4 "分析这个时间序列数据集"
 ```
 
+### 5. Goal 模式（可选）
+
+AION 在 `.opencode/opencode.json` 里预配了 [`@prevalentware/opencode-goal-plugin`](https://github.com/prevalentWare/opencode-goal-plugin)。插件提供 `/goal` 斜杠命令、持久化目标状态、空闲自动续跑和 goal 侧边栏指示器。
+
+```
+# 在 TUI 里启动一个 goal，让 AION 迭代 task.md
+/goal 用 AION harness 完成 task.md 定义的任务
+```
+
+Agent 启动时检查 `get_goal`。有活动 goal 时，它会选最高价值的剩余动作、派发对应 subagent、更新记忆文件，然后自动续跑直到所有 critic 门通过并用证据关闭 goal。
+
 ### `run` / `tui` 与执行策略的关系
 
 OpenCode 的 `run` 和 `tui` 描述的是界面形态，不等于 agent 是否应该频繁向用户提问。
@@ -223,7 +234,7 @@ OpenCode 的 `run` 和 `tui` 描述的是界面形态，不等于 agent 是否�
 
 在 `autonomous` 下，只要这条决策树没有出现真实冲突，就直接按默认优先级执行，不先问用户解释器偏好。在 `interactive` 下，也必须先做同样的本地探测；只有当探测后仍存在多个同样合理、且会显著影响依赖或实现路径的候选环境时，才向用户发起一次简洁确认。
 
-### 5. CLI 运行模式（进阶）
+### 6. CLI 运行模式（进阶）
 
 使用 `cli.sh` 进行自动化、自动续跑的实验运行：
 

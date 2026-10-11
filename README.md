@@ -199,6 +199,17 @@ opencode run --agent agent "Your task description here"
 opencode run --agent agent -m anthropic/claude-sonnet-4 "Analyze this time-series dataset"
 ```
 
+### 5. Goal Mode (Optional)
+
+AION ships with [`@prevalentware/opencode-goal-plugin`](https://github.com/prevalentWare/opencode-goal-plugin) preconfigured in `.opencode/opencode.json`. The plugin adds a `/goal` slash command, persistent goal state, auto-continue on idle, and a goal sidebar indicator.
+
+```bash
+# In TUI, start a goal that iterates task.md using the AION harness
+/goal Complete the task defined in task.md using the AION harness
+```
+
+The agent checks `get_goal` at startup. When a goal is active, it picks the highest-value remaining action, dispatches the matching subagent, updates memory files, and auto-continues until all critic gates pass and the goal is closed with evidence.
+
 ### Run Modes vs Execution Strategies
 
 OpenCode's `run` and `tui` describe the interface shape, not the same thing as how much the agent should ask the user.
@@ -223,7 +234,7 @@ For Python environments, the default decision tree is:
 
 In `autonomous`, the agent should follow that tree directly unless there is a real conflict. In `interactive`, the agent should still do the same local detection first, and only ask the user when multiple equally reasonable environment choices remain and those choices materially affect dependencies or implementation.
 
-### 5. CLI Run Mode (Advanced)
+### 6. CLI Run Mode (Advanced)
 
 Use `cli.sh` for automated, auto-continuing experiment runs:
 
