@@ -5,9 +5,7 @@
       "package": "@prevalentware/opencode-goal-plugin",
       "options": {
         "auto_continue": true,
-        "max_auto_turns": 50,
-        "default_token_budget": 500000,
-        "max_goal_duration_seconds": 3600
+        "max_auto_turns": 50
       }
     }
   ]
