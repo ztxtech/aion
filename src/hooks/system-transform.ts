@@ -18,7 +18,7 @@ import type { AionPhase } from "../create-managers"
 import { getFullSystemInjection } from "./intent"
 import { info } from "../shared/logger"
 import { readIfExists } from "../shared/logger"
-import { existsSync, readFileSync } from "node:fs"
+import { existsSync, readFileSync, statSync } from "node:fs"
 import { join } from "node:path"
 import { AION_SKILLS, SKILL_AGENT_MAP, TS_BOUND_SKILLS } from "../prompts/skill-registry"
 import { SCHEDULING_MERMAID, resetWorkerProgress } from "../scheduling/state-machine"
@@ -122,6 +122,10 @@ function discoverEnvironment(directory: string): string | null {
       const { readdirSync } = require("node:fs")
       const files = readdirSync(pluginsDir)
       for (const f of files) {
+        if (f === "aion" && statSync(join(pluginsDir, f)).isDirectory()) {
+          if (!aionPlugins.includes("aion")) aionPlugins.push("aion")
+          continue
+        }
         if (f.endsWith(".js") || f.endsWith(".mjs")) {
           const name = f.replace(/\.(js|mjs)$/, "")
           if (!aionPlugins.includes(name)) aionPlugins.push(name)

@@ -3,10 +3,11 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { importBundle } from "../helpers/load-bundle.mjs";
+import { importBundle, REPO_ROOT } from "../helpers/load-bundle.mjs";
 
 describe("plugin bundle shape", async () => {
   const bundle = await importBundle();
+  const tuiBundle = await import(new URL(`file://${join(REPO_ROOT, ".opencode", "plugins", "aion", "tui.js")}`).href);
 
   it("default export is an OpenCode V2 plugin definition", () => {
     assert.equal(typeof bundle.default, "object");
@@ -16,6 +17,11 @@ describe("plugin bundle shape", async () => {
 
   it("AionPlugin is no longer exported as a V1 factory", () => {
     assert.equal(bundle.AionPlugin, undefined);
+  });
+
+  it("exports a native V2 TUI definition with the same plugin id", () => {
+    assert.equal(tuiBundle.default.id, "aion-ts-plugin");
+    assert.equal(typeof tuiBundle.default.setup, "function");
   });
 
   it("exports native V2 agent metadata", () => {

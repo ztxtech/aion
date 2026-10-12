@@ -14,58 +14,17 @@
 import { tool } from "../plugin/tool"
 import type { CreateToolsArgs } from "./_shared"
 import type { AionToolMap } from "./types"
+import { parseDependencies, parsePlanMap, type PlanItem, type PlanState } from "../shared/plan-graph"
 import { ensureDir, writeFileEnsuringDir, readIfExists } from "../shared/logger"
 import { nowIso } from "../shared/utils"
 
-type TodoState = "todo" | "in-progress" | "done"
-
-type TodoItem = {
-  id: string
-  planStep: string
-  branchId: string
-  wave: number
-  owner: string
-  state: TodoState
-  frontierState: string
-  compareGate: string
-  updateTrigger: string
-  rollbackRule: string
-  loopHandoff: string
-  addedAt: string
-  updatedAt: string
-}
+type TodoState = PlanState
+type TodoItem = PlanItem
 
 let todoCounter = 0
 
 function parseTodoMap(content: string): TodoItem[] {
-  const items: TodoItem[] = []
-  const blocks = content.split(/####\s+/).slice(1)
-  for (const block of blocks) {
-    const idMatch = block.match(/^TODO-(\d+)/)
-    if (!idMatch) continue
-    const cleanedBlock = block.replace(/\*\*([^*]+)\*\*/g, "$1")
-    const getField = (name: string) => {
-      const m = cleanedBlock.match(new RegExp(`-\\s*${name}:\\s*(.+)`))
-      if (!m) return ""
-      return m[1].trim().replace(/\*\*/g, "")
-    }
-    items.push({
-      id: `TODO-${idMatch[1]}`,
-      planStep: getField("Plan step"),
-      branchId: getField("branch_id"),
-      wave: parseInt(getField("Wave") || "0", 10),
-      owner: getField("Owner"),
-      state: ((getField("State") as TodoState) || "todo").replace(/\*\*/g, "") as TodoState,
-      frontierState: getField("Frontier state"),
-      compareGate: getField("Compare gate"),
-      updateTrigger: getField("Update trigger"),
-      rollbackRule: getField("Rollback rule"),
-      loopHandoff: getField("Loop handoff"),
-      addedAt: getField("added"),
-      updatedAt: getField("updated"),
-    })
-  }
-  return items
+  return parsePlanMap(content)
 }
 
 function serializeTodoMap(items: TodoItem[], blockers: string[]): string {
@@ -83,6 +42,7 @@ function serializeTodoMap(items: TodoItem[], blockers: string[]): string {
 - Update trigger: ${item.updateTrigger}
 - Rollback rule: ${item.rollbackRule}
 - Loop handoff: ${item.loopHandoff}
+- Depends on: ${item.dependsOn.join(", ")}
 - added: ${item.addedAt}
 - updated: ${item.updatedAt}`
       }).join("\n\n")
@@ -138,6 +98,7 @@ export function createTodoTools(args: CreateToolsArgs): AionToolMap {
         rollback_depth: z.enum(["self", "self-and-downstream", "all-to-plan-step"]).default("self").describe("How far to roll back: self = just this item, self-and-downstream = this + items added after it, all-to-plan-step = reset everything back to a specific plan step"),
         reportback_text: z.string().optional().describe("Raw reportback text from a subagent — will extract suggested_next_step and follow_up_actions automatically"),
         reportback_source: z.string().optional().describe("Agent name that produced the reportback"),
+        depends_on: z.array(z.string()).optional().describe("Existing TODO IDs that must finish before this item"),
       },
       async execute(args, _context) {
         const todoPath = m.workspace.todoMapPath()
@@ -152,12 +113,20 @@ export function createTodoTools(args: CreateToolsArgs): AionToolMap {
         const rollbackDepth = args?.rollback_depth ?? "self"
         const reportbackText = args?.reportback_text
         const reportbackSource = args?.reportback_source
+        const dependsOn = args?.depends_on ?? []
 
         const existing = readIfExists(todoPath) ?? ""
         let items = parseTodoMap(existing)
 
         if (action === "add" || action === "add-from-reportback") {
           const newItems: TodoItem[] = []
+
+          if (dependsOn.some((id) => !items.some((item) => item.id === id))) {
+            return JSON.stringify({ error: "depends_on contains an unknown TODO ID" }, null, 2)
+          }
+          if (dependsOn.includes(`TODO-${(items.length + 1).toString().padStart(3, "0")}`)) {
+            return JSON.stringify({ error: "depends_on cannot reference the new item" }, null, 2)
+          }
 
           if (action === "add" && planStep) {
             todoCounter += 1
@@ -175,6 +144,7 @@ export function createTodoTools(args: CreateToolsArgs): AionToolMap {
               updateTrigger: "subagent reportback",
               rollbackRule: "ts-critic can roll back to this step",
               loopHandoff: "",
+              dependsOn: parseDependencies(dependsOn.join(" ")),
               addedAt: now,
               updatedAt: now,
             })
@@ -204,6 +174,7 @@ export function createTodoTools(args: CreateToolsArgs): AionToolMap {
                 updateTrigger: `reportback from ${reportbackSource ?? "subagent"}`,
                 rollbackRule: "",
                 loopHandoff: "",
+                dependsOn: [],
                 addedAt: now,
                 updatedAt: now,
               })
@@ -228,6 +199,7 @@ export function createTodoTools(args: CreateToolsArgs): AionToolMap {
               content: `${i.id}: ${i.planStep}`,
               status: i.state === "done" ? "completed" : i.state === "in-progress" ? "in_progress" : "pending",
               priority: "high",
+              depends_on: i.dependsOn,
             })),
             next_action: "Use plan_items as the current flat execution plan snapshot.",
           }, null, 2)
@@ -263,6 +235,7 @@ export function createTodoTools(args: CreateToolsArgs): AionToolMap {
               content: `${i.id}: ${i.planStep}`,
               status: i.state === "done" ? "completed" : i.state === "in-progress" ? "in_progress" : "pending",
               priority: "high",
+              depends_on: i.dependsOn,
             })),
             next_action: "Use plan_items as the current flat execution plan snapshot.",
           }, null, 2)
@@ -321,6 +294,7 @@ export function createTodoTools(args: CreateToolsArgs): AionToolMap {
               content: `${i.id}: ${i.planStep}`,
               status: i.state === "done" ? "completed" : i.state === "in-progress" ? "in_progress" : "pending",
               priority: "high",
+              depends_on: i.dependsOn,
             })),
             next_action: "Use plan_items as the current flat execution plan snapshot.",
           }, null, 2)
@@ -340,6 +314,7 @@ export function createTodoTools(args: CreateToolsArgs): AionToolMap {
               content: `${i.id}: ${i.planStep}`,
               status: i.state === "done" ? "completed" : i.state === "in-progress" ? "in_progress" : "pending",
               priority: "high",
+              depends_on: i.dependsOn,
             })),
             next_action: "Use plan_items as the current flat execution plan snapshot.",
           }, null, 2)

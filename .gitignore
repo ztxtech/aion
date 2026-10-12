@@ -13,7 +13,7 @@ AGENTS.md
 
 # build
 dist/
-.opencode/plugins/aion.js
+.opencode/plugins/aion/
 .opencode/agents/
 
 # runtime state

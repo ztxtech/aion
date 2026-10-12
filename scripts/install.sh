@@ -195,12 +195,20 @@ tar -xzf "$TARBALL" -C "$TMP_DIR"
 # =============================================================================
 mkdir -p "$BIN_DIR" "$LIB_DIR"
 
-# The tarball contains: plugins/aion.js, themes/aion.json, bin/aion-init.js
+# The tarball contains: plugins/aion/, themes/aion.json, bin/aion-init.js
 # Place the CLI + bundle into LIB_DIR, wrapper into BIN_DIR.
 cp "$TMP_DIR/bin/aion-init.js" "$LIB_DIR/aion-init.js"
-cp "$TMP_DIR/plugins/aion.js"  "$LIB_DIR/aion.js"
+rm -rf "$LIB_DIR/aion"
+rm -f "$LIB_DIR/aion.js"
+mkdir -p "$LIB_DIR/aion"
+cp "$TMP_DIR/plugins/aion/server.js" "$LIB_DIR/aion/server.js"
+cp "$TMP_DIR/plugins/aion/tui.js"    "$LIB_DIR/aion/tui.js"
 if [ -f "$TMP_DIR/themes/aion.json" ]; then
   cp "$TMP_DIR/themes/aion.json" "$LIB_DIR/aion-theme.json"
+fi
+if [ -d "$TMP_DIR/skills" ]; then
+  rm -rf "$LIB_DIR/skills"
+  cp -R "$TMP_DIR/skills" "$LIB_DIR/skills"
 fi
 
 # Create the aion-ts wrapper script
@@ -241,6 +249,6 @@ echo ""
 echo "  To install AION into a project:"
 echo -e "    ${BOLD}cd /path/to/your/project && aion-ts init .${NC}"
 echo ""
-echo "  This drops the plugin bundle into .opencode/plugins/aion.js."
+echo "  This drops the V2 bundle into .opencode/plugins/aion/."
 echo "  OpenCode auto-discovers it on next launch — no global config changes."
 echo ""

@@ -3,7 +3,7 @@ import { resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO_ROOT = resolve(fileURLToPath(import.meta.url), "..", "..", "..");
-const BUNDLE = join(REPO_ROOT, ".opencode", "plugins", "aion.js");
+const BUNDLE = join(REPO_ROOT, ".opencode", "plugins", "aion", "server.js");
 
 export async function importBundle() {
   const url = new URL(`file://${BUNDLE}`).href;

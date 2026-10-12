@@ -5,7 +5,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const REPO_ROOT = resolve(fileURLToPath(import.meta.url), "..", "..", "..");
-const DIST_PLUGIN = join(REPO_ROOT, ".opencode", "plugins", "aion.js");
+const DIST_PLUGIN_DIR = join(REPO_ROOT, ".opencode", "plugins", "aion");
 const AION_PKG = join(REPO_ROOT);
 
 function findOpencodeBinary() {
@@ -32,16 +32,17 @@ export function createTempTarget(name = "aion-test") {
   mkdirSync(join(repoDir, ".opencode", "agents", "aion"), { recursive: true });
   mkdirSync(join(repoDir, ".opencode", "themes"), { recursive: true });
 
-  const pluginTarget = join(repoDir, ".opencode", "plugins", "aion.js");
-  const distExists = existsSync(DIST_PLUGIN);
+  const pluginTarget = join(repoDir, ".opencode", "plugins", "aion");
+  const distExists =
+    existsSync(join(DIST_PLUGIN_DIR, "server.js")) && existsSync(join(DIST_PLUGIN_DIR, "tui.js"));
   if (!distExists) {
-    throw new Error(`.opencode/plugins/aion.js not found. Run \`npm run build\` first.`);
+    throw new Error(`.opencode/plugins/aion/server.js and tui.js not found. Run \`npm run build\` first.`);
   }
-  symlinkSync(DIST_PLUGIN, pluginTarget);
+  symlinkSync(DIST_PLUGIN_DIR, pluginTarget, "dir");
   return {
     root,
     repoDir,
-    pluginPath: pluginTarget,
+    pluginDir: pluginTarget,
     aionConfigPath: join(repoDir, ".opencode", "aion.jsonc"),
     opencodeJsonPath: join(repoDir, "opencode.json"),
     cleanup() {

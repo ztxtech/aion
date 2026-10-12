@@ -2,9 +2,8 @@
 # =============================================================================
 # AION plugin — build + package script
 # =============================================================================
-# Builds the TypeScript plugin, bundles the single-file plugin bundle, compiles
-# the CLI installer, and packs everything into a release tarball that can be
-# attached to a GitHub Release.
+# Builds the TypeScript server and TUI bundles, compiles the CLI installer, and
+# packs everything into a release tarball that can be attached to a GitHub Release.
 #
 # Usage:
 #   bash scripts/build.sh                # build + pack (version from package.json)
@@ -13,11 +12,11 @@
 #
 # Output:
 #   dist/                           — NPM-style build (index.js + .d.ts)
-#   .opencode/plugins/aion.js       — self-contained single-file bundle
+#   .opencode/plugins/aion/         — V2 server and TUI bundle
 #   release/aion-plugin-{version}.tar.gz — distributable tarball
 #
 # The tarball contains:
-#   plugins/aion.js       — the plugin bundle (copied to target's .opencode/plugins/)
+#   plugins/aion/          — the plugin bundle (copied to target's .opencode/plugins/)
 #   themes/aion.json      — the AION theme
 #   bin/aion-init.js      — the compiled CLI installer
 #
@@ -77,17 +76,23 @@ fi
 
 # Step 2: Clean previous build
 info "cleaning previous build..."
-rm -rf dist .opencode/plugins/aion.js
+rm -rf dist .opencode/plugins/aion .opencode/plugins/aion.js
 
 # Step 3: Build NPM bundle (dist/index.js — bun target)
 info "building NPM bundle (dist/index.js)..."
 bun build src/index.ts --outdir dist --target bun --format esm
 ok "dist/index.js"
 
-# Step 4: Build single-file plugin (.opencode/plugins/aion.js — node target)
-info "building single-file plugin bundle (.opencode/plugins/aion.js)..."
-bun build src/index.ts --outfile .opencode/plugins/aion.js --target node --format esm
-ok ".opencode/plugins/aion.js"
+# Step 4: Build native V2 server and TUI bundles.
+info "building V2 server bundle (.opencode/plugins/aion/server.js)..."
+bun build src/index.ts --outfile .opencode/plugins/aion/server.js --target node --format esm
+ok ".opencode/plugins/aion/server.js"
+
+info "building V2 TUI bundle (.opencode/plugins/aion/tui.js)..."
+bun build src/tui/index.tsx --outfile .opencode/plugins/aion/tui.js --target bun --format esm \
+  --external @opencode/plugin/tui --external solid-js \
+  --external @opentui/core --external @opentui/solid --external @opencode/theme
+ok ".opencode/plugins/aion/tui.js"
 
 # Step 5: Build CLI installer (dist/bin/aion-init.js — node target)
 info "building CLI installer (dist/bin/aion-init.js)..."
@@ -99,12 +104,14 @@ info "emitting TypeScript declarations..."
 npx tsc --emitDeclarationOnly
 ok "declaration files"
 
-# Step 7: Verify the single-file bundle exists and is non-trivial
-BUNDLE_SIZE=$(wc -c < .opencode/plugins/aion.js | tr -d ' ')
-if [ "$BUNDLE_SIZE" -lt 100000 ]; then
-  fail "plugin bundle is suspiciously small ($BUNDLE_SIZE bytes) — check for build errors"
-fi
-ok "plugin bundle size: $(du -h .opencode/plugins/aion.js | cut -f1)"
+# Step 7: Verify both bundles are non-trivial.
+for bundle in server.js tui.js; do
+  BUNDLE_SIZE=$(wc -c < ".opencode/plugins/aion/$bundle" | tr -d ' ')
+  if [ "$BUNDLE_SIZE" -lt 1000 ]; then
+    fail "$bundle is suspiciously small ($BUNDLE_SIZE bytes) — check for build errors"
+  fi
+  ok "$bundle size: $(du -h ".opencode/plugins/aion/$bundle" | cut -f1)"
+done
 
 # Step 8: Typecheck
 info "running typecheck..."
@@ -124,12 +131,13 @@ info "packing release tarball: $TARBALL"
 rm -rf release
 mkdir -p release
 
-# Create a staging dir, copy the 4 artifacts, then tar
+# Create a staging dir, copy the artifacts, then tar
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 
-mkdir -p "$STAGE/plugins" "$STAGE/themes" "$STAGE/bin" "$STAGE/skills"
-cp .opencode/plugins/aion.js "$STAGE/plugins/aion.js"
+mkdir -p "$STAGE/plugins/aion" "$STAGE/themes" "$STAGE/bin" "$STAGE/skills"
+cp .opencode/plugins/aion/server.js "$STAGE/plugins/aion/server.js"
+cp .opencode/plugins/aion/tui.js "$STAGE/plugins/aion/tui.js"
 cp .opencode/themes/aion.json "$STAGE/themes/aion.json"
 cp dist/bin/aion-init.js "$STAGE/bin/aion-init.js"
 # Copy the 17 AION skills so a fresh `aion-ts init` finds them.
@@ -145,7 +153,7 @@ echo ""
 ok "build + pack complete"
 echo ""
 echo "  Tarball:  $TARBALL"
-echo "  Contents: plugins/aion.js, themes/aion.json, bin/aion-init.js, skills/<17-skill-dirs>"
+echo "  Contents: plugins/aion/, themes/aion.json, bin/aion-init.js, skills/<17-skill-dirs>"
 echo ""
 echo "  To create a GitHub Release and attach the tarball:"
 echo "    gh release create v$VERSION $TARBALL --target dev --title \"v$VERSION\" --notes \"Release v$VERSION\""

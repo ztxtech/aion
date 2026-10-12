@@ -406,6 +406,35 @@ describe("tools: aion_todo_update", async () => {
     assert.ok(parsed.totalItems >= 1);
   });
 
+  it("stores and returns explicit dependencies", async () => {
+    const firstOutput = await result.tool.aion_todo_update.execute({
+      action: "add",
+      plan_step: "Dependency parent",
+      owner: "main-agent",
+    }, {});
+    const parentId = JSON.parse(firstOutput).added[0].id;
+    const output = await result.tool.aion_todo_update.execute({
+      action: "add",
+      plan_step: "Dependency child",
+      owner: "coder",
+      depends_on: [parentId],
+    }, {});
+    const parsed = JSON.parse(output);
+    const child = parsed.plan_items.find((item) => item.content.includes("Dependency child"));
+    assert.deepEqual(child.depends_on, [parentId]);
+    const content = await result.tool.aion_todo_update.execute({ action: "get" }, {});
+    assert.ok(JSON.parse(content).items.find((item) => item.id === parentId));
+  });
+
+  it("rejects dependencies on unknown TODO IDs", async () => {
+    const output = await result.tool.aion_todo_update.execute({
+      action: "add",
+      plan_step: "Invalid dependency",
+      depends_on: ["TODO-999"],
+    }, {});
+    assert.equal(JSON.parse(output).error, "depends_on contains an unknown TODO ID");
+  });
+
   it("updates todo state", async () => {
     const addOutput = await result.tool.aion_todo_update.execute({
       action: "add",

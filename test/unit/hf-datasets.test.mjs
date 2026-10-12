@@ -707,11 +707,8 @@ describe("CLI: aion-ts datasets subcommand", () => {
     assert.match(r.stderr, /search requires a query/)
   })
 
-  it("search action with --dry-run via mocked HF... (live network test: limited)", { skip: process.env.HF_OFFLINE === "1" }, () => {
-    // Without mocking global fetch from the CLI process, this would hit the real HF API.
-    // We do NOT mock here; instead we run a query that returns 0 or few results and only
-    // assert the CLI's success path (exit 0 + JSON output). Network is skipped by default
-    // to keep tests hermetic — set HF_OFFLINE=0 to enable.
+  it("search action reaches the public HF API", { skip: process.env.HF_OFFLINE !== "0" }, () => {
+    // Keep the default suite hermetic. Set HF_OFFLINE=0 to exercise this path.
     const r = runCli(["datasets", "search", "xqvwnonexistentquery", "--limit", "2", "--no-cache"])
     assert.equal(r.status, 0, `cli failed: ${r.stderr}\n${r.stdout}`)
     // Output should be a JSON object with query/count/results

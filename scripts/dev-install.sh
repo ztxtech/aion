@@ -6,7 +6,7 @@
 #
 # install.sh downloads the released tarball and installs it to:
 #   - ~/.local/bin/aion-ts         (CLI wrapper)
-#   - ~/.local/lib/aion/aion.js    (the plugin bundle aion-init.js copies)
+#   - ~/.local/lib/aion/aion/      (V2 server and TUI bundle)
 #   - ~/.local/lib/aion/aion-init.js
 #   - ~/.local/lib/aion/aion-theme.json
 #   - ~/.local/lib/aion/skills/    (17 AION skills)
@@ -14,15 +14,15 @@
 # When you edit source under src/ and want to test it inside a project that
 # was set up via `aion-ts init <dir> --force`, you need the latest bundle to
 # be the one that aion-init.js picks up. By default aion-init.js's findBundlePath()
-# chooses ~/.local/lib/aion/aion.js (see bin/aion-init.js:194) when running
-# from ~/.local/bin/aion-init.js. So this script rebuilds the singlefile
-# bundle and pushes it (plus the theme and aion-init.js) to ~/.local/lib/aion/.
+# chooses ~/.local/lib/aion/aion/ when running from ~/.local/bin/aion-init.js.
+# This script rebuilds both bundles and pushes them (plus the theme and
+# aion-init.js) to ~/.local/lib/aion/.
 #
 # After running this you do NOT need to re-run install.sh. Just:
 #
 #   aion-ts init /path/to/project --force
 #
-# and the new bundle is copied into that project's .opencode/plugins/aion.js.
+# and the new bundle is copied into that project's .opencode/plugins/aion/.
 #
 # Usage:
 #   bash scripts/dev-install.sh                # build + push
@@ -59,19 +59,24 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # 1. Build
 if [ "$SKIP_BUILD" = false ]; then
   command -v bun >/dev/null 2>&1 || fail "bun is required. Install: curl -fsSL https://bun.sh/install | bash"
-  info "building singlefile bundle (bun run build:singlefile)..."
-  ( cd "$REPO_ROOT" && bun run build:singlefile )
-  ok "build complete → $REPO_ROOT/.opencode/plugins/aion.js"
+  info "building V2 bundles..."
+  ( cd "$REPO_ROOT" && bun run build:server && bun run build:tui )
+  ok "build complete → $REPO_ROOT/.opencode/plugins/aion/"
 fi
 
-BUNDLE="$REPO_ROOT/.opencode/plugins/aion.js"
-[ -f "$BUNDLE" ] || fail "bundle not found at $BUNDLE — run bun run build:singlefile first."
+BUNDLE_DIR="$REPO_ROOT/.opencode/plugins/aion"
+[ -f "$BUNDLE_DIR/server.js" ] || fail "server bundle not found — run bun run build:server first."
+[ -f "$BUNDLE_DIR/tui.js" ] || fail "TUI bundle not found — run bun run build:tui first."
 
 # 2. Push to ~/.local/lib/aion
 info "installing into $LIB_DIR/"
 mkdir -p "$LIB_DIR"
-cp "$BUNDLE" "$LIB_DIR/aion.js"
-ok "bundle      → $LIB_DIR/aion.js"
+rm -rf "$LIB_DIR/aion"
+rm -f "$LIB_DIR/aion.js"
+mkdir -p "$LIB_DIR/aion"
+cp "$BUNDLE_DIR/server.js" "$LIB_DIR/aion/server.js"
+cp "$BUNDLE_DIR/tui.js"    "$LIB_DIR/aion/tui.js"
+ok "bundle      → $LIB_DIR/aion/"
 
 THEME_SRC="$REPO_ROOT/.opencode/themes/aion.json"
 if [ -f "$THEME_SRC" ]; then

@@ -282,6 +282,9 @@ export default aionPlugin
 export { AION_AGENT_NAMES } from "./agents/names"
 
 export const _testing = {
+  async planGraph() {
+    return await import("./shared/plan-graph.js")
+  },
   async scheduling() {
     return await import("./scheduling/state-machine.js")
   },

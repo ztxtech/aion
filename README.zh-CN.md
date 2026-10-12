@@ -13,6 +13,7 @@
 
 ## 📰 News
 
+- **2026-10-12** — AION 现在按 OpenCode V2 原生 `server.js` + `tui.js` 目录包发布，新增依赖分层计划，并提供 `/aion-board` DAG 看板。
 - **2026-06-18** — **v0.7.2**：`aion-ts init` 现在会把 17 个 AION skill（`brain-storm`、`time-series`、`critic-loop` 等）拷贝到目标项目的 `.opencode/skills/`，LLM 才能真正通过 `skill` 工具调用它们。Release tarball 也内置了 skills。同时：G1 在 `phase=done` 状态下从软告警升级为硬抛错，c-critic 批准 stop 后 loop 立刻收尾。
 - **2026-06-14** — AION 已重构为 OpenCode 的编译型 TypeScript 插件（一行命令安装）。
 
@@ -90,7 +91,8 @@ aion/
 │   ├── hooks/                  # 11 个 OpenCode 生命周期钩子
 │   ├── tools/                  # 20 个 AION 工具（critic, memory, safety...）
 │   ├── prompts/                # 治理常量 + agent prompt 加载
-│   └── shared/                 # 日志、JSONC 解析、工具函数、个性系统
+│   ├── shared/                 # 日志、JSONC 解析、计划图、工具函数、个性系统
+│   └── tui/index.tsx           # 原生 V2 DAG 看板
 ├── bin/
 │   └── aion-init.js            # CLI 安装器（aion-ts init）
 ├── scripts/
@@ -110,8 +112,9 @@ aion/
 ```
 your-project/
 ├── .opencode/
-│   ├── plugins/
-│   │   └── aion.js             # 自包含插件 bundle（OpenCode 自动发现）
+│   ├── plugins/aion/
+│   │   ├── server.js           # 原生 V2 server bundle（OpenCode 自动发现）
+│   │   └── tui.js              # 原生 V2 DAG 看板
 │   ├── themes/
 │   │   └── aion.json           # AION 主题
 │   ├── aion.jsonc              # AION 配置（所有功能默认开启）
@@ -179,7 +182,7 @@ cd your-project
 aion-ts init .
 ```
 
-这会把插件 bundle 放到 `.opencode/plugins/aion.js`，创建初始 `aion.jsonc` 配置，并复制主题。插件完全自包含 — 你的项目中**不需要 `npm install`**。
+这会把原生 V2 bundle 放到 `.opencode/plugins/aion/`，创建初始 `aion.jsonc` 配置，并复制主题。插件完全自包含 — 你的项目中**不需要 `npm install`**。
 
 ### 5. 运行
 
@@ -332,6 +335,10 @@ AION 在工作空间层维护两套互补的追踪系统：
 
 记忆和 git 各有分工：记忆负责抽象经验和判断，git 负责细节级变更历史和关键节点回放。
 
+### 计划 DAG 看板
+
+AION 把计划依赖写入 `.opencode/memory/todo-map.md`。原生 TUI bundle 会把这些依赖解析成可执行分层，检测循环依赖和未知 ID，并在 OpenCode 中渲染结果。输入 `/aion-board`，或从命令面板选择 **AION board**；看板会作为 session panel 显示，并随计划变化刷新。
+
 ---
 
 ## 📡 CLI 参考
@@ -347,11 +354,11 @@ aion-ts init [target-dir] [--force]
 | 参数              | 默认值     | 描述                                                       |
 | ----------------- | ---------- | ---------------------------------------------------------- |
 | `target-dir`      | `.` (cwd)  | 安装目标目录。不存在时自动创建。                           |
-| `--force`, `-f`   | （关闭）   | 覆盖已存在的 `.opencode/plugins/aion.js`。                 |
+| `--force`, `-f`   | （关闭）   | 覆盖已存在的 `.opencode/plugins/aion/` bundle。            |
 | `--help`, `-h`    | —          | 显示帮助。                                                 |
 
 `init` 做的事情：
-1. 把插件 bundle 复制到 `<target>/.opencode/plugins/aion.js`（OpenCode 自动发现）。
+1. 把 server 和 TUI bundle 复制到 `<target>/.opencode/plugins/aion/`（OpenCode 自动发现）。
 2. 如果 `<target>/opencode.json` 不存在，创建一个最小启动文件（含 `$schema` 和 theme）。
 3. 把带注释的默认配置复制到 `<target>/.opencode/aion.jsonc`。
 4. 把 AION 主题复制到 `<target>/.opencode/themes/aion.json`。
@@ -419,7 +426,7 @@ curl -fsSL https://raw.githubusercontent.com/ztxtech/aion/dev/scripts/uninstall.
 
 项目级卸载：
 - **自动备份** 所有 AION 文件到 `.opencode/aion-backup-<时间戳>.tar.gz`
-- **删除** `.opencode/plugins/aion.js`、`.opencode/themes/aion.json`、`.opencode/aion.jsonc`
+- **删除** `.opencode/plugins/aion/`、旧版 `.opencode/plugins/aion.js`、`.opencode/themes/aion.json` 和 `.opencode/aion.jsonc`
 - **清理** `opencode.json`（只移除 `theme: "aion"`，其他配置全部保留）
 - **不触碰** `.opencode/memory/`、`.opencode/trace.md`、`.opencode/skills/` 等用户数据
 

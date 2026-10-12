@@ -14,7 +14,7 @@
 # 2. Project uninstall (--project <dir>):
 #    Removes AION-specific files from a project. ALL removed files are
 #    backed up to a timestamped .tar.gz before deletion.
-#      - <dir>/.opencode/plugins/aion.js     (AION plugin bundle)
+#      - <dir>/.opencode/plugins/aion/       (V2 AION plugin bundle)
 #      - <dir>/.opencode/themes/aion.json    (AION theme)
 #      - <dir>/.opencode/aion.jsonc          (AION config)
 #    It also cleans the "theme": "aion" line from <dir>/opencode.json
@@ -127,15 +127,16 @@ if [ -n "$PROJECT_DIR" ]; then
   # These are the ONLY files that aion-ts init creates. Everything else
   # in .opencode/ (memory/, trace.md, skills/, etc.) is user/session data
   # and must NOT be touched.
-  AION_PLUGIN="${PROJECT_DIR}/.opencode/plugins/aion.js"
+  AION_PLUGIN_DIR="${PROJECT_DIR}/.opencode/plugins/aion"
+  LEGACY_AION_PLUGIN="${PROJECT_DIR}/.opencode/plugins/aion.js"
   AION_THEME="${PROJECT_DIR}/.opencode/themes/aion.json"
   AION_CONFIG="${PROJECT_DIR}/.opencode/aion.jsonc"
   OPENCODE_JSON="${PROJECT_DIR}/opencode.json"
 
   # Collect files that exist and will be backed up + removed
   FILES_TO_BACKUP=()
-  for f in "$AION_PLUGIN" "$AION_THEME" "$AION_CONFIG"; do
-    if [ -f "$f" ]; then
+  for f in "$AION_PLUGIN_DIR" "$LEGACY_AION_PLUGIN" "$AION_THEME" "$AION_CONFIG"; do
+    if [ -d "$f" ] || [ -f "$f" ]; then
       FILES_TO_BACKUP+=("$f")
     fi
   done
@@ -165,7 +166,7 @@ if [ -n "$PROJECT_DIR" ]; then
 
       # --- Remove AION-specific files ---
       for f in "${FILES_TO_BACKUP[@]}"; do
-        rm -f "$f"
+        rm -rf "$f"
         ok "removed              → ${f#${PROJECT_DIR}/}"
       done
 

@@ -2,9 +2,9 @@
 // AION plugin installer - copies the local bundle and config into a target project directory.
 // Usage: aion-ts init [target-dir] [--force]
 //   target-dir: optional, defaults to process.cwd()
-//   --force:    required to overwrite an existing .opencode/plugins/aion.js
+//   --force:    required to overwrite .opencode/plugins/aion/
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, statSync, readdirSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, statSync, readdirSync, rmSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
@@ -149,12 +149,12 @@ Arguments:
 
 Flags:
   --force, -f   Required to overwrite an existing
-                <target>/.opencode/plugins/aion.js. Without this flag the
-                installer aborts when the plugin file is already present.
+                <target>/.opencode/plugins/aion/ server and TUI bundle.
   --help, -h    Show this help.
 
 Behavior:
-  1. Creates <target>/.opencode/plugins/ and copies the plugin bundle there.
+  1. Creates <target>/.opencode/plugins/aion/ and copies the server and TUI
+     bundles there.
      OpenCode auto-discovers plugins in this directory at startup, so the
      "plugin" field in opencode.json is intentionally not touched.
   2. If <target>/opencode.json exists, leaves it alone (or migrates away
@@ -174,12 +174,21 @@ global OpenCode configuration.
 }
 
 function findBundlePath() {
+  const directoryBundle = join(__dirname, "..", ".opencode", "plugins", "aion");
+  if (existsSync(join(directoryBundle, "server.js")) && existsSync(join(directoryBundle, "tui.js"))) {
+    return directoryBundle;
+  }
+
+  const installedBundle = join(__dirname, "aion");
+  if (existsSync(join(installedBundle, "server.js")) && existsSync(join(installedBundle, "tui.js"))) {
+    return installedBundle;
+  }
+
   const candidates = [
-    // When run from the source repo (development)
+    // System-wide legacy server-only layout.
     join(__dirname, "..", ".opencode", "plugins", "aion.js"),
     join(__dirname, "..", "dist", "index.js"),
     join(__dirname, "..", "dist", "aion.js"),
-    // When installed system-wide (aion-ts install → ~/.aion/lib/aion.js)
     join(__dirname, "aion.js"),
     join(__dirname, "..", "lib", "aion.js"),
     join(__dirname, "..", "plugins", "aion.js"),
@@ -228,13 +237,16 @@ function banner(msg) {
 
 async function installPlugin(bundlePath, target, force) {
   const pluginsDir = join(target, ".opencode", "plugins");
-  const destPath = join(pluginsDir, "aion.js");
+  const destDir = join(pluginsDir, "aion");
+  const legacyPath = join(pluginsDir, "aion.js");
+  const serverPath = join(destDir, "server.js");
+  const tuiPath = join(destDir, "tui.js");
 
-  ensureDir(pluginsDir);
+  ensureDir(destDir);
 
-  if (existsSync(destPath) && !force) {
+  if ((existsSync(serverPath) || existsSync(tuiPath)) && !force) {
     banner("Plugin already installed");
-    console.log(`  ${destPath}`);
+    console.log(`  ${destDir}`);
     console.log("");
     console.log("  Re-run with --force to overwrite:");
     console.log(`    aion-ts init ${target === process.cwd() ? "" : target} --force`);
@@ -242,8 +254,15 @@ async function installPlugin(bundlePath, target, force) {
     process.exit(2);
   }
 
-  copyFileSync(bundlePath, destPath);
-  console.log(`  [ok] copied bundle  → ${destPath}`);
+  if (statSync(bundlePath).isDirectory()) {
+    copyFileSync(join(bundlePath, "server.js"), serverPath);
+    copyFileSync(join(bundlePath, "tui.js"), tuiPath);
+  } else {
+    copyFileSync(bundlePath, serverPath);
+  }
+
+  if (existsSync(legacyPath)) rmSync(legacyPath, { force: true });
+  console.log(`  [ok] copied V2 bundle → ${destDir}`);
 }
 
 
@@ -317,6 +336,8 @@ async function ensureAionConfig(target) {
 
 function findThemePath(bundlePath) {
   const candidates = [
+    // Directory bundle in the source repository.
+    join(dirname(bundlePath), "..", "..", ".opencode", "themes", "aion.json"),
     // Source repo layout
     join(dirname(bundlePath), "..", "themes", "aion.json"),
     // Installed layout (aion-theme.json next to the bundle)
@@ -346,6 +367,8 @@ function findSkillsDir(bundlePath) {
   // Skills are shipped in the source repo under .opencode/skills/ and
   // next to the installed bundle (e.g. ~/.local/lib/aion/skills/).
   const candidates = [
+    // Directory bundle in the source repository.
+    join(dirname(bundlePath), "..", "..", ".opencode", "skills"),
     join(dirname(bundlePath), "..", ".opencode", "skills"),
     join(dirname(bundlePath), "..", "skills"),
     join(dirname(bundlePath), "skills"),
@@ -456,6 +479,8 @@ async function main() {
   if (!bundle) {
     banner("Plugin bundle not found");
     console.log("  Searched:");
+    console.log(`    ${join(__dirname, "..", ".opencode", "plugins", "aion")}`);
+    console.log(`    ${join(__dirname, "aion")}`);
     console.log(`    ${join(__dirname, "..", ".opencode", "plugins", "aion.js")}`);
     console.log(`    ${join(__dirname, "..", "dist", "index.js")}`);
     console.log(`    ${join(__dirname, "..", "dist", "aion.js")}`);

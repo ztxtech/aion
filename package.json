@@ -19,14 +19,15 @@
     "bin"
   ],
   "scripts": {
-    "build": "bun run build:npm && bun run build:singlefile && bun run build:cli",
+    "build": "bun run build:npm && bun run build:server && bun run build:tui && bun run build:cli",
     "build:npm": "bun build src/index.ts --outdir dist --target bun --format esm",
-    "build:singlefile": "bun build src/index.ts --outfile .opencode/plugins/aion.js --target node --format esm",
+    "build:server": "rm -f .opencode/plugins/aion.js && bun build src/index.ts --outfile .opencode/plugins/aion/server.js --target node --format esm",
+    "build:tui": "bun build src/tui/index.tsx --outfile .opencode/plugins/aion/tui.js --target bun --format esm --external @opencode/plugin/tui --external solid-js --external @opentui/core --external @opentui/solid --external @opencode/theme",
     "build:cli": "bun build bin/aion-init.js --outdir dist/bin --target node --format esm",
     "dev": "bun build src/index.ts --outdir dist --target bun --format esm --watch",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist .opencode/plugins/aion.js",
-    "test": "node --test test/unit/*.test.mjs test/cli/init.test.mjs",
+    "clean": "rm -rf dist .opencode/plugins/aion .opencode/plugins/aion.js",
+    "test": "bun run build:server && bun run build:tui && node --test test/unit/*.test.mjs test/cli/init.test.mjs",
     "test:unit": "node --test test/unit/*.test.mjs",
     "test:cli": "node --test test/cli/*.test.mjs",
     "test:integration": "node --test test/integration/*.test.mjs",
@@ -53,7 +54,11 @@
     "zod": "4.1.8"
   },
   "devDependencies": {
+    "@opencode/theme": "0.0.0-beta-19425",
+    "@opentui/core": "0.5.17",
+    "@opentui/solid": "0.5.17",
     "bun-types": "^1.2.0",
+    "solid-js": "1.9.12",
     "typescript": "^5.7.0"
   }
 }

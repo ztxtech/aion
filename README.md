@@ -13,6 +13,7 @@
 
 ## 📰 News
 
+- **2026-10-12** — AION now ships as a native OpenCode V2 `server.js` + `tui.js` bundle, adds dependency-aware plan layers, and includes the `/aion-board` DAG panel.
 - **2026-06-14** — AION is now a compiled TypeScript plugin for OpenCode (one-command install).
 
 ---
@@ -89,7 +90,8 @@ aion/
 │   ├── hooks/                  # 11 OpenCode lifecycle hooks
 │   ├── tools/                  # 20 AION tools (critic, memory, safety...)
 │   ├── prompts/                # Governance constants + agent prompt loader
-│   └── shared/                 # Logger, JSONC parser, utils, personality
+│   ├── shared/                 # Logger, JSONC parser, plan graph, utils, personality
+│   └── tui/index.tsx           # Native V2 DAG board
 ├── bin/
 │   └── aion-init.js            # CLI installer (aion-ts init)
 ├── scripts/
@@ -109,8 +111,9 @@ aion/
 ```
 your-project/
 ├── .opencode/
-│   ├── plugins/
-│   │   └── aion.js             # Self-contained plugin bundle (auto-discovered)
+│   ├── plugins/aion/
+│   │   ├── server.js           # Native V2 server bundle (auto-discovered)
+│   │   └── tui.js              # Native V2 DAG board
 │   ├── themes/
 │   │   └── aion.json           # AION theme
 │   ├── aion.jsonc              # AION configuration (all features ON by default)
@@ -178,7 +181,7 @@ cd your-project
 aion-ts init .
 ```
 
-This drops the plugin bundle into `.opencode/plugins/aion.js`, creates a starter `aion.jsonc` config, and copies the theme. The plugin is fully self-contained — **no `npm install` needed** in your project.
+This drops the native V2 bundle into `.opencode/plugins/aion/`, creates a starter `aion.jsonc` config, and copies the theme. The plugin is fully self-contained — **no `npm install` needed** in your project.
 
 ### 5. Run
 
@@ -331,6 +334,10 @@ AION maintains two complementary tracking systems across the workspace layer:
 
 Memory and git serve different purposes: memory handles abstract experience and judgments; git handles detail-level changes and key-node replay.
 
+### Plan DAG Board
+
+AION serializes plan dependencies in `.opencode/memory/todo-map.md`. The native TUI bundle parses those dependencies into ready layers, detects cycles and unknown IDs, and renders the result in OpenCode. Run `/aion-board` or choose **AION board** from the command palette; the panel appears as an appended session panel and refreshes as the plan changes.
+
 ---
 
 ## 📡 CLI Reference
@@ -346,11 +353,11 @@ aion-ts init [target-dir] [--force]
 | Flag            | Default     | Description                                                        |
 | --------------- | ----------- | ------------------------------------------------------------------ |
 | `target-dir`    | `.` (cwd)   | Directory to install into. Created if it does not exist.           |
-| `--force`, `-f` | (off)       | Overwrite an existing `.opencode/plugins/aion.js`.                 |
+| `--force`, `-f` | (off)       | Overwrite an existing `.opencode/plugins/aion/` bundle.            |
 | `--help`, `-h`  | —           | Show help.                                                         |
 
 What `init` does:
-1. Copies the plugin bundle to `<target>/.opencode/plugins/aion.js` (auto-discovered by OpenCode).
+1. Copies the server and TUI bundles to `<target>/.opencode/plugins/aion/` (auto-discovered by OpenCode).
 2. Creates `<target>/opencode.json` if absent (minimal starter with `$schema` and theme).
 3. Copies a commented default config to `<target>/.opencode/aion.jsonc`.
 4. Copies the AION theme to `<target>/.opencode/themes/aion.json`.
@@ -418,7 +425,7 @@ curl -fsSL https://raw.githubusercontent.com/ztxtech/aion/dev/scripts/uninstall.
 
 Project-level uninstall:
 - **Backs up** all AION-specific files to `.opencode/aion-backup-<timestamp>.tar.gz` before removal
-- **Removes** `.opencode/plugins/aion.js`, `.opencode/themes/aion.json`, `.opencode/aion.jsonc`
+- **Removes** `.opencode/plugins/aion/`, the legacy `.opencode/plugins/aion.js`, `.opencode/themes/aion.json`, and `.opencode/aion.jsonc`
 - **Cleans** `opencode.json` (removes `theme: "aion"`, keeps everything else)
 - **Does NOT touch** `.opencode/memory/`, `.opencode/trace.md`, `.opencode/skills/`, or any user data
 

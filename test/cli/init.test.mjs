@@ -1,6 +1,7 @@
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import { createTempTarget, runAionInit } from "../helpers/temp-target.mjs";
 
 describe("aion-ts init CLI", () => {
@@ -17,8 +18,10 @@ describe("aion-ts init CLI", () => {
   it("writes plugin into .opencode/plugins/", () => {
     const result = runAionInit(target, ["--force"]);
     assert.equal(result.status, 0, `init failed: ${result.stderr}\n${result.stdout}`);
-    assert.ok(existsSync(target.pluginPath), "plugin symlink should exist");
-    const stat = readFileSync(target.pluginPath, "utf8");
+    assert.ok(existsSync(target.pluginDir), "plugin directory symlink should exist");
+    assert.ok(existsSync(join(target.pluginDir, "server.js")), "server bundle should exist");
+    assert.ok(existsSync(join(target.pluginDir, "tui.js")), "TUI bundle should exist");
+    const stat = readFileSync(join(target.pluginDir, "server.js"), "utf8");
     assert.ok(stat.length > 1000, "plugin should have content (symlink resolved)");
   });
 
