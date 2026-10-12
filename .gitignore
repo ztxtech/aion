@@ -16,3 +16,4 @@ example/kaggle/server/runtime/
 node_modules/
 dist/
 bun.lock
+.opencode/plugins/aion.js

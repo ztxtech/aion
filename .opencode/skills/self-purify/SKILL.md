@@ -24,7 +24,12 @@ Run this skill after every task completes (before or as part of the final closeo
 
 ### 2. Detect Gaps
 
-- Scan `negative.md` for entries with `occurrences >= 3` and the same `root_cause`.
+- Scan `negative.md` for entries that cross the severity-weighted escalation threshold:
+  - blocker: 1 occurrence
+  - high: 2 occurrences
+  - medium: 3 occurrences
+  - low: 5 occurrences
+- Group by `root_cause` + `scope`. If any group crosses its threshold, write a **gap report** to `memory/evolution-log.md`:
 - If found, write a **gap report** to `memory/evolution-log.md`:
   ```yaml
   gap: <root_cause>
