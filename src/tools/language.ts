@@ -10,11 +10,11 @@
  * in English regardless of this setting — they are visual ambiance,
  * not content the user needs to read carefully.
  */
-import { tool } from "@opencode-ai/plugin"
+import { tool } from "../plugin/tool"
 import type { CreateToolsArgs } from "./_shared"
-import type { AionTools } from "./types"
+import type { AionShimTools } from "./types"
 
-export function createLanguageTool(args: CreateToolsArgs): Partial<AionTools> {
+export function createLanguageTool(args: CreateToolsArgs): AionShimTools {
   const { managers } = args
   const m = managers
   const z = tool.schema

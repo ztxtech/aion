@@ -7,7 +7,7 @@
  * dispatch hints. The `_modelMap` parameter is reserved for per-agent model
  * overrides (currently unused; all agents inherit the session model).
  */
-import type { AgentConfig } from "@opencode-ai/sdk"
+import type { AgentConfig } from "./agent-config"
 import type { AionAgentName } from "./names"
 import { createAionMainAgent } from "./aion"
 import { createRequirementsAnalystAgent } from "./requirements-analyst"

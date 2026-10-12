@@ -53,7 +53,7 @@ export function createPermissionAskHook(args: CreateHooksArgs): AionPermissionAs
     // to avoid OpenCode's doom_loop escalation when information-collector
     // legitimately needs to fetch many URLs in sequence.
     if (toolName === "webfetch" || toolName === "WebFetch" || toolName === "webfetch_raw" ||
-        toolName === "bash" || toolName === "Bash") {
+        toolName === "shell" || toolName === "Shell") {
       output.status = "allow"
       info("[aion] permission.ask: auto-approved (research tool)", {
         tool: toolName,

@@ -10,11 +10,12 @@
  *   that can lift the no-stop order. Also records blockers the critic
  *   identifies.
  */
-import { tool, type ToolDefinition } from "@opencode-ai/plugin"
+import { tool } from "../plugin/tool"
+import type { ToolDefinition } from "../plugin/tool-adapter"
 import type { CreateToolsArgs } from "./_shared"
-import type { AionTools } from "./types"
+import type { AionShimTools } from "./types"
 
-export function createCriticTools(args: CreateToolsArgs): Partial<AionTools> {
+export function createCriticTools(args: CreateToolsArgs): AionShimTools {
   const { managers } = args
   const m = managers
   const z = tool.schema
@@ -22,7 +23,7 @@ export function createCriticTools(args: CreateToolsArgs): Partial<AionTools> {
   return {
     aion_critic_dispatch: tool({
       description:
-        "Prepare a critic review package. This tool DOES NOT dispatch the critic itself — it returns a structured instruction payload that you MUST pass to the `task` tool in the SAME turn to actually run the critic. Flow: (1) call aion_critic_dispatch('ts-critic' | 'c-critic', goal, evidence_artifacts) to get the dispatch payload; (2) IMMEDIATELY call task(subagent_type=<critic>, description=<goal>, prompt=<the returned instructions>) to actually run the critic subagent; (3) the task tool will block until the critic finishes and returns its verdict as a tool result; (4) then call aion_critic_verdict to record the verdict into governance state. Skipping step (2) means the critic never runs.",
+        "Prepare a critic review package. This tool DOES NOT dispatch the critic itself — it returns a structured instruction payload that you MUST pass to the `subagent` tool in the SAME turn to actually run the critic. Flow: (1) call aion_critic_dispatch('ts-critic' | 'c-critic', goal, evidence_artifacts) to get the dispatch payload; (2) IMMEDIATELY call subagent(agent=<critic>, description=<goal>, prompt=<the returned instructions>) to actually run the critic subagent; (3) the subagent tool will block until the critic finishes and returns its verdict as a tool result; (4) then call aion_critic_verdict to record the verdict into governance state. Skipping step (2) means the critic never runs.",
       args: {
         critic: z.enum(["ts-critic", "c-critic"]),
         goal: z.string().describe("Specific question or goal for the critic"),
@@ -48,7 +49,7 @@ export function createCriticTools(args: CreateToolsArgs): Partial<AionTools> {
         )
 
         // Build the instruction payload that the main agent MUST pass to the
-        // `task` tool. The task tool is the ONLY way to actually run a subagent
+        // `subagent` tool. The subagent tool is the ONLY way to actually run a subagent
         // in OpenCode — this tool just prepares the prompt.
         const instructions = [
           `READ-ONLY: review the listed evidence_artifacts: ${evidence.join(", ") || "(none)"}`,
@@ -69,7 +70,7 @@ export function createCriticTools(args: CreateToolsArgs): Partial<AionTools> {
             critic: args.critic,
             status: "PAYLOAD_READY_NOT_DISPATCHED",
             warning: "The critic has NOT been dispatched yet. This tool only prepared the instruction payload.",
-            next_action_required: `Call task(subagent_type="${args.critic}", description="${goal.slice(0, 120).replace(/"/g, "'")}", prompt=${JSON.stringify(instructions)}) NOW in this same turn. The task tool will block until the critic finishes. Do NOT end your turn without making this task call.`,
+            next_action_required: `Call subagent(agent="${args.critic}", description="${goal.slice(0, 120).replace(/"/g, "'")}", prompt=${JSON.stringify(instructions)}) NOW in this same turn. The subagent tool will block until the critic finishes. Do NOT end your turn without making this task call.`,
             instructions,
           },
           null,

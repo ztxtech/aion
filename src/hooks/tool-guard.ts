@@ -413,9 +413,9 @@ export function createToolGuardBeforeHook(args: CreateHooksArgs): AionToolExecut
     }
 
     // === K. Context mode enforcement for task dispatch ===
-    if (toolName === "task") {
+    if (toolName === "subagent") {
       const taskArgs = (output as { args?: Record<string, unknown> }).args ?? {}
-      const subagentType = String(taskArgs.subagent_type ?? taskArgs.description ?? "")
+      const subagentType = String(taskArgs.agent ?? taskArgs.description ?? "")
       m.state.governance.lastDispatchTarget = subagentType || null
       const round = m.state.rounds.current
       if (round > 0 && subagentType && subagentType !== "c-critic") {
@@ -700,9 +700,9 @@ export function createToolGuardAfterHook(args: CreateHooksArgs): AionToolExecute
 
     // === H. Personality: fire toasts on dispatch and critic events ===
     if (personality) {
-      if (toolName === "task") {
+      if (toolName === "subagent") {
         const taskArgs = (output as { args?: Record<string, unknown> }).args ?? {}
-        const subagentType = String(taskArgs.subagent_type ?? "")
+        const subagentType = String(taskArgs.agent ?? "")
         if (subagentType) {
           personality.onDispatch(subagentType)
         }
@@ -724,9 +724,9 @@ export function createToolGuardAfterHook(args: CreateHooksArgs): AionToolExecute
     // If next_call is non-null, store it for the system-transform hook to
     // inject into the next round's prompt (main agent reads it and dispatches
     // accordingly).
-    if (toolName === "task" && outputText) {
+    if (toolName === "subagent" && outputText) {
       const taskArgs = (output as { args?: Record<string, unknown> }).args ?? {}
-      const subagentType = String(taskArgs.subagent_type ?? "")
+      const subagentType = String(taskArgs.agent ?? "")
       const isWorker =
         subagentType === "requirements-analyst" ||
         subagentType === "information-collector" ||
@@ -787,7 +787,7 @@ export function createToolGuardAfterHook(args: CreateHooksArgs): AionToolExecute
     }
 
     // === G. Reportback detection (task returns) ===
-    if (toolName === "task" && outputText) {
+    if (toolName === "subagent" && outputText) {
       m.trace.appendEvent(
         "reportback.received",
         `task returned (${(outputText || "").length} chars)`,

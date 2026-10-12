@@ -6,7 +6,7 @@
  * stop-go verdict. Edit/webfetch denied — the critic advises, it does not
  * implement.
  */
-import type { AgentConfig } from "@opencode-ai/sdk"
+import type { AgentConfig } from "./agent-config"
 import {
   AION_GOVERNANCE_HEADER,
   AION_DISPATCH_PROTOCOL,

@@ -6,7 +6,7 @@
  * hook). Visual analysis is mandatory. Its verdict — approve-stop or
  * reject-stop — is the only signal that can lift the no-stop order.
  */
-import type { AgentConfig } from "@opencode-ai/sdk"
+import type { AgentConfig } from "./agent-config"
 import {
   AION_GOVERNANCE_HEADER,
   AION_REPORTBACK_PROTOCOL,

@@ -5,8 +5,11 @@
  * the concrete shapes used throughout AION, so the rest of the codebase
  * does not need to repeat `Parameters<Plugin>[0]` gymnastics.
  */
-import type { Plugin } from "@opencode-ai/plugin"
-
-export type PluginContext = Parameters<Plugin>[0]
-export type PluginInstance = Awaited<ReturnType<Plugin>>
-export type ToolsRecord = Record<string, import("@opencode-ai/plugin").ToolDefinition>
+export type PluginContext = {
+  directory: string
+  client?: unknown
+  [key: string]: unknown
+}
+/* eslint-disable @typescript-eslint/no-explicit-any */
+export type PluginInstance = Record<string, any>
+export type ToolsRecord = Record<string, import("./tool-adapter").V2ToolDefinition>

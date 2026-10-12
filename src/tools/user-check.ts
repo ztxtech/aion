@@ -8,11 +8,11 @@
  * mid-conversation. Resets the pending continue/stop decision so future
  * c-critic verdicts re-prompt in interactive mode.
  */
-import { tool } from "@opencode-ai/plugin"
+import { tool } from "../plugin/tool"
 import type { CreateToolsArgs } from "./_shared"
-import type { AionTools } from "./types"
+import type { AionShimTools } from "./types"
 
-export function createInteractiveModeTool(args: CreateToolsArgs): Partial<AionTools> {
+export function createInteractiveModeTool(args: CreateToolsArgs): AionShimTools {
   const { managers } = args
   const m = managers
   const z = tool.schema

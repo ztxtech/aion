@@ -11,9 +11,9 @@
  *   `aion_ztxexp_run`      — spawn the experiment command, capture output,
  *                            and write a run.json manifest
  */
-import { tool } from "@opencode-ai/plugin"
+import { tool } from "../plugin/tool"
 import type { CreateToolsArgs } from "./_shared"
-import type { AionTools } from "./types"
+import type { AionShimTools } from "./types"
 import { existsSync, mkdirSync, writeFileSync, readdirSync, statSync, readFileSync } from "node:fs"
 import { join, relative, dirname } from "node:path"
 
@@ -76,7 +76,7 @@ function collectEmptyDirs(dirPath: string): string[] {
   return empty
 }
 
-export function createZtxexpTools(args: CreateToolsArgs): Partial<AionTools> {
+export function createZtxexpTools(args: CreateToolsArgs): AionShimTools {
   const { managers } = args
   const m = managers
   const z = tool.schema

@@ -35,9 +35,9 @@
  * *harness* layer (metadata + manifest) the public REST API is sufficient
  * and keeps the bundle under 1MB.
  */
-import { tool } from "@opencode-ai/plugin"
+import { tool } from "../plugin/tool"
 import type { CreateToolsArgs } from "./_shared"
-import type { AionTools } from "./types"
+import type { AionShimTools } from "./types"
 import { ensureDir, writeFileEnsuringDir, readIfExists } from "../shared/logger"
 import { nowIso } from "../shared/utils"
 import { join, dirname } from "node:path"
@@ -262,7 +262,7 @@ function rawToSummary(raw: Record<string, unknown>): HfDatasetSummary {
 // Tool factory
 // ---------------------------------------------------------------------------
 
-export function createHfDatasetsTools(args: CreateToolsArgs): Partial<AionTools> {
+export function createHfDatasetsTools(args: CreateToolsArgs): AionShimTools {
   const { managers, config, ctx } = args
   const m = managers
   const z = tool.schema

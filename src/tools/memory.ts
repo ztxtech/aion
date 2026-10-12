@@ -9,13 +9,14 @@
  * `aion_workspace_init` — the init-phase bootstrap: persists the user's
  *   original prompt, creates the context-snapshot, and seeds the todo-map.
  */
-import { tool, type ToolDefinition } from "@opencode-ai/plugin"
+import { tool } from "../plugin/tool"
+import type { ToolDefinition } from "../plugin/tool-adapter"
 import type { CreateToolsArgs } from "./_shared"
-import type { AionTools } from "./types"
+import type { AionShimTools } from "./types"
 import { appendToFile, ensureDir, writeFileEnsuringDir, readIfExists } from "../shared/logger"
 import { nowIso } from "../shared/utils"
 
-export function createMemoryTools(args: CreateToolsArgs): Partial<AionTools> {
+export function createMemoryTools(args: CreateToolsArgs): AionShimTools {
   const { managers } = args
   const m = managers
   const z = tool.schema
@@ -64,10 +65,10 @@ export function createMemoryTools(args: CreateToolsArgs): Partial<AionTools> {
 
         // Determine the calling agent: prefer _context.agent if OpenCode SDK exposes it,
         // else fall back to the active subagent type from governance state, else "main-agent".
-        const ctxAny = _context as { agent?: string; subagent_type?: string }
+        const ctxAny = _context as { agent?: string; agent?: string }
         const callingAgent =
           ctxAny.agent ??
-          ctxAny.subagent_type ??
+          ctxAny.agent ??
           m.state.governance.lastDispatchTarget ??
           "main-agent"
 

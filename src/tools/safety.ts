@@ -9,12 +9,13 @@
  *   Tests a file path (+ optional content sample) against the hard
  *   anti-leakage rules: credentials, hidden-set, internal prompts.
  */
-import { tool, type ToolDefinition } from "@opencode-ai/plugin"
+import { tool } from "../plugin/tool"
+import type { ToolDefinition } from "../plugin/tool-adapter"
 import type { CreateToolsArgs } from "./_shared"
-import type { AionTools } from "./types"
+import type { AionShimTools } from "./types"
 import { notifyFromCtx } from "../shared/notify-tui"
 
-export function createSafetyTools(args: CreateToolsArgs): Partial<AionTools> {
+export function createSafetyTools(args: CreateToolsArgs): AionShimTools {
   const { managers } = args
   const m = managers
   const z = tool.schema

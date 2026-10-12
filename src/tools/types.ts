@@ -5,8 +5,7 @@
  * workspace lifecycle, critic dispatch, experiment management (ztxexp),
  * interactive-mode control, language, and Hugging Face dataset access.
  */
-import type { AionManagers } from "../create-managers"
-import type { PluginContext, ToolsRecord } from "../plugin/types"
+import type { ShimToolRecord } from "../plugin/tool"
 
 export type AionToolName =
   | "aion_ztxexp_init"
@@ -30,4 +29,5 @@ export type AionToolName =
   | "aion_hf_ingest"
   | "aion_hf_suggest"
 
-export type AionTools = Record<AionToolName, import("@opencode-ai/plugin").ToolDefinition>
+export type AionTools = Record<AionToolName, import("../plugin/tool-adapter").V2ToolDefinition>
+export type AionShimTools = Partial<ShimToolRecord>

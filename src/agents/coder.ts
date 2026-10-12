@@ -6,7 +6,7 @@
  * statistical + SHAP evidence. Adds the experiment ruleset on top of the
  * base governance stack.
  */
-import type { AgentConfig } from "@opencode-ai/sdk"
+import type { AgentConfig } from "./agent-config"
 import {
   AION_GOVERNANCE_HEADER,
   AION_DISPATCH_PROTOCOL,

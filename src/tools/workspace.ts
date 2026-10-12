@@ -9,14 +9,15 @@
  *   open blockers, leakage, evidence completeness, visual-test status.
  *   Writes its verdict to completion-gate.md.
  */
-import { tool, type ToolDefinition } from "@opencode-ai/plugin"
+import { tool } from "../plugin/tool"
+import type { ToolDefinition } from "../plugin/tool-adapter"
 import type { CreateToolsArgs } from "./_shared"
-import type { AionTools } from "./types"
+import type { AionShimTools } from "./types"
 import { ensureDir, readIfExists, writeFileEnsuringDir } from "../shared/logger"
 import { nowIso } from "../shared/utils"
 import { notifyFromCtx } from "../shared/notify-tui"
 
-export function createWorkspaceTools(args: CreateToolsArgs): Partial<AionTools> {
+export function createWorkspaceTools(args: CreateToolsArgs): AionShimTools {
   const { managers } = args
   const m = managers
   const z = tool.schema

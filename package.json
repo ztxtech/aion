@@ -19,7 +19,7 @@
     "bin"
   ],
   "scripts": {
-    "build": "bun run build:npm && bun run build:singlefile && bun run build:cli && tsc --emitDeclarationOnly",
+    "build": "bun run build:npm && bun run build:singlefile && bun run build:cli",
     "build:npm": "bun build src/index.ts --outdir dist --target bun --format esm",
     "build:singlefile": "bun build src/index.ts --outfile .opencode/plugins/aion.js --target node --format esm",
     "build:cli": "bun build bin/aion-init.js --outdir dist/bin --target node --format esm",
@@ -47,8 +47,9 @@
     "url": "git+https://github.com/ztxtech/aion.git"
   },
   "dependencies": {
-    "@opencode-ai/plugin": "^1.17.0",
-    "@opencode-ai/sdk": "^1.17.0",
+    "@opencode/plugin": "0.0.0-beta-19425",
+    "@opencode/client": "0.0.0-beta-19425",
+    "@opencode/schema": "0.0.0-beta-19425",
     "zod": "^4.1.0"
   },
   "devDependencies": {

@@ -7,11 +7,12 @@
  * `aion_resolve_blocker` — mark a blocker as fixed with evidence. The fix
  *   evidence is traced for ts-critic audit.
  */
-import { tool, type ToolDefinition } from "@opencode-ai/plugin"
+import { tool } from "../plugin/tool"
+import type { ToolDefinition } from "../plugin/tool-adapter"
 import type { CreateToolsArgs } from "./_shared"
-import type { AionTools } from "./types"
+import type { AionShimTools } from "./types"
 
-export function createGovernanceTools(args: CreateToolsArgs): Partial<AionTools> {
+export function createGovernanceTools(args: CreateToolsArgs): AionShimTools {
   const { managers } = args
   const m = managers
   const z = tool.schema

@@ -7,7 +7,7 @@
  * edit, webfetch, question) and is the only agent allowed to use the
  * `question` tool for interactive-mode user checks.
  */
-import type { AgentConfig } from "@opencode-ai/sdk"
+import type { AgentConfig } from "./agent-config"
 import {
   AION_GOVERNANCE_HEADER,
   AION_DISPATCH_PROTOCOL,

@@ -9,8 +9,13 @@
  * Also defines {@link AionIntent} — the coarse intent categories the
  * chat-message hook classifies user messages into.
  */
-import type { Model, Provider, Permission, Message, Part } from "@opencode-ai/sdk"
-import type { ProviderContext } from "@opencode-ai/plugin"
+/* V2 dropped the V1 SDK type re-exports; AION only uses these structurally. */
+type Model = { id: string; providerID?: string; [key: string]: unknown }
+type Provider = { id: string; [key: string]: unknown }
+type ProviderContext = Provider
+type Permission = { action?: string; resource?: string; [key: string]: unknown }
+type Message = { id?: string; role?: string; sessionID?: string; [key: string]: unknown }
+type Part = { type?: string; text?: string; [key: string]: unknown }
 
 export type AionHookName =
   | "tool.execute.before"

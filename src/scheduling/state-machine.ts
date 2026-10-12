@@ -51,7 +51,7 @@ export type Reportback = {
 // Legal dispatch edges — the heart of the state machine
 // =============================================================================
 //
-// Key = (current phase). Value = set of subagent_types that may be dispatched
+// Key = (current phase). Value = set of agents that may be dispatched
 // from this phase. Dispatching anything else is a G1 violation.
 //
 // Notes:

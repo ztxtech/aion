@@ -6,7 +6,7 @@
  * Permissions are intentionally narrow — bash only (no edit, no webfetch)
  * — because this agent shapes the plan, not the artifacts.
  */
-import type { AgentConfig } from "@opencode-ai/sdk"
+import type { AgentConfig } from "./agent-config"
 import {
   AION_GOVERNANCE_HEADER,
   AION_DISPATCH_PROTOCOL,

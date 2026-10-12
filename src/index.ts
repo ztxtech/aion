@@ -14,7 +14,7 @@
  * The `_testing` export exposes lazy dynamic-import loaders so unit tests can
  * reach internal hook/tool modules without bundling them into production.
  */
-import type { Plugin, PluginModule } from "@opencode-ai/plugin"
+import type { Plugin, PluginModule } from "@opencode/plugin"
 import { loadAionConfig } from "./config/load-config"
 import { createAionManagers } from "./create-managers"
 import { createAllAionTools } from "./create-tools"
