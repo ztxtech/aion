@@ -45,6 +45,7 @@ export function createTempTarget(name = "aion-test") {
     pluginDir: pluginTarget,
     aionConfigPath: join(repoDir, ".opencode", "aion.jsonc"),
     opencodeJsonPath: join(repoDir, "opencode.json"),
+    tuiJsonPath: join(repoDir, "tui.json"),
     cleanup() {
       try {
         rmSync(root, { recursive: true, force: true });

@@ -281,7 +281,6 @@ async function ensureOpencodeJson(target) {
   if (!exists) {
     const example = {
       $schema: "https://opencode.ai/config.json",
-      theme: "aion",
     };
     writeJsonPreserveIndent(path, example);
     console.log(`  [ok] created       → ${path}`);
@@ -301,6 +300,13 @@ async function ensureOpencodeJson(target) {
   }
 
   if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+    // OpenCode V2 reads theme from tui.json. Remove only the value previously
+    // chosen by AION; leave a user-selected non-AION theme untouched.
+    if (parsed.theme === "aion") {
+      delete parsed.theme;
+      writeJsonPreserveIndent(path, parsed);
+      console.log(`  [ok] migrated     → ${path}  (theme moved to tui.json)`);
+    }
     if (Array.isArray(parsed.plugin) && parsed.plugin.includes("aion-ts-plugin")) {
       // Migrate away from the previous wrong behavior: drop the npm-name entry.
       parsed.plugin = parsed.plugin.filter((x) => x !== "aion-ts-plugin");
@@ -315,6 +321,41 @@ async function ensureOpencodeJson(target) {
     console.log(`  Expected a JSON object. Aborting to avoid clobbering it.`);
     process.exit(4);
   }
+}
+
+async function ensureTuiJson(target) {
+  const path = join(target, "tui.json");
+  const legacyPath = join(target, "tui.jsonc");
+  const exists = existsSync(path);
+  const legacyExists = existsSync(legacyPath);
+
+  if (legacyExists) {
+    console.log(`  [skip] ${legacyPath} already exists`);
+    return;
+  }
+
+  if (exists) {
+    let parsed;
+    try {
+      parsed = readJsonc(path);
+    } catch (err) {
+      banner("tui.json is not valid JSON");
+      console.log(`  ${path}`);
+      console.log(`  ${err.message}`);
+      process.exit(7);
+    }
+    if (parsed?.theme && parsed.theme !== "aion") {
+      console.log(`  [skip] ${path} already selects "${parsed.theme}"`);
+      return;
+    }
+    if (parsed?.theme === "aion") return;
+  }
+
+  writeJsonPreserveIndent(path, {
+    $schema: "https://opencode.ai/tui.json",
+    theme: "aion",
+  });
+  console.log(`  [ok] created       → ${path}`);
 }
 
 async function ensureAionConfig(target) {
@@ -492,6 +533,7 @@ async function main() {
 
   await installPlugin(bundle, target, args.force);
   await ensureOpencodeJson(target);
+  await ensureTuiJson(target);
   await ensureAionConfig(target);
   installTheme(bundle, target);
   installSkills(bundle, target, args.force);

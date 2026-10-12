@@ -36,10 +36,15 @@ describe("aion-ts init CLI", () => {
     assert.match(content, /"trace"\s*:/);
   });
 
-  it("creates opencode.json with aion theme", () => {
+  it("moves the aion theme into V2 TUI config", () => {
     assert.ok(existsSync(target.opencodeJsonPath), "opencode.json should exist");
-    const content = readFileSync(target.opencodeJsonPath, "utf8");
-    assert.match(content, /"theme"\s*:\s*"aion"/);
+    const config = JSON.parse(readFileSync(target.opencodeJsonPath, "utf8"));
+    assert.equal(config.theme, undefined);
+
+    assert.ok(existsSync(target.tuiJsonPath), "tui.json should exist");
+    const tui = JSON.parse(readFileSync(target.tuiJsonPath, "utf8"));
+    assert.equal(tui.theme, "aion");
+    assert.equal(tui.$schema, "https://opencode.ai/tui.json");
   });
 
   it("creates .opencode/agents/ scaffold (aion subdir)", () => {
