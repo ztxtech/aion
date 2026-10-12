@@ -92,6 +92,8 @@ describe("call graph aggregation", () => {
       ["requirements-analyst", "idle"],
       ["information-collector", "idle"],
       ["coder", "done"],
+      ["search-scout", "idle"],
+      ["experiment-runner", "idle"],
       ["ts-critic", "active"],
       ["c-critic", "idle"],
     ]);
@@ -117,6 +119,20 @@ describe("call graph aggregation", () => {
     assert.equal(graph.summary.allow, 1);
     assert.equal(graph.summary.reject, 1);
     assert.ok(graph.edges.some((edge) => edge.kind === "verdict" && edge.status === "reject"));
+  });
+
+  it("marks a bounded nested helper dispatch as its own graph edge", () => {
+    const graph = callGraph.buildAgentGraph({
+      version: 1,
+      activeSessionID: "session-1",
+      updatedAt: null,
+      calls: [
+        { from: "information-collector", to: "search-scout", kind: "dispatch", status: "dispatched", at: "1" },
+      ],
+    });
+
+    assert.ok(graph.edges.some((edge) => edge.from === "information-collector" && edge.to === "search-scout"));
+    assert.equal(graph.nodes.find((node) => node.id === "search-scout")?.state, "active");
   });
 });
 
@@ -150,6 +166,25 @@ describe("call graph server integration", () => {
     assert.equal(coderNode.state, "done");
     assert.equal(coderNode.dispatches, 1);
     assert.equal(coderNode.returns, 1);
+  });
+
+  it("accepts a nested helper dispatch from its parent without G1 scheduling", async () => {
+    const target = createTemp();
+    const nested = await bundle.default.server({ directory: target }, {});
+    try {
+      await nested["tool.execute.before"](
+        { tool: "task", sessionID: "session-nested", callID: "nested-call", agent: "coder" },
+        { args: { agent: "experiment-runner", prompt: "Run the fixed package" }, metadata: {} },
+      );
+
+      const calls = callGraph.readCallGraph(target).calls;
+      assert.equal(calls.length, 1);
+      assert.equal(calls[0].from, "coder");
+      assert.equal(calls[0].to, "experiment-runner");
+    } finally {
+      await nested.cleanup();
+      rmSync(target, { recursive: true, force: true });
+    }
   });
 
   it("records critic verdicts returned to AION", async () => {

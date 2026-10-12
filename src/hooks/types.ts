@@ -42,12 +42,12 @@ export type AionHooks = {
 }
 
 export type AionToolExecuteBeforeHook = (
-  input: { tool: string; sessionID?: string; callID?: string },
+  input: { tool: string; sessionID?: string; callID?: string; agent?: string },
   output: { args?: Record<string, unknown>; metadata?: Record<string, unknown> },
 ) => Promise<void> | void
 
 export type AionToolExecuteAfterHook = (
-  input: { tool: string; sessionID?: string; callID?: string },
+  input: { tool: string; sessionID?: string; callID?: string; agent?: string },
   output: { args?: Record<string, unknown>; title?: string; output?: string; metadata?: Record<string, unknown> },
 ) => Promise<void> | void
 

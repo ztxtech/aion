@@ -165,7 +165,7 @@ const aionPlugin = Plugin.define({
       const hook = hooks["tool.execute.before"]
       registrations.push(await context.tool.hook("execute.before", async (event) => {
         const output = { args: event.input as Record<string, unknown>, metadata: {} }
-        await hook({ tool: event.tool, sessionID: event.sessionID, callID: event.id }, output)
+        await hook({ tool: event.tool, sessionID: event.sessionID, callID: event.id, agent: event.agent }, output)
         if (output.args) event.input = output.args
       }))
     }
@@ -175,7 +175,7 @@ const aionPlugin = Plugin.define({
       registrations.push(await context.tool.hook("execute.after", async (event) => {
         if (event.status !== "completed") return
         await hook(
-          { tool: event.tool, sessionID: event.sessionID, callID: event.id },
+          { tool: event.tool, sessionID: event.sessionID, callID: event.id, agent: event.agent },
           { args: event.input as Record<string, unknown>, output: resultText(event.result), metadata: {} },
         )
       }))

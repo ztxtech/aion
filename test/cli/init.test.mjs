@@ -47,6 +47,11 @@ describe("aion-ts init CLI", () => {
     assert.equal(tui.$schema, "https://opencode.ai/tui.json");
   });
 
+  it("enables bounded nested subagents", () => {
+    const config = JSON.parse(readFileSync(target.opencodeJsonPath, "utf8"));
+    assert.equal(config.experimental?.subagent_depth, 2);
+  });
+
   it("migrates a legacy string theme in tui.json", () => {
     writeFileSync(
       target.tuiJsonPath,

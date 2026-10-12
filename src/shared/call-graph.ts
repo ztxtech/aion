@@ -75,6 +75,8 @@ const WORKERS = new Set([
   "requirements-analyst",
   "information-collector",
   "coder",
+  "search-scout",
+  "experiment-runner",
 ])
 
 const CRITICS = new Set(["ts-critic", "c-critic"])

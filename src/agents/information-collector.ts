@@ -46,8 +46,9 @@ export const createInformationCollectorAgent = (model?: string): AgentConfig => 
     webfetch: "allow",
     doom_loop: "deny",
     external_directory: "allow",
+    subagent: "allow",
   },
   tools: {
-    task: false,
+    task: true,
   },
 })

@@ -88,6 +88,7 @@ describe("agent board layout", () => {
           "ts-critic",
           "c-critic",
         ],
+      ["search-scout", "experiment-runner"],
       ],
     );
     assert.match(view.summary, /0 done · 0 blocked · 0 allow · 0 reject/);
@@ -108,6 +109,24 @@ describe("agent board layout", () => {
     });
 
     assert.equal(view.rows[0].active, true);
+  });
+
+  it("routes nested helper dispatch edges to the helper row", () => {
+    const state = callGraph.readCallGraph("/tmp/does-not-exist-aion-board");
+    state.calls = [{
+      from: "information-collector",
+      to: "search-scout",
+      kind: "dispatch",
+      status: "dispatched",
+      at: new Date().toISOString(),
+    }];
+    const view = boardView.agentGraphView(callGraph.buildAgentGraph(state), {
+      columns: 92,
+      tick: 0,
+    });
+
+    assert.deepEqual(view.rows[2].nodes.map((node) => node.id), ["search-scout", "experiment-runner"]);
+    assert.equal(view.rows[1].connectors.some((line) => line.includes("▼")), true);
   });
 
   it("keeps the text logo to two stable display rows", () => {

@@ -39,6 +39,12 @@ import {
   type QueuedToast,
 } from "../shared/toast-queue"
 
+const AION_STATUS_HINT = "ctrl+g AION board · ctrl+p commands"
+
+export function boardRows(totalRows?: number) {
+  return Math.max(20, (totalRows ?? process.stdout.rows ?? 40) - 1)
+}
+
 type BoardPalette = {
   base: RGBA
   muted: RGBA
@@ -257,7 +263,7 @@ function Board(props: {
       <scrollbox
         scrollY
         viewportCulling={false}
-        height={Math.max(8, props.boardHeight() - 13)}
+        height={Math.max(8, props.boardHeight() - 15)}
         minWidth={0}
         gap={1}
         backgroundColor={props.palette.surface}
@@ -450,8 +456,8 @@ function Board(props: {
         wrapMode="none"
         flexShrink={0}
       >
-        <Show when={props.close} fallback="/aion-board · /aion-mode · /aion-status">
-          esc close · /aion-mode · /aion-status
+        <Show when={props.close} fallback="ctrl+g close · /aion-mode · /aion-status">
+          ctrl+g close · /aion-mode · /aion-status
         </Show>
       </text>
     </box>
@@ -691,8 +697,7 @@ export default Plugin.define({
     const board = watchPlanGraph(root)
     const calls = watchCallGraph(root, () => activeSessionID(context))
     const runtimeBoard = watchRuntimeSnapshot(root, () => activeSessionID(context))
-    const readBoardHeight = () =>
-      context.renderer?.height ?? process.stdout.rows ?? 40
+    const readBoardHeight = () => boardRows(context.renderer?.height)
     const [boardHeight, setBoardHeight] = createSignal(readBoardHeight())
     const onBoardResize = () => setBoardHeight(readBoardHeight())
     context.renderer.on("resize", onBoardResize)
@@ -710,6 +715,10 @@ export default Plugin.define({
     let autoOpenArmed = true
 
     const openBoard = () => {
+      if (context.ui.panel.current()?.name === "aion-dag") {
+        context.ui.panel.close()
+        return
+      }
       if (context.ui.router.current().type === "session")
         context.ui.panel.open("aion-dag")
       else context.ui.router.navigate({ type: "plugin", name: "aion-dag" })
@@ -778,8 +787,9 @@ export default Plugin.define({
         {
           id: "aion.board",
           title: "AION board",
-          description: "Show the live AION plan DAG",
+          description: "Toggle the live AION plan DAG",
           group: "AION",
+          bind: "ctrl+g",
           palette: true,
           suggested: true,
           slash: { name: "aion-board" },
@@ -850,7 +860,17 @@ export default Plugin.define({
       ),
     })
 
+    const disposeHint = context.ui.slot({
+      append: "prompt.footer.status",
+      render: () => (
+        <text fg={context.theme.text.muted} wrapMode="none">
+          {AION_STATUS_HINT}
+        </text>
+      ),
+    })
+
     return () => {
+      disposeHint()
       disposeSidebar()
       disposeSlot()
       disposeRoute()
@@ -862,3 +882,5 @@ export default Plugin.define({
     }
   },
 })
+
+export { AION_STATUS_HINT }

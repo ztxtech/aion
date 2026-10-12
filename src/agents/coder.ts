@@ -43,8 +43,9 @@ export const createCoderAgent = (model?: string): AgentConfig => ({
     edit: "allow",
     webfetch: "allow",
     doom_loop: "deny",
+    subagent: "allow",
   },
   tools: {
-    task: false,
+    task: true,
   },
 })

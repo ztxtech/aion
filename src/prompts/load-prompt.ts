@@ -8,6 +8,8 @@ import coderDefault from "./agent-prompts/coder/default.md" with { type: "text" 
 import informationCollectorDefault from "./agent-prompts/information-collector/default.md" with { type: "text" }
 import requirementsAnalystDefault from "./agent-prompts/requirements-analyst/default.md" with { type: "text" }
 import tsCriticDefault from "./agent-prompts/ts-critic/default.md" with { type: "text" }
+import searchScoutDefault from "./agent-prompts/search-scout/default.md" with { type: "text" }
+import experimentRunnerDefault from "./agent-prompts/experiment-runner/default.md" with { type: "text" }
 
 const PROMPTS: Record<string, Record<string, string>> = {
   aion: { default: aionDefault },
@@ -16,6 +18,8 @@ const PROMPTS: Record<string, Record<string, string>> = {
   "information-collector": { default: informationCollectorDefault },
   "requirements-analyst": { default: requirementsAnalystDefault },
   "ts-critic": { default: tsCriticDefault },
+  "search-scout": { default: searchScoutDefault },
+  "experiment-runner": { default: experimentRunnerDefault },
 }
 
 export function loadPrompt(agentName: string, variant: string = "default"): string {

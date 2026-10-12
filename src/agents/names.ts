@@ -1,5 +1,5 @@
 /**
- * Canonical list of the six AION agents and the derived name union type.
+ * Canonical list of the eight AION agents and the derived name union type.
  *
  * The order is significant: it reflects the governance hierarchy from main
  * agent down to the final-gate critic. Keep in sync with agents/registry.ts.
@@ -11,6 +11,8 @@ export const AION_AGENT_NAMES = [
   "coder",
   "ts-critic",
   "c-critic",
+  "search-scout",
+  "experiment-runner",
 ] as const
 
 export type AionAgentName = (typeof AION_AGENT_NAMES)[number]

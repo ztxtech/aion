@@ -83,6 +83,11 @@ function createContext(root, registrations = { routes: [], slots: [] }) {
 }
 
 describe("AION TUI plan watcher", () => {
+  it("reserves the global status row for board hints", () => {
+    assert.equal(tuiBundle.boardRows(52), 51);
+    assert.equal(tuiBundle.boardRows(20), 20);
+  });
+
   it("registers the board against V2 theme tokens", () => {
     const root = createProject();
     const registrations = { routes: [], slots: [] };
@@ -94,8 +99,9 @@ describe("AION TUI plan watcher", () => {
     );
     assert.deepEqual(
       registrations.slots.map((slot) => slot.append),
-      ["session.panel", "sidebar.content"],
+      ["session.panel", "sidebar.content", "prompt.footer.status"],
     );
+    assert.equal(tuiBundle.AION_STATUS_HINT, "ctrl+g AION board · ctrl+p commands");
     for (const slot of registrations.slots) {
       assert.equal(typeof slot.render, "function");
     }

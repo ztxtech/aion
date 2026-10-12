@@ -157,9 +157,8 @@ Behavior:
      bundles there.
      OpenCode auto-discovers plugins in this directory at startup, so the
      "plugin" field in opencode.json is intentionally not touched.
-  2. If <target>/opencode.json exists, leaves it alone (or migrates away
-     from a previous wrong "plugin": ["aion-ts-plugin"] entry). Otherwise
-     creates a minimal starter file with $schema/theme.
+  2. Creates or updates <target>/opencode.json with $schema and bounded
+     subagent_depth; migrates away from a previous wrong local plugin entry.
   3. Copies a commented default config to <target>/.opencode/aion.jsonc.
      The bundle is fully self-contained — no external npm dependencies
      are needed.
@@ -282,6 +281,9 @@ async function ensureOpencodeJson(target) {
   if (!exists) {
     const example = {
       $schema: "https://opencode.ai/config.json",
+      experimental: {
+        subagent_depth: 2,
+      },
     };
     writeJsonPreserveIndent(path, example);
     console.log(`  [ok] created       → ${path}`);
@@ -316,6 +318,18 @@ async function ensureOpencodeJson(target) {
       console.log(`  [ok] cleaned       → ${path}  (removed legacy "plugin": ["aion-ts-plugin"])`);
     } else {
       console.log(`  [skip] ${path} already exists`);
+    }
+
+    const depth = parsed.experimental?.subagent_depth;
+    if (typeof depth !== "number" || depth < 2) {
+      parsed.experimental = {
+        ...(parsed.experimental ?? {}),
+        subagent_depth: 2,
+      };
+      writeJsonPreserveIndent(path, parsed);
+      console.log(`  [ok] updated       → ${path}  (subagent_depth = 2)`);
+    } else {
+      console.log(`  [skip] ${path} already allows subagent_depth >= 2`);
     }
   } else {
     banner("opencode.json has unexpected shape");

@@ -267,6 +267,14 @@ export function agentGraphView(
     node("ts-critic", "technical"),
     node("c-critic", "delivery"),
   ]
+  const helpers = graph.nodes
+    .filter((candidate) => candidate.id === "search-scout" || candidate.id === "experiment-runner")
+    .map((candidate) =>
+      node(
+        candidate.id,
+        candidate.id === "search-scout" ? "retrieval" : "execution",
+      ),
+    )
   const summary = graph.summary
   const columns = options.columns ?? 92
   const gap = DEFAULT_GAP
@@ -295,6 +303,15 @@ export function agentGraphView(
     rows.push({ nodes, connectors: [], active: nodes.some((node) => node.state === "active") })
   }
 
+  if (helpers.length > 0) {
+    const rowIndex = rows.length
+    const nodes = helpers.slice(0, perRow)
+    for (const [index, helper] of nodes.entries()) {
+      slots.set(helper.id, { row: rowIndex, index })
+    }
+    rows.push({ nodes, connectors: [], active: nodes.some((node) => node.state === "active") })
+  }
+
   rows.forEach((row, rowIndex) => {
     const next = rows[rowIndex + 1]
     if (!next) return
@@ -308,9 +325,14 @@ export function agentGraphView(
       gap,
       indent,
     })
-    const edges = graph.nodes
-      .filter((candidate) => candidate.id !== "aion")
-      .map((candidate) => ({ from: "aion", to: candidate.id }))
+    const edges =
+      rowIndex === 0
+        ? graph.nodes
+            .filter((candidate) => slots.get(candidate.id)?.row === rowIndex + 1)
+            .map((candidate) => ({ from: "aion", to: candidate.id }))
+        : graph.edges
+            .filter((edge) => edge.kind === "dispatch")
+            .map((edge) => ({ from: edge.from, to: edge.to }))
     row.connectors = animateConnectors(
       connectorGrid(from, to, edges, slots, rowIndex, rowIndex + 1, width),
       options.tick ?? 0,

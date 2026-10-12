@@ -20,10 +20,10 @@ describe("hard role boundaries (orchestrator must not do worker work)", () => {
       "MUST NOT do",
       "NO direct file editing",
       "NO direct debugging",
-      "NO direct experiment building",
-      "NO direct evidence collection",
-      "NO direct requirement extraction",
-      "delegate",
+      "experiment building",
+      "broad evidence collection",
+      "requirement extraction",
+      "Dispatch",
       "task",
       "temptation",
       "Reception Contract",
@@ -76,8 +76,18 @@ describe("hard role boundaries (orchestrator must not do worker work)", () => {
   });
 });
 
-describe("subagent reception contracts (leaf workers declare their intake shape)", () => {
-  const leafAgents = ["coder", "information-collector", "requirements-analyst"];
+describe("bounded agent hierarchy", () => {
+  const leafAgents = [
+    "coder",
+    "information-collector",
+    "requirements-analyst",
+    "search-scout",
+    "experiment-runner",
+  ];
+  const nestedDispatch = {
+    coder: "experiment-runner",
+    "information-collector": "search-scout",
+  };
 
   for (const agent of leafAgents) {
     it(`${agent} prompt has a Reception Contract section`, () => {
@@ -90,16 +100,15 @@ describe("subagent reception contracts (leaf workers declare their intake shape)
       assert.match(prompt, /MUST NOT do/i, `${agent} missing 'MUST NOT do' rules`);
     });
 
-    it(`${agent} prompt declares it cannot dispatch other subagents (or only main agent can)`, () => {
+    it(`${agent} prompt states its exact dispatch boundary`, () => {
       const prompt = readPrompt(agent);
-      const cannotDispatch =
-        /cannot dispatch other subagents/i.test(prompt) ||
-        /MUST NOT dispatch/i.test(prompt) ||
-        /do not dispatch other subagents/i.test(prompt);
-      assert.ok(
-        cannotDispatch,
-        `${agent} must explicitly state it cannot dispatch other subagents`,
-      );
+      const child = nestedDispatch[agent];
+      if (child) {
+        assert.match(prompt, new RegExp(`only .${child}.`, "i"));
+        assert.match(prompt, /do not dispatch other subagents/i);
+      } else {
+        assert.match(prompt, /no dispatch|cannot dispatch/i);
+      }
     });
 
     it(`${agent} prompt describes its reportback shape`, () => {
@@ -128,13 +137,13 @@ describe("role-boundary consistency between main-agent and subagents", () => {
   it("information-collector and requirements-analyst prompts both require structured reportback", () => {
     const ic = readPrompt("information-collector");
     const ra = readPrompt("requirements-analyst");
-    for (const keyword of ["ranked", "confidence", "summary", "memory append"]) {
+    for (const keyword of ["ranked", "confidence", "summary", "remaining gaps"]) {
       assert.ok(
         ic.toLowerCase().includes(keyword),
         `information-collector missing reportback keyword: ${keyword}`,
       );
     }
-    for (const keyword of ["7-section", "Compute Budget", "Hardware Probe", "assumption"]) {
+    for (const keyword of ["contract", "assumption"]) {
       assert.ok(
         ra.toLowerCase().includes(keyword.toLowerCase()),
         `requirements-analyst missing reportback keyword: ${keyword}`,
@@ -142,12 +151,25 @@ describe("role-boundary consistency between main-agent and subagents", () => {
     }
   });
 
-  it("all four agent prompts are written in English (no Chinese characters)", () => {
-    const agents = ["aion", "coder", "information-collector", "requirements-analyst"];
+  it("all compressed prompts stay small and English-only", () => {
+    const agents = [
+      "aion",
+      "coder",
+      "information-collector",
+      "requirements-analyst",
+      "ts-critic",
+      "c-critic",
+      "search-scout",
+      "experiment-runner",
+    ];
     for (const agent of agents) {
       const prompt = readPrompt(agent);
       const hasChinese = /[\u4e00-\u9fff]/.test(prompt);
       assert.ok(!hasChinese, `${agent} prompt contains Chinese characters (forbidden)`);
+      assert.ok(
+        Buffer.byteLength(prompt, "utf8") <= 4_000,
+        `${agent} prompt exceeds the 4 KB static role budget`,
+      );
     }
   });
 });

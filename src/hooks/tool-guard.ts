@@ -98,6 +98,11 @@ const OVERCONFIDENT_PHRASES: RegExp[] = [
   /\bno\s*(further|more)\s*(work|changes|improvements?|action)\s*(needed|required|necessary)\b/i,
 ]
 
+const NESTED_AGENT_PARENTS = new Map([
+  ["information-collector", "search-scout"],
+  ["coder", "experiment-runner"],
+])
+
 const MEMORY_DIR_PATTERN = /\.opencode\/memory\//i
 
 function normalizeToolName(name: string): string {
@@ -421,9 +426,12 @@ export function createToolGuardBeforeHook(args: CreateHooksArgs): AionToolExecut
     if (toolName === "task") {
       const taskArgs = (output as { args?: Record<string, unknown> }).args ?? {}
       const subagentType = String(taskArgs.agent ?? taskArgs.subagent_type ?? taskArgs.description ?? "")
-      m.state.governance.lastDispatchTarget = subagentType || null
+      const callerAgent = String(input.agent ?? "aion")
+      const nestedParent = NESTED_AGENT_PARENTS.get(callerAgent)
+      const isNestedDispatch = Boolean(nestedParent && subagentType === nestedParent)
+      if (!isNestedDispatch) m.state.governance.lastDispatchTarget = subagentType || null
       const round = m.state.rounds.current
-      if (round > 0 && subagentType && subagentType !== "c-critic") {
+      if (!isNestedDispatch && round > 0 && subagentType && subagentType !== "c-critic") {
         const promptStr = String(taskArgs.prompt ?? "")
         if (!promptStr.includes("context-snapshot") && !promptStr.includes("compacted_context")) {
           // No console.warn — the TUI toast below is the only signal.
@@ -437,6 +445,21 @@ export function createToolGuardBeforeHook(args: CreateHooksArgs): AionToolExecut
             duration: 7000,
           })
         }
+      }
+
+      if (isNestedDispatch) {
+        m.trace.appendEvent(
+          "scheduling.dispatch",
+          `nested dispatch accepted: ${callerAgent} -> ${subagentType}`,
+          { parent: callerAgent, child: subagentType },
+          callerAgent,
+        )
+        recordAgentCall(m.ctx.directory, {
+          from: callerAgent,
+          to: subagentType,
+          kind: "dispatch",
+          status: "dispatched",
+        })
       }
 
       // === G1. Scheduling state-machine edge check (HARD GATE) ===
@@ -464,7 +487,7 @@ export function createToolGuardBeforeHook(args: CreateHooksArgs): AionToolExecut
         )
       }
 
-      if (subagentType) {
+      if (subagentType && !isNestedDispatch) {
         m.runtimeControl.refresh()
         const phase = m.phase.current()
         const agent = subagentType as DispatchableAgent
@@ -839,10 +862,12 @@ export function createToolGuardAfterHook(args: CreateHooksArgs): AionToolExecute
     if (toolName === "task" && outputText) {
       const taskArgs = (output as { args?: Record<string, unknown> }).args ?? {}
       const subagentType = String(taskArgs.agent ?? taskArgs.subagent_type ?? "")
+      const callerAgent = String(input.agent ?? "aion")
       const isWorker =
         subagentType === "requirements-analyst" ||
         subagentType === "information-collector" ||
         subagentType === "coder"
+      const isHelper = subagentType === "search-scout" || subagentType === "experiment-runner"
       if (isWorker) {
         const rb = parseReportback(outputText)
         recordAgentCall(m.ctx.directory, {
@@ -872,6 +897,21 @@ export function createToolGuardAfterHook(args: CreateHooksArgs): AionToolExecute
             unresolvedSample: rb.unresolvedIssues.slice(0, 3),
           },
           "main-agent",
+        )
+      }
+      if (isHelper) {
+        const rb = parseReportback(outputText)
+        recordAgentCall(m.ctx.directory, {
+          from: subagentType,
+          to: callerAgent,
+          kind: "return",
+          status: rb.status === "done" ? "done" : "blocked",
+        })
+        m.trace.appendEvent(
+          "reportback.parsed",
+          `nested reportback parsed: ${callerAgent} <- ${subagentType} (${rb.status})`,
+          { parent: callerAgent, child: subagentType, status: rb.status },
+          callerAgent,
         )
       }
     }
