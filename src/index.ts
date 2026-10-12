@@ -143,11 +143,9 @@ function writeManagedAgent(directory: string, name: string, config: Record<strin
   mkdirSync(agentDir, { recursive: true })
   const frontmatter = [
     "---",
-    marker,
     `description: ${yamlValue(config.description ?? "")}`,
     `mode: ${yamlValue(config.mode ?? "subagent")}`,
     ...(config.model ? [`model: ${yamlValue(config.model)}`] : []),
-    ...(config.color ? [`color: ${yamlValue(config.color)}`] : []),
     ...(permissionRules(config.permission).length
       ? [
           "permissions:",
@@ -169,7 +167,7 @@ function writeManagedAgent(directory: string, name: string, config: Record<strin
   ]
   const system = Array.isArray(config.prompt) ? config.prompt.join("\n") : config.prompt ?? ""
 
-  writeFileSync(agentPath, `${frontmatter.join("\n")}\n\n${system}\n`)
+  writeFileSync(agentPath, `${frontmatter.join("\n")}\n\n${marker}\n\n${system}\n`)
 }
 
 const aionPluginModule: V2PluginModule = {
