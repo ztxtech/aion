@@ -11,6 +11,7 @@ import {
 } from "../shared/plan-graph"
 import {
   EXECUTION_MODES,
+  describeExecutionMode,
   formatRuntimeStatus,
   parseExecutionMode,
   readRuntimeState,
@@ -202,6 +203,18 @@ export function projectRoot(location?: { directory?: string }): string {
   return location?.directory ?? process.cwd()
 }
 
+export function activeSessionID(context: {
+  ui: {
+    panel: { current(): { sessionID: string } | undefined }
+    router: { current(): { type: string; sessionID?: string } }
+  }
+}): string | null {
+  const route = context.ui.router.current()
+  return route.type === "session" && route.sessionID
+    ? route.sessionID
+    : context.ui.panel.current()?.sessionID ?? null
+}
+
 export default Plugin.define({
   id: "aion-ts-plugin",
   setup(context) {
@@ -230,16 +243,17 @@ export default Plugin.define({
       const state = setExecutionMode(root, mode)
       context.ui.toast.show({
         title: `AION mode: ${state.executionMode}`,
-        message: state.resumeHint ?? "Runtime mode saved for this project.",
+        message: describeExecutionMode(state.executionMode),
         variant: "success",
         duration: 6000,
       })
     }
 
     const showStatus = () => {
+      const root = projectRoot(context.location)
       context.ui.toast.show({
         title: "AION runtime",
-        message: formatRuntimeStatus(readRuntimeState(projectRoot(context.location))),
+        message: formatRuntimeStatus(readRuntimeState(root), activeSessionID(context)),
         variant: "info",
         duration: 9000,
       })

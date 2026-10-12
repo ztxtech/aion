@@ -26,8 +26,10 @@ import { resolvePath, nowIso } from "./shared/utils"
 import {
   effectiveComplexityTier,
   readRuntimeState,
+  sessionRuntimeState,
   runtimeStatePath,
   updateRuntimeState,
+  updateSessionRuntimeState,
   type ExecutionMode,
 } from "./shared/runtime-control"
 
@@ -229,6 +231,9 @@ export type AionManagers = {
     effectiveTier(): "unset" | "LIGHT" | "MEDIUM" | "FULL"
     setMode(mode: ExecutionMode, source: "user-toggle" | "startup"): void
     refresh(): void
+    activateSession(sessionID: string): void
+    currentSession(): string | null
+    setSessionComplexityTier(tier: "LIGHT" | "MEDIUM" | "FULL"): void
     markPhase(phase: AionPhase, reason: string): void
     markInterrupted(reason: string): void
     clearResume(): void
@@ -525,6 +530,7 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
     },
     setTier(tier: "LIGHT" | "MEDIUM" | "FULL"): void {
       state.governance.complexityTier = tier
+      runtimeControl.setSessionComplexityTier(tier)
       trace.appendEvent(
         "dispatch.created",
         "complexity.tier set: " + tier,
@@ -538,13 +544,20 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
   }
 
   let runtimeState = readRuntimeState(ctx.directory)
-  if (
-    runtimeState.preferences.preserveAcrossSessions &&
-    runtimeState.lastPhase &&
-    runtimeState.lastPhase !== "done"
-  ) {
-    state.governance.phase = runtimeState.lastPhase
-    state.governance.phaseReason = runtimeState.phaseReason ?? "restored from runtime state"
+  const startupSessionID = runtimeState.activeSessionID
+  if (startupSessionID) {
+    const startupSession = sessionRuntimeState(runtimeState, startupSessionID)
+    if (
+      runtimeState.preferences.preserveAcrossSessions &&
+      startupSession?.lastPhase &&
+      startupSession.lastPhase !== "done" &&
+      !startupSession.interrupted
+    ) {
+      runtimeState = updateSessionRuntimeState(ctx.directory, startupSessionID, {
+        interrupted: true,
+        resumeHint: `Review .opencode/memory/todo-map.md and .opencode/memory/progress.md, then resume from ${startupSession.lastPhase}.`,
+      })
+    }
   }
 
   const runtimeControl = {
@@ -561,13 +574,7 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
       const previous = runtimeState.executionMode
       runtimeState = updateRuntimeState(ctx.directory, {
         executionMode: mode,
-        interrupted: false,
-        resumeHint: mode === "AUTO" ? null : runtimeState.resumeHint,
       })
-      if (mode !== "AUTO") {
-        const lockedTier = effectiveComplexityTier(mode, state.governance.complexityTier)
-        if (lockedTier !== "unset") complexityManager.setTier(lockedTier)
-      }
       trace.appendEvent(
         "stopgo.updated",
         `execution mode: ${previous} -> ${mode} (source: ${source})`,
@@ -576,50 +583,95 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
       )
     },
     refresh(): void {
-      const disk = readRuntimeState(ctx.directory)
-      const previous = runtimeState.executionMode
-      runtimeState = disk
-      if (disk.executionMode !== previous && disk.executionMode !== "AUTO") {
-        const lockedTier = effectiveComplexityTier(disk.executionMode, state.governance.complexityTier)
-        if (lockedTier !== "unset") complexityManager.setTier(lockedTier)
+      runtimeState = readRuntimeState(ctx.directory)
+    },
+
+    activateSession(sessionID: string): void {
+      const previousID = activeSessionActivated ? activeRuntimeSessionID : runtimeState.activeSessionID
+      if (activeSessionActivated && previousID === sessionID) return
+
+      if (runtimeState.preferences.preserveAcrossSessions && previousID && previousID !== sessionID) {
+        const previousSession = sessionRuntimeState(runtimeState, previousID)
+        if (
+          previousSession?.lastPhase &&
+          previousSession.lastPhase !== "done" &&
+          !previousSession.interrupted
+        ) {
+          runtimeState = updateSessionRuntimeState(ctx.directory, previousID, {
+            interrupted: true,
+            resumeHint: `Review .opencode/memory/todo-map.md and .opencode/memory/progress.md, then resume from ${previousSession.lastPhase}.`,
+          })
+        }
       }
+
+      runtimeState = updateRuntimeState(ctx.directory, { activeSessionID: sessionID })
+      activeRuntimeSessionID = sessionID
+      activeSessionActivated = true
+      const session = sessionRuntimeState(runtimeState, sessionID)
+      state.governance.phase = session?.lastPhase ?? "init"
+      state.governance.phaseReason = session?.phaseReason ?? "new runtime session"
+      state.governance.complexityTier = session?.complexityTier ?? "unset"
+    },
+    currentSession(): string | null {
+      return activeRuntimeSessionID
+    },
+    setSessionComplexityTier(tier: "LIGHT" | "MEDIUM" | "FULL"): void {
+      const sessionID = activeRuntimeSessionID
+      if (!sessionID || !runtimeState.preferences.preserveAcrossSessions) return
+      runtimeState = updateSessionRuntimeState(ctx.directory, sessionID, { complexityTier: tier })
     },
     markPhase(phase: AionPhase, reason: string): void {
+      const sessionID = activeRuntimeSessionID
+      if (!sessionID || !runtimeState.preferences.preserveAcrossSessions) return
+
+      const current = sessionRuntimeState(runtimeState, sessionID)
       if (
-        !runtimeState.preferences.preserveAcrossSessions ||
-        (runtimeState.lastPhase === phase && runtimeState.phaseReason === reason)
+        current?.lastPhase === phase &&
+        current.phaseReason === reason &&
+        !current.interrupted &&
+        !current.resumeHint
       ) return
 
-      runtimeState = updateRuntimeState(ctx.directory, {
+      runtimeState = updateSessionRuntimeState(ctx.directory, sessionID, {
         lastPhase: phase,
         phaseReason: reason,
         interrupted: false,
-        resumeHint: phase === "done" ? null : runtimeState.resumeHint,
+        resumeHint: null,
+        complexityTier: state.governance.complexityTier,
       })
     },
     markInterrupted(reason: string): void {
-      if (runtimeState.interrupted) return
+      const sessionID = activeRuntimeSessionID ?? state._lastSessionID
+      if (
+        !sessionID ||
+        !runtimeState.preferences.preserveAcrossSessions ||
+        sessionRuntimeState(runtimeState, sessionID)?.interrupted
+      ) return
+
       const phase = state.governance.phase
-      runtimeState = updateRuntimeState(ctx.directory, {
-        interrupted: phase !== "done",
+      runtimeState = updateSessionRuntimeState(ctx.directory, sessionID, {
         lastPhase: phase,
         phaseReason: reason,
+        interrupted: phase !== "done",
         resumeHint: phase === "done"
           ? null
           : `Review .opencode/memory/todo-map.md and .opencode/memory/progress.md, then resume from ${phase}.`,
       })
     },
     clearResume(): void {
-      runtimeState = updateRuntimeState(ctx.directory, {
+      const sessionID = activeRuntimeSessionID
+      if (!sessionID) return
+      runtimeState = updateSessionRuntimeState(ctx.directory, sessionID, {
         interrupted: false,
         resumeHint: null,
       })
     },
     resumeContext() {
+      const session = sessionRuntimeState(runtimeState, activeRuntimeSessionID)
       return {
-        lastPhase: runtimeState.lastPhase,
-        resumeHint: runtimeState.resumeHint,
-        interrupted: runtimeState.interrupted,
+        lastPhase: session?.lastPhase ?? null,
+        resumeHint: session?.resumeHint ?? null,
+        interrupted: session?.interrupted ?? false,
       }
     },
     path(): string {
@@ -627,14 +679,8 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
     },
   }
 
-  if (
-    runtimeState.preferences.preserveAcrossSessions &&
-    runtimeState.lastPhase &&
-    runtimeState.lastPhase !== "done" &&
-    !runtimeState.interrupted
-  ) {
-    runtimeControl.markInterrupted("project runtime state was restored")
-  }
+  let activeRuntimeSessionID: string | null = runtimeState.activeSessionID
+  let activeSessionActivated = false
 
   const phaseManager = {
     current(): AionPhase {

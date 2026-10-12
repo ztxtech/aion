@@ -343,7 +343,7 @@ AION 把计划依赖写入 `.opencode/memory/todo-map.md`。原生 TUI bundle �
 
 输入 `/aion-mode auto|light|medium|full|max` 即可调整当前项目的执行强度，不需要改 `aion.jsonc`。输入 `/aion-status` 查看当前档位、上次阶段和恢复提示。`AUTO` 继续交给复杂度分类器；`LIGHT`、`MEDIUM`、`FULL` 分别锁定对应调度规则；`MAX` 使用 `FULL` 调度边界，但要求先指出缺失事实和最小证据动作，再做宽泛搜索或派单。
 
-档位保存在 `.opencode/memory/runtime-state.json`。AION 也会在这里记录最后一个未完成阶段。会话被打断后，下一个会话会收到恢复协议：先检查 `todo-map.md`、`progress.md`、`decisions.md` 和 `context-snapshot.md`，再从第一个未完成项继续。
+档位保存在 `.opencode/memory/runtime-state.json`。执行档位是项目级的；阶段、复杂度分类、打断状态和恢复提示按 `sessionID` 隔离。AION 会记录每个会话的最后一个未完成阶段。该会话被打断后，下一次请求会收到恢复协议：先检查 `todo-map.md`、`progress.md`、`decisions.md` 和 `context-snapshot.md`，再从第一个未完成项继续。
 
 ---
 

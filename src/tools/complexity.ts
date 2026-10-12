@@ -65,6 +65,7 @@ export function createComplexityTool(args: CreateToolsArgs): ComplexityTools {
       },
       async execute(input, _context) {
         const requested = input.tier as ComplexityTier
+        m.runtimeControl.refresh()
         const runtimeMode = m.runtimeControl.current()
         if (runtimeMode !== "AUTO") {
           return JSON.stringify(

@@ -229,25 +229,13 @@ export function createSystemTransformHook(args: CreateHooksArgs): AionSystemTran
   return async function onSystemTransform(input, output) {
     const { sessionID, model } = input
     const intent: AionIntent = (managers.state._lastIntent as AionIntent) ?? "general"
-    const phase: AionPhase = managers.phase.current()
     const modelId = model?.id ?? "unknown"
     const round = managers.state.rounds.current
     managers.runtimeControl.refresh()
+    managers.runtimeControl.activateSession(sessionID)
+    const phase: AionPhase = managers.phase.current()
     const executionMode = managers.runtimeControl.current()
-    const previousSessionID = managers.state._lastSessionID
     const resumeContext = managers.runtimeControl.resumeContext()
-
-    if (
-      previousSessionID !== undefined &&
-      previousSessionID !== sessionID &&
-      resumeContext.lastPhase &&
-      resumeContext.lastPhase !== "done" &&
-      !resumeContext.interrupted
-    ) {
-      managers.runtimeControl.markInterrupted(
-        `previous session ended at ${resumeContext.lastPhase}`,
-      )
-    }
 
     // Inject banner on first turn
     if (!bannerShown) {
@@ -280,7 +268,7 @@ export function createSystemTransformHook(args: CreateHooksArgs): AionSystemTran
         `[AION RUNTIME MODE] User locked execution to ${executionMode}. ` +
           `Do not call aion_set_complexity. Use ${managers.runtimeControl.effectiveTier()} dispatch rules.`,
       )
-    } else if (round <= 1 && !managers.complexity.isSet()) {
+    } else if (!managers.complexity.isSet()) {
       injections.push(COMPLEXITY_CLASSIFIER_PROMPT)
     }
 

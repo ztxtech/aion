@@ -464,6 +464,7 @@ export function createToolGuardBeforeHook(args: CreateHooksArgs): AionToolExecut
       }
 
       if (subagentType) {
+        m.runtimeControl.refresh()
         const phase = m.phase.current()
         const agent = subagentType as DispatchableAgent
         // Tier-aware dispatch edge check. If the tier has not been set
