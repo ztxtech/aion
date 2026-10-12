@@ -13,6 +13,7 @@ export type BoardNode = {
 export type BoardRow = {
   nodes: BoardNode[]
   connectors: string[]
+  active: boolean
 }
 
 export type ExecutionBoard = {
@@ -20,6 +21,11 @@ export type ExecutionBoard = {
   nodeWidth: number
   gap: number
 }
+
+export const AION_LOGO = [
+  "█▀▄▀█ █ █▀█ █▀█",
+  "█▀▀▀█ █ █▀▄ █▀▄",
+] as const
 
 type LayoutOptions = {
   columns?: number
@@ -52,9 +58,24 @@ function connectorGrid(
   toRow: number,
   width: number,
 ) {
-  const grid = Array.from({ length: 3 }, () => Array.from({ length: width }, () => " "))
-  const drawVertical = (line: number, column: number) => {
-    if (column >= 0 && column < width) grid[line][column] = "│"
+  const grid = Array.from({ length: 3 }, () => Array.from({ length: width }, () => 0))
+  const targets = new Set<number>()
+  const glyphs: Record<number, string> = {
+    1: "│",
+    2: "─",
+    3: "└",
+    4: "│",
+    5: "│",
+    6: "┌",
+    7: "├",
+    8: "─",
+    9: "┘",
+    10: "─",
+    11: "┴",
+    12: "┐",
+    13: "┤",
+    14: "┬",
+    15: "┼",
   }
 
   for (const edge of edges) {
@@ -65,18 +86,54 @@ function connectorGrid(
 
     const a = from[source.index] ?? from[0] ?? 0
     const b = to[target.index] ?? to[0] ?? a
-    drawVertical(0, a)
-    drawVertical(1, a)
-    drawVertical(1, b)
-    const start = Math.min(a, b)
-    const end = Math.max(a, b)
-    for (let column = start; column <= end; column += 1) {
-      if (column !== a && column !== b) grid[1][column] = "─"
+    grid[0][a] |= 5
+    grid[1][a] |= 1
+    if (a < b) {
+      for (let column = a; column < b; column += 1) {
+        grid[1][column] |= 2
+        grid[1][column + 1] |= 8
+      }
     }
-    if (b >= 0 && b < width) grid[2][b] = "▼"
+    if (a > b) {
+      for (let column = b; column < a; column += 1) {
+        grid[1][column] |= 2
+        grid[1][column + 1] |= 8
+      }
+    }
+    grid[1][b] |= 4
+    if (b >= 0 && b < width) targets.add(b)
   }
 
-  return grid.map((line) => line.join("").trimEnd())
+  return grid.map((line, lineIndex) =>
+    line
+      .map((bits, column) =>
+        lineIndex === 2 && targets.has(column) ? "▼" : glyphs[bits] ?? " ",
+      )
+      .join("")
+      .trimEnd(),
+  )
+}
+
+const FLOW_FRAMES = ["◆", "◇", "·", "◇"]
+
+export function animateConnectors(lines: string[], tick: number): string[] {
+  return lines.map((line, lineIndex) => {
+    if (lineIndex !== 1) return line
+    let segmentStart = -1
+    const characters = [...line]
+    for (let index = 0; index <= characters.length; index += 1) {
+      const isLine = characters[index] === "─"
+      if (isLine && segmentStart < 0) segmentStart = index
+      if (isLine) continue
+      if (segmentStart < 0) continue
+
+      const length = index - segmentStart
+      const position = segmentStart + ((tick % length) + length) % length
+      characters[position] = FLOW_FRAMES[tick % FLOW_FRAMES.length]
+      segmentStart = -1
+    }
+    return characters.join("").trimEnd()
+  })
 }
 
 function planState(state: PlanGraph["items"][number]["state"]): PlanNodeState {
@@ -98,7 +155,7 @@ function chunk<T>(items: T[], size: number): T[][] {
 
 export function executionLayerRows(
   graph: PlanGraph,
-  options: LayoutOptions = {},
+  options: LayoutOptions & { tick?: number } = {},
 ): ExecutionBoard {
   const nodeWidth = options.nodeWidth ?? DEFAULT_NODE_WIDTH
   const gap = options.gap ?? DEFAULT_GAP
@@ -139,7 +196,7 @@ export function executionLayerRows(
           ] as [string, string, string],
         }
       })
-      rows.push({ nodes, connectors: [] })
+      rows.push({ nodes, connectors: [], active: nodes.some((node) => node.state === "active") })
     }
   })
 
@@ -148,25 +205,29 @@ export function executionLayerRows(
     if (!next) return
     const from = centers(row.nodes.length, { nodeWidth, gap, indent })
     const to = centers(next.nodes.length, { nodeWidth, gap, indent })
-    row.connectors = connectorGrid(
-      from,
-      to,
-      graph.items.flatMap((item) =>
-        item.dependsOn
-          .filter((parent) => itemById.has(parent))
-          .map((parent) => ({ from: parent, to: item.id })),
-      ),
-      slots,
-      rowIndex,
-      rowIndex + 1,
-      width,
+    row.connectors = animateConnectors(
+        connectorGrid(
+          from,
+          to,
+          graph.items.flatMap((item) =>
+            item.dependsOn
+              .filter((parent) => itemById.has(parent))
+              .map((parent) => ({ from: parent, to: item.id })),
+          ),
+          slots,
+          rowIndex,
+          rowIndex + 1,
+          width,
+        ),
+      options.tick ?? 0,
     )
+    row.active = row.active || next.active
   })
 
   return { rows, nodeWidth, gap }
 }
 
-const AGENT_NODE_WIDTH = 24
+const AGENT_NODE_WIDTH = 13
 
 function agentIcon(state: AgentRunState) {
   return state === "done"
@@ -178,41 +239,10 @@ function agentIcon(state: AgentRunState) {
         : "○"
 }
 
-function agentConnectors(
-  fromCount: number,
-  toCount: number,
-  all = true,
+export function agentGraphView(
+  graph: AgentGraph,
+  options: { columns?: number; tick?: number } = {},
 ) {
-  const options = {
-    nodeWidth: AGENT_NODE_WIDTH,
-    gap: DEFAULT_GAP,
-    indent: DEFAULT_INDENT,
-  }
-  const from = centers(fromCount, options)
-  const to = centers(toCount, options)
-  const width = options.indent + Math.max(fromCount, toCount)
-    * (AGENT_NODE_WIDTH + DEFAULT_GAP) - DEFAULT_GAP
-  const grid = Array.from({ length: 3 }, () => Array.from({ length: width }, () => " "))
-  const edges = fromCount === 1
-    ? to.map((target) => ({ from: from[0], to: target }))
-    : all
-      ? from.flatMap((source) => to.map((target) => ({ from: source, to: target })))
-      : from.map((source, index) => ({ from: source, to: to[Math.min(index, to.length - 1)] }))
-
-  for (const edge of edges) {
-    grid[0][edge.from] = "│"
-    grid[1][edge.from] = "│"
-    grid[1][edge.to] = "│"
-    for (let column = Math.min(edge.from, edge.to); column <= Math.max(edge.from, edge.to); column += 1) {
-      if (column !== edge.from && column !== edge.to) grid[1][column] = "─"
-    }
-    grid[2][edge.to] = "▼"
-  }
-
-  return grid.map((line) => line.join("").trimEnd())
-}
-
-export function agentGraphView(graph: AgentGraph) {
   const byId = new Map(graph.nodes.map((node) => [node.id, node]))
   const node = (id: string, detail: string): BoardNode => {
     const state = byId.get(id)?.state ?? "idle"
@@ -224,31 +254,74 @@ export function agentGraphView(graph: AgentGraph) {
         fit(`${agentIcon(state)} ${id}`, AGENT_NODE_WIDTH - 1),
         fit(detail, AGENT_NODE_WIDTH - 1),
         fit(
-          `${byId.get(id)?.dispatches ?? 0} dispatch · ${byId.get(id)?.returns ?? 0} return`,
+          `${byId.get(id)?.dispatches ?? 0}↑ · ${byId.get(id)?.returns ?? 0}↓`,
           AGENT_NODE_WIDTH - 1,
         ),
       ],
     }
   }
-  const workers = [
+  const agents = [
     node("requirements-analyst", "contract"),
     node("information-collector", "evidence"),
-    node("coder", "implementation"),
+    node("coder", "build"),
+    node("ts-critic", "technical"),
+    node("c-critic", "delivery"),
   ]
-  const critics = [node("ts-critic", "technical gate"), node("c-critic", "delivery gate")]
   const summary = graph.summary
+  const columns = options.columns ?? 92
+  const gap = DEFAULT_GAP
+  const indent = DEFAULT_INDENT
+  const perRow = Math.max(
+    1,
+    Math.floor((columns - indent + gap) / (AGENT_NODE_WIDTH + gap)),
+  )
+  const width = indent + perRow * (AGENT_NODE_WIDTH + gap) - gap
+  const slots = new Map<string, { row: number; index: number }>()
+  const rows: BoardRow[] = [
+    {
+      nodes: [node("aion", "orchestrator")],
+      connectors: [],
+      active: byId.get("aion")?.state === "active",
+    },
+  ]
+  slots.set("aion", { row: 0, index: 0 })
+
+  for (const group of chunk(agents, perRow)) {
+    const rowIndex = rows.length
+    const nodes = group.map((agent, index) => {
+      slots.set(agent.id, { row: rowIndex, index })
+      return agent
+    })
+    rows.push({ nodes, connectors: [], active: nodes.some((node) => node.state === "active") })
+  }
+
+  rows.forEach((row, rowIndex) => {
+    const next = rows[rowIndex + 1]
+    if (!next) return
+    const from = centers(row.nodes.length, {
+      nodeWidth: AGENT_NODE_WIDTH,
+      gap,
+      indent,
+    })
+    const to = centers(next.nodes.length, {
+      nodeWidth: AGENT_NODE_WIDTH,
+      gap,
+      indent,
+    })
+    const edges = graph.nodes
+      .filter((candidate) => candidate.id !== "aion")
+      .map((candidate) => ({ from: "aion", to: candidate.id }))
+    row.connectors = animateConnectors(
+      connectorGrid(from, to, edges, slots, rowIndex, rowIndex + 1, width),
+      options.tick ?? 0,
+    )
+    row.active = row.active || next.active
+  })
 
   return {
+    rows,
     nodeWidth: AGENT_NODE_WIDTH,
-    gap: DEFAULT_GAP,
-    rows: [
-      {
-        nodes: [node("aion", `orchestrator · ${summary.dispatches} calls`)],
-        connectors: agentConnectors(1, workers.length),
-      },
-      { nodes: workers, connectors: agentConnectors(workers.length, critics.length) },
-      { nodes: critics, connectors: [] },
-    ],
+    gap,
     summary: `${summary.done} done · ${summary.blocked} blocked · ${summary.allow} allow · ${summary.reject} reject`,
   }
 }

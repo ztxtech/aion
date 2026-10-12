@@ -28,6 +28,25 @@ describe("execution board layout", () => {
     assert.ok(board.rows[0].connectors.some((line) => line.includes("│")));
   });
 
+  it("animates horizontal flow without changing arrow targets", () => {
+    const branching = {
+      ...graph,
+      items: [
+        ...graph.items,
+        { id: "TODO-003", planStep: "third", owner: "coder", wave: 2, state: "todo", dependsOn: ["TODO-001"] },
+        { id: "TODO-004", planStep: "fourth", owner: "coder", wave: 2, state: "todo", dependsOn: ["TODO-001"] },
+      ],
+      layers: [["TODO-001"], ["TODO-002", "TODO-003", "TODO-004"]],
+    };
+    const first = boardView.executionLayerRows(branching, { columns: 80, tick: 0 });
+    const second = boardView.executionLayerRows(branching, { columns: 80, tick: 1 });
+    const arrows = (board) =>
+      board.rows.flatMap((row) => row.connectors).join("\n").match(/▼/gu).length;
+
+    assert.notDeepEqual(first.rows[0].connectors, second.rows[0].connectors);
+    assert.equal(arrows(first), arrows(second));
+  });
+
   it("wraps wide layers without dropping nodes", () => {
     const wide = {
       ...graph,
@@ -55,17 +74,47 @@ describe("execution board layout", () => {
 describe("agent board layout", () => {
   it("renders the full AION topology and verdict totals", () => {
     const state = callGraph.readCallGraph("/tmp/does-not-exist-aion-board");
-    const view = boardView.agentGraphView(callGraph.buildAgentGraph(state));
+    const view = boardView.agentGraphView(callGraph.buildAgentGraph(state), {
+      columns: 92,
+    });
     assert.deepEqual(
       view.rows.map((row) => row.nodes.map((node) => node.id)),
       [
         ["aion"],
-        ["requirements-analyst", "information-collector", "coder"],
-        ["ts-critic", "c-critic"],
+        [
+          "requirements-analyst",
+          "information-collector",
+          "coder",
+          "ts-critic",
+          "c-critic",
+        ],
       ],
     );
     assert.match(view.summary, /0 done · 0 blocked · 0 allow · 0 reject/);
     assert.ok(view.rows[0].connectors.some((line) => line.includes("▼")));
+  });
+
+  it("marks orchestration links as active when an agent runs", () => {
+    const state = callGraph.readCallGraph("/tmp/does-not-exist-aion-board");
+    state.calls = [{
+      from: "aion",
+      to: "coder",
+      kind: "dispatch",
+      status: "dispatched",
+      at: new Date().toISOString(),
+    }];
+    const view = boardView.agentGraphView(callGraph.buildAgentGraph(state), {
+      columns: 92,
+    });
+
+    assert.equal(view.rows[0].active, true);
+  });
+
+  it("keeps the text logo to two stable display rows", () => {
+    assert.deepEqual([...boardView.AION_LOGO], [
+      "█▀▄▀█ █ █▀█ █▀█",
+      "█▀▀▀█ █ █▀▄ █▀▄",
+    ]);
   });
 
   it("colors and labels use bounded single-line content", () => {

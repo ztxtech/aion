@@ -2,7 +2,14 @@ import { watch } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import { existsSync, readFileSync } from "node:fs"
 import { Plugin } from "@opencode/plugin/tui"
-import { For, Show, createEffect, createMemo, createSignal } from "solid-js"
+import {
+  For,
+  Show,
+  createEffect,
+  createMemo,
+  createSignal,
+  onCleanup,
+} from "solid-js"
 import type { RGBA } from "@opentui/core"
 import {
   buildPlanGraph,
@@ -10,6 +17,7 @@ import {
   type PlanGraph,
 } from "../shared/plan-graph"
 import {
+  AION_LOGO,
   agentGraphView,
   executionLayerRows,
   type BoardNode,
@@ -129,10 +137,21 @@ function Board(props: {
     graph().items.find((item) => item.state === "in-progress") ??
     graph().items.find((item) => item.state === "todo") ??
     graph().items[0]
+  const [tick, setTick] = createSignal(0)
+  const timer = setInterval(() => setTick((value) => value + 1), 280)
+
+  onCleanup(() => {
+    clearInterval(timer)
+  })
   const executionRows = createMemo(() =>
-    executionLayerRows(graph(), { columns: 92 }),
+    executionLayerRows(graph(), { columns: 92, tick: tick() }),
   )
-  const agentGraph = createMemo(() => agentGraphView(buildAgentGraph(props.callGraph())))
+  const agentGraph = createMemo(() =>
+    agentGraphView(buildAgentGraph(props.callGraph()), {
+      columns: 92,
+      tick: tick(),
+    }),
+  )
 
   const nodeColor = (node: BoardNode) =>
     node.state === "done"
@@ -169,39 +188,50 @@ function Board(props: {
         paddingLeft={1}
         paddingRight={1}
       >
-        <text fg={props.palette.accent} wrapMode="none">
-          ORCHESTRATION CONSOLE
-        </text>
-        <text fg={props.palette.base} wrapMode="none">
-          {progress()}
-        </text>
-        <box flexDirection="row" gap={1} flexShrink={0} minWidth={0}>
-          <text fg={props.palette.muted} wrapMode="none">
-            MODE
-          </text>
-          <text fg={props.palette.base} wrapMode="none" flexGrow={1}>
-            {runtime().mode}
-          </text>
-        </box>
-        <box flexDirection="row" gap={1} flexShrink={0} minWidth={0}>
-          <text fg={props.palette.muted} wrapMode="none">
-            PHASE
-          </text>
-          <text
-            fg={runtime().interrupted ? props.palette.warning : props.palette.base}
-            wrapMode="none"
-            flexGrow={1}
-          >
-            {runtime().phase}{runtime().interrupted ? " - resume" : ""}
-          </text>
-        </box>
-        <box flexDirection="row" gap={1} flexShrink={0} minWidth={0}>
-          <text fg={props.palette.muted} wrapMode="none">
-            TIER
-          </text>
-          <text fg={props.palette.base} wrapMode="none" flexGrow={1}>
-            {runtime().tier}
-          </text>
+        <box flexDirection="row" gap={3} flexShrink={0} minWidth={0}>
+          <box flexDirection="column" gap={1} flexGrow={1} minWidth={0}>
+            <text fg={props.palette.base} wrapMode="none">
+              {progress()}
+            </text>
+            <box flexDirection="row" gap={1} flexShrink={0} minWidth={0}>
+              <text fg={props.palette.muted} wrapMode="none">
+                MODE
+              </text>
+              <text fg={props.palette.base} wrapMode="none" flexGrow={1}>
+                {runtime().mode}
+              </text>
+            </box>
+            <box flexDirection="row" gap={1} flexShrink={0} minWidth={0}>
+              <text fg={props.palette.muted} wrapMode="none">
+                PHASE
+              </text>
+              <text
+                fg={runtime().interrupted ? props.palette.warning : props.palette.base}
+                wrapMode="none"
+                flexGrow={1}
+              >
+                {runtime().phase}
+                {runtime().interrupted ? " - resume" : ""}
+              </text>
+            </box>
+            <box flexDirection="row" gap={1} flexShrink={0} minWidth={0}>
+              <text fg={props.palette.muted} wrapMode="none">
+                TIER
+              </text>
+              <text fg={props.palette.base} wrapMode="none" flexGrow={1}>
+                {runtime().tier}
+              </text>
+            </box>
+          </box>
+          <box flexDirection="column" gap={0} flexShrink={0} marginTop={1}>
+            <For each={AION_LOGO}>
+              {(line) => (
+                <text fg={props.palette.accent} wrapMode="none">
+                  {line}
+                </text>
+              )}
+            </For>
+          </box>
         </box>
       </box>
 
@@ -288,7 +318,10 @@ function Board(props: {
                   </box>
                   <For each={row.connectors}>
                     {(line) => (
-                      <text fg={props.palette.border} wrapMode="none">
+                      <text
+                        fg={row.active ? props.palette.active : props.palette.border}
+                        wrapMode="none"
+                      >
                         {line || " "}
                       </text>
                     )}
@@ -339,7 +372,10 @@ function Board(props: {
                   </box>
                   <For each={row.connectors}>
                     {(line) => (
-                      <text fg={props.palette.border} wrapMode="none">
+                      <text
+                        fg={row.active ? props.palette.active : props.palette.border}
+                        wrapMode="none"
+                      >
                         {line || " "}
                       </text>
                     )}
