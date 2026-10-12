@@ -897,33 +897,6 @@ export function createToolGuardAfterHook(args: CreateHooksArgs): AionToolExecute
       }
     }
 
-    // === TUI TODO sync tracking: when aion_todo_update fires, set a flag so
-    //     system-transform can inject a "call todowrite now" reminder on next round. ===
-    if (toolName === "aion_todo_update") {
-      m.state.governance.tuiTodoSyncPending = true
-      m.trace.appendEvent(
-        "memory.sync",
-        `aion_todo_update fired — TUI sync pending (main agent must call todowrite)`,
-        { tool: toolName },
-        "main-agent",
-      )
-    }
-
-    // === TUI TODO sync: when todowrite is called, clear the pending flag and
-    //     record the sync timestamp so system-transform can detect future drift. ===
-    if (toolName === "todowrite" || toolName === "TodoWrite") {
-      m.state.governance.tuiTodoLastSyncedAt = nowIso()
-      if (m.state.governance.tuiTodoSyncPending) {
-        m.state.governance.tuiTodoSyncPending = false
-        m.trace.appendEvent(
-          "memory.sync",
-          `TUI todo list synced via ${toolName}`,
-          { tool: toolName },
-          "main-agent",
-        )
-      }
-    }
-
     // === Failure detection: log aion_* tool failures with full context ===
     if (toolName.startsWith("aion_") && outputText) {
       const failedMatch = /"status"\s*:\s*"(?:failed|error)"|"error"\s*:/i.exec(outputText)

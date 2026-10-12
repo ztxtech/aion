@@ -73,9 +73,6 @@ export type GovernanceState = {
   interactiveModeSource: "session-start" | "user-toggle" | "config-default" | null
   languageResolved: "unset" | "en" | "zh-reason-en-deliver" | "zh-deliver" | "bilingual"
   languageSource: "session-start" | "user-toggle" | "config-default" | null
-  tuiTodoSyncPending: boolean
-  /** When the OpenCode TUI todo list was last mirrored from the todo-map. null = never synced. */
-  tuiTodoLastSyncedAt: string | null
   /** G3: pending next_call from the most recent worker reportback. The main agent MUST honor this on the next dispatch. */
   pendingNextCall: string | null
   /** G3: reason attached to the pending next_call (for trace + prompt injection). */
@@ -289,8 +286,6 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
       interactiveModeSource: null,
       languageResolved: "unset",
       languageSource: null,
-      tuiTodoSyncPending: false,
-      tuiTodoLastSyncedAt: null,
       pendingNextCall: null,
       pendingNextCallReason: null,
       pendingUnresolvedIssues: [],

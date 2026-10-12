@@ -467,26 +467,26 @@ describe("tools: aion_todo_update", async () => {
     assert.ok(parsed.items !== undefined);
   });
 
-  it("returns tui_todos in add response", async () => {
+  it("returns plan_items in add response", async () => {
     const output = await result.tool.aion_todo_update.execute({
       action: "add",
-      plan_step: "TUI sync check",
+      plan_step: "plan snapshot check",
       owner: "coder",
     }, {});
     const parsed = JSON.parse(output);
-    assert.ok(Array.isArray(parsed.tui_todos), "should have tui_todos array");
-    assert.ok(parsed.tui_todos.length > 0);
-    const tuiItem = parsed.tui_todos.find(t => t.content.includes("TUI sync check"));
-    assert.ok(tuiItem, "should find the added item in tui_todos");
-    assert.ok(["pending", "in_progress", "completed"].includes(tuiItem.status), `invalid status: ${tuiItem.status}`);
-    assert.equal(tuiItem.priority, "high");
-    assert.ok(parsed.next_action.includes("todowrite"));
+    assert.ok(Array.isArray(parsed.plan_items), "should have plan_items array");
+    assert.ok(parsed.plan_items.length > 0);
+    const planItem = parsed.plan_items.find(t => t.content.includes("plan snapshot check"));
+    assert.ok(planItem, "should find the added item in plan_items");
+    assert.ok(["pending", "in_progress", "completed"].includes(planItem.status), `invalid status: ${planItem.status}`);
+    assert.equal(planItem.priority, "high");
+    assert.ok(parsed.next_action.includes("flat execution plan"));
   });
 
-  it("returns tui_todos in update-state response", async () => {
+  it("returns plan_items in update-state response", async () => {
     const addOutput = await result.tool.aion_todo_update.execute({
       action: "add",
-      plan_step: "State change TUI check",
+      plan_step: "State change plan check",
       owner: "coder",
     }, {});
     const addParsed = JSON.parse(addOutput);
@@ -498,14 +498,14 @@ describe("tools: aion_todo_update", async () => {
       new_state: "in-progress",
     }, {});
     const updateParsed = JSON.parse(updateOutput);
-    assert.ok(Array.isArray(updateParsed.tui_todos));
-    assert.ok(updateParsed.next_action.includes("todowrite"));
+    assert.ok(Array.isArray(updateParsed.plan_items));
+    assert.ok(updateParsed.next_action.includes("flat execution plan"));
   });
 
-  it("returns tui_todos in rollback response", async () => {
+  it("returns plan_items in rollback response", async () => {
     const addOutput = await result.tool.aion_todo_update.execute({
       action: "add",
-      plan_step: "Rollback TUI check",
+      plan_step: "Rollback plan check",
       owner: "coder",
     }, {});
     const addParsed = JSON.parse(addOutput);
@@ -523,17 +523,17 @@ describe("tools: aion_todo_update", async () => {
       rollback_depth: "self",
     }, {});
     const rbParsed = JSON.parse(rbOutput);
-    assert.ok(Array.isArray(rbParsed.tui_todos));
-    assert.ok(rbParsed.next_action.includes("todowrite"));
+    assert.ok(Array.isArray(rbParsed.plan_items));
+    assert.ok(rbParsed.next_action.includes("flat execution plan"));
   });
 
-  it("returns tui_todos in get response", async () => {
+  it("returns plan_items in get response", async () => {
     const output = await result.tool.aion_todo_update.execute({
       action: "get",
     }, {});
     const parsed = JSON.parse(output);
-    assert.ok(Array.isArray(parsed.tui_todos));
-    assert.ok(parsed.next_action.includes("todowrite"));
+    assert.ok(Array.isArray(parsed.plan_items));
+    assert.ok(parsed.next_action.includes("flat execution plan"));
   });
 
   it("rollback depth self-and-downstream works", async () => {
@@ -570,7 +570,7 @@ describe("tools: aion_todo_update", async () => {
     }, {});
     const rbParsed = JSON.parse(rbOutput);
     assert.ok(rbParsed.rolledBack.includes(parentId), `parent should be rolled back: ${JSON.stringify(rbParsed.rolledBack)}`);
-    assert.ok(rbParsed.tui_todos, "should have tui_todos");
+    assert.ok(rbParsed.plan_items, "should have plan_items");
   });
 });
 

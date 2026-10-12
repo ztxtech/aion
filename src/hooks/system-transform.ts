@@ -441,10 +441,8 @@ Rules:
 5. Only ts-critic and c-critic may use the words "stop", "allow-stop", "approve-stop", "reject-stop". These words are FORBIDDEN in your own reasoning and in any TODO content.`
     injections.push(antiStopRule)
 
-    // === TODO map as driving plan + TUI sync drift detection ===
+    // === TODO map as driving plan ===
     const todoContent = readIfExists(managers.workspace.todoMapPath())
-    let todoMapUpdatedAt: string | null = null
-    let todoMapItems: Array<{ id: string; planStep: string; state: string }> = []
     if (todoContent && todoContent.length > 50) {
       const todoLines = todoContent.split("\n")
       const summaryLines = todoLines.filter((l) => l.match(/^[-*]\s*(Total|Done|In-progress|Todo):/) || l.match(/^####\s*TODO-/))
@@ -453,63 +451,9 @@ Rules:
           `[AION TODO MAP — THIS IS YOUR DRIVING PLAN]\nThe todo-map IS the execution plan. You MUST follow it step by step. After each subagent reportback, call aion_todo_update to reflect progress. If a subagent found new gaps or suggested next steps, call aion_todo_update(action="add-from-reportback") to expand the plan.\n\n${summaryLines.join("\n")}`,
         )
       }
-      // Parse "Updated at:" line in the Stop/Continue Impact section.
-      const updatedMatch = todoContent.match(/-\s*Updated at:\s*(\S+)/)
-      if (updatedMatch) todoMapUpdatedAt = updatedMatch[1]
-      // Parse the per-item blocks to build a TUI-sync payload.
-      const blocks = todoContent.split(/####\s+/).slice(1)
-      for (const block of blocks) {
-        const idMatch = block.match(/^TODO-(\d+)/)
-        if (!idMatch) continue
-        const cleaned = block.replace(/\*\*([^*]+)\*\*/g, "$1")
-        const planStep = (cleaned.match(/-\s*Plan step:\s*(.+)/)?.[1] ?? "").trim()
-        const state = ((cleaned.match(/-\s*State:\s*(.+)/)?.[1] ?? "todo").trim().toLowerCase().replace(/\s+/g, "-"))
-        todoMapItems.push({ id: `TODO-${idMatch[1]}`, planStep, state })
-      }
     } else {
       injections.push(
         `[AION TODO MAP] No plan steps exist yet. You MUST create the initial plan: call aion_todo_update(action="add", plan_step="...") for each major step after requirements-analyst reports back.`,
-      )
-    }
-
-    // === TUI todo sync drift detection ===
-    // Fire the MANDATORY sync reminder whenever:
-    //   (a) aion_todo_update just fired (existing trigger), OR
-    //   (b) the on-disk todo-map has been updated more recently than the last
-    //       `todowrite` call (or todowrite was never called). Without this
-    //       second branch, an agent that skips aion_todo_update entirely will
-    //       leave the TUI permanently empty — the bug the user reported.
-    const tuiLastSyncedAt = managers.state.governance.tuiTodoLastSyncedAt
-    const todoMapIsNewer =
-      todoMapUpdatedAt !== null &&
-      (tuiLastSyncedAt === null || todoMapUpdatedAt > tuiLastSyncedAt)
-    const tuiStale = managers.state.governance.tuiTodoSyncPending || todoMapIsNewer
-    if (tuiStale && todoMapItems.length > 0) {
-      const tuiPayload = JSON.stringify(
-        todoMapItems.map((i) => ({
-          content: `${i.id}: ${i.planStep}`,
-          status:
-            i.state === "done"
-              ? "completed"
-              : i.state === "in-progress"
-                ? "in_progress"
-                : "pending",
-          priority: "high",
-        })),
-        null,
-        2,
-      )
-      injections.push(
-        `[AION TUI TODO SYNC — MANDATORY NEXT STEP — DO NOT SKIP]
-The OpenCode TUI todo list (the right panel the user is watching) is OUT OF SYNC with the todo-map.
-You MUST call the built-in \`todowrite\` tool NOW with the EXACT payload below. Do not modify, do not re-derive, do not skip.
-
-\`\`\`json
-${tuiPayload}
-\`\`\`
-
-After calling todowrite, the TUI list will reflect the current plan. The user has ZERO visibility into task progress without this step — they will assume the loop is hung if the right panel stays empty.
-If you have not yet called aion_todo_update in this round, you ALSO need to call it (action="update-state" or "add") to bring the on-disk map in line with the work you just did. todowrite mirrors the map into the TUI; aion_todo_update mutates the map.`,
       )
     }
 

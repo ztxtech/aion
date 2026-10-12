@@ -371,14 +371,14 @@ OPENCODE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS=172800000 opencode
 
 5. TODO / task list
 
-- Official OpenCode docs already show built-in \`todowrite\`, used to manage and update todo lists in complex tasks. The permission model also includes \`todoread\` / \`todowrite\`.
-- So for complex tasks, multi-stage tasks, multi-agent tasks, and formal delivery tasks, the plan should not stay only in plain text. The main agent should prefer turning the plan into an OpenCode TODO list and keep updating it during execution.
+- OpenCode V2 removed the built-in \`todowrite\` tool. V1-generated TODO history remains display-only compatibility data.
+- For complex tasks, multi-stage tasks, multi-agent tasks, and formal delivery tasks, the plan must be recorded in AION's todo-map through \`aion_todo_update\`; do not keep it only in plain text.
 - TODO is not a one-time static list: whenever a step finishes, new evidence appears, \`ts-critic\` sends blockers, rebuttal starts, rollback is needed, or the route changes, rewrite or reorder the TODO list.
 - The minimal TODO state meaning should stay \`todo\` / \`in-progress\` / \`done\`. Cases like \`paused\`, \`blocked\`, or \`waiting for external input\` should be expressed by notes or extra follow-up TODO items, not by inventing new hidden states.
 - The plan output should also include a clear \`TODO mapping table\`: which plan step maps to which TODO item, what triggers updates, which role owns it, and what the rollback rules are.
 - If \`ts-critic\` judges that the current step can stay on the same route but needs more evidence, more validation, or partial rework, the related TODO should move from \`done\` back to \`in-progress\`. If \`ts-critic\` judges that the current assumption failed, earlier steps must be revisited, the route must change, or the rebuttal is rejected, the related TODO should move from \`done\` or \`in-progress\` back to \`todo\`, and dependent downstream TODO items should also roll back.
 - If \`ts-critic\` says the current step is not valid, needs more evidence, or must roll back, earlier TODO items must go back to unfinished state, and new follow-up items must be added if needed. Do not say this only in plain text.
-- When docs, implementation, or permission config allow it, the main agent should prefer \`todowrite\` / \`todoread\` for TODO management, instead of keeping a fake plan only inside answer text.
+- Keep the AION todo-map current, instead of keeping a fake plan only inside answer text.
 `
 
 export const AION_WEBSEARCH_RULES = `# Aion Search Rules

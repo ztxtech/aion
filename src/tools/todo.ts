@@ -123,12 +123,11 @@ export function createTodoTools(args: CreateToolsArgs): AionToolMap {
     aion_todo_update: tool({
       description:
         "Dynamic TODO map manager. This is the ONLY way to update the plan-driven TODO map. The TODO map IS the execution plan — every step must be tracked here. Subagent findings (new routes, blockers, gaps) MUST be reflected as new TODO items or state changes. Call this tool: after each subagent reportback, when blockers appear, when ts-critic requests rollback, and whenever the plan changes.\n\n" +
-        "**TUI SYNC PROTOCOL — MANDATORY**: After every successful call to aion_todo_update, you MUST immediately call the built-in `todowrite` tool to mirror the current todo-map state into OpenCode's TUI todo list. The TUI todo list is what the user sees in the right panel. Without this step, the user sees no task progress.\n" +
-        "The TUI list should be the FLAT list of plan_step + state, one item per line, e.g.:\n" +
+        "The returned `todos` array is the canonical flat plan snapshot:\n" +
         "- [in_progress] TODO-001: brainstorm task contract with requirements-analyst\n" +
         "- [pending] TODO-002: dispatch parallel EDA + public-solution search\n" +
         "- [completed] TODO-000: ask user about interactive mode\n" +
-        "Use status='in_progress' for the active item, 'pending' for upcoming, 'completed' for done. Update the TUI list every time you call aion_todo_update.",
+        "Use status='in_progress' for the active item, 'pending' for upcoming, 'completed' for done.",
       args: {
         action: z.enum(["add", "update-state", "rollback", "get", "add-from-reportback"]),
         todo_id: z.string().optional().describe("TODO ID (e.g. TODO-001) for update-state/rollback"),
@@ -225,12 +224,12 @@ export function createTodoTools(args: CreateToolsArgs): AionToolMap {
             added: newItems.map((i) => ({ id: i.id, planStep: i.planStep })),
             totalItems: items.length,
             summary: { done: items.filter((i) => i.state === "done").length, inProgress: items.filter((i) => i.state === "in-progress").length, todo: items.filter((i) => i.state === "todo").length },
-            tui_todos: items.map((i) => ({
+            plan_items: items.map((i) => ({
               content: `${i.id}: ${i.planStep}`,
               status: i.state === "done" ? "completed" : i.state === "in-progress" ? "in_progress" : "pending",
               priority: "high",
             })),
-            next_action: "Call todowrite with tui_todos to sync the OpenCode TUI todo list.",
+            next_action: "Use plan_items as the current flat execution plan snapshot.",
           }, null, 2)
         }
 
@@ -260,12 +259,12 @@ export function createTodoTools(args: CreateToolsArgs): AionToolMap {
             to: item.state,
             planStep: item.planStep,
             summary: { done: items.filter((i) => i.state === "done").length, inProgress: items.filter((i) => i.state === "in-progress").length, todo: items.filter((i) => i.state === "todo").length },
-            tui_todos: items.map((i) => ({
+            plan_items: items.map((i) => ({
               content: `${i.id}: ${i.planStep}`,
               status: i.state === "done" ? "completed" : i.state === "in-progress" ? "in_progress" : "pending",
               priority: "high",
             })),
-            next_action: "Call todowrite with tui_todos to sync the OpenCode TUI todo list.",
+            next_action: "Use plan_items as the current flat execution plan snapshot.",
           }, null, 2)
         }
 
@@ -318,12 +317,12 @@ export function createTodoTools(args: CreateToolsArgs): AionToolMap {
             depth: rollbackDepth,
             rolledBack,
             summary: { done: items.filter((i) => i.state === "done").length, inProgress: items.filter((i) => i.state === "in-progress").length, todo: items.filter((i) => i.state === "todo").length },
-            tui_todos: items.map((i) => ({
+            plan_items: items.map((i) => ({
               content: `${i.id}: ${i.planStep}`,
               status: i.state === "done" ? "completed" : i.state === "in-progress" ? "in_progress" : "pending",
               priority: "high",
             })),
-            next_action: "Call todowrite with tui_todos to sync the OpenCode TUI todo list.",
+            next_action: "Use plan_items as the current flat execution plan snapshot.",
           }, null, 2)
         }
 
@@ -337,12 +336,12 @@ export function createTodoTools(args: CreateToolsArgs): AionToolMap {
               branchId: i.branchId,
             })),
             summary: { done: items.filter((i) => i.state === "done").length, inProgress: items.filter((i) => i.state === "in-progress").length, todo: items.filter((i) => i.state === "todo").length },
-            tui_todos: items.map((i) => ({
+            plan_items: items.map((i) => ({
               content: `${i.id}: ${i.planStep}`,
               status: i.state === "done" ? "completed" : i.state === "in-progress" ? "in_progress" : "pending",
               priority: "high",
             })),
-            next_action: "Call todowrite with tui_todos to sync the OpenCode TUI todo list.",
+            next_action: "Use plan_items as the current flat execution plan snapshot.",
           }, null, 2)
         }
 
