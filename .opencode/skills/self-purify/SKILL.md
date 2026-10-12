@@ -32,7 +32,7 @@ Run this skill after every task completes (before or as part of the final closeo
 - Group by `root_cause` + `scope`. If any group crosses its threshold, write a **gap report** to `memory/evolution-log.md`:
   ```yaml
   - gap: "repeated root_cause from negative.md"
-    occurrences: 1
+    occurrences: 2
     severity: "high"
     proposed_skill: "name"
     rationale: "why this closes the gap"
