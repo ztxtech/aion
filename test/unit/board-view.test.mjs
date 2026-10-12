@@ -129,10 +129,10 @@ describe("agent board layout", () => {
     assert.equal(view.rows[1].connectors.some((line) => line.includes("▼")), true);
   });
 
-  it("keeps the text logo to two stable display rows", () => {
-    assert.deepEqual([...boardView.AION_LOGO], [
-      "█▀▄▀█ █ █▀█ █▀█",
-      "█▀▀▀█ █ █▀▄ █▀▄",
+  it("keeps the text logo fallback to two stable display rows", () => {
+    assert.deepEqual([...boardView.AION_TEXT_LOGO], [
+      "ZTXTECH",
+      "AION",
     ]);
   });
 

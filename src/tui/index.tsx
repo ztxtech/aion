@@ -17,7 +17,7 @@ import {
   type PlanGraph,
 } from "../shared/plan-graph"
 import {
-  AION_LOGO,
+  AION_TEXT_LOGO,
   agentGraphView,
   executionLayerRows,
   type BoardNode,
@@ -40,10 +40,7 @@ import {
 } from "../shared/toast-queue"
 
 const AION_STATUS_HINT = "ctrl+g AION board · ctrl+p commands"
-
-export function boardRows(totalRows?: number) {
-  return Math.max(20, (totalRows ?? process.stdout.rows ?? 40) - 1)
-}
+const ZTXTECH_LOGO_URL = "https://ztxtech.github.io/images/brand/ztxtech-logo.png"
 
 type BoardPalette = {
   base: RGBA
@@ -121,7 +118,6 @@ function Board(props: {
   blockers: () => string[]
   runtime: () => RuntimeSnapshot
   sessionID: () => string | null
-  boardHeight: () => number
   palette: BoardPalette
   close?: () => void
 }) {
@@ -144,6 +140,8 @@ function Board(props: {
     graph().items.find((item) => item.state === "todo") ??
     graph().items[0]
   const [tick, setTick] = createSignal(0)
+  const [logoFailed, setLogoFailed] = createSignal(false)
+  const [logoReady, setLogoReady] = createSignal(false)
   const timer = setInterval(() => setTick((value) => value + 1), 280)
 
   onCleanup(() => {
@@ -173,7 +171,7 @@ function Board(props: {
   return (
     <box
       flexDirection="column"
-      height={Math.max(20, props.boardHeight())}
+      height="100%"
       flexGrow={1}
       flexShrink={1}
       minWidth={0}
@@ -229,14 +227,37 @@ function Board(props: {
               </text>
             </box>
           </box>
-          <box flexDirection="column" gap={0} flexShrink={0} marginTop={1}>
-            <For each={AION_LOGO}>
-              {(line) => (
-                <text fg={props.palette.accent} wrapMode="none">
-                  {line}
-                </text>
-              )}
-            </For>
+          <box
+            flexDirection="column"
+            flexShrink={0}
+            marginTop={1}
+            minWidth={24}
+            minHeight={4}
+            alignItems="center"
+            justifyContent="center"
+          >
+            <Show
+              when={logoReady() && !logoFailed()}
+              fallback={
+                <For each={AION_TEXT_LOGO}>
+                  {(line) => (
+                    <text fg={props.palette.accent} wrapMode="none">
+                      {line}
+                    </text>
+                  )}
+                </For>
+              }
+            >
+              <image
+                source={ZTXTECH_LOGO_URL}
+                fit="fit"
+                protocol="blocks"
+                width={24}
+                height={4}
+                onLoad={() => setLogoReady(true)}
+                onError={() => setLogoFailed(true)}
+              />
+            </Show>
           </box>
         </box>
       </box>
@@ -263,7 +284,10 @@ function Board(props: {
       <scrollbox
         scrollY
         viewportCulling={false}
-        height={Math.max(8, props.boardHeight() - 15)}
+        height="auto"
+        flexGrow={1}
+        flexShrink={1}
+        minHeight={8}
         minWidth={0}
         gap={1}
         backgroundColor={props.palette.surface}
@@ -395,35 +419,6 @@ function Board(props: {
           </box>
         </Show>
 
-        <Show when={focusItem()}>
-          {(item) => (
-            <box
-              flexDirection="column"
-              flexShrink={0}
-              borderStyle="rounded"
-              borderColor={props.palette.accent}
-              title=" CURRENT FOCUS "
-              titleAlignment="left"
-              paddingLeft={1}
-              paddingRight={1}
-            >
-              <text fg={props.palette.base} wrapMode="none">
-                {item().id} {item().planStep}
-              </text>
-              <Show when={item().compareGate}>
-                <text fg={props.palette.muted} wrapMode="none">
-                  gate {item().compareGate}
-                </text>
-              </Show>
-              <Show when={item().rollbackRule}>
-                <text fg={props.palette.muted} wrapMode="none">
-                  rollback {item().rollbackRule}
-                </text>
-              </Show>
-            </box>
-          )}
-        </Show>
-
         <Show
           when={
             graph().hasCycle ||
@@ -450,6 +445,35 @@ function Board(props: {
           </box>
         </Show>
       </scrollbox>
+
+      <Show when={focusItem()}>
+        {(item) => (
+          <box
+            flexDirection="column"
+            flexShrink={0}
+            borderStyle="rounded"
+            borderColor={props.palette.accent}
+            title=" CURRENT FOCUS "
+            titleAlignment="left"
+            paddingLeft={1}
+            paddingRight={1}
+          >
+            <text fg={props.palette.base} wrapMode="none">
+              {item().id} {item().planStep}
+            </text>
+            <Show when={item().compareGate}>
+              <text fg={props.palette.muted} wrapMode="none">
+                gate {item().compareGate}
+              </text>
+            </Show>
+            <Show when={item().rollbackRule}>
+              <text fg={props.palette.muted} wrapMode="none">
+                rollback {item().rollbackRule}
+              </text>
+            </Show>
+          </box>
+        )}
+      </Show>
 
       <text
         fg={props.palette.muted}
@@ -697,10 +721,6 @@ export default Plugin.define({
     const board = watchPlanGraph(root)
     const calls = watchCallGraph(root, () => activeSessionID(context))
     const runtimeBoard = watchRuntimeSnapshot(root, () => activeSessionID(context))
-    const readBoardHeight = () => boardRows(context.renderer?.height)
-    const [boardHeight, setBoardHeight] = createSignal(readBoardHeight())
-    const onBoardResize = () => setBoardHeight(readBoardHeight())
-    context.renderer.on("resize", onBoardResize)
     const toasts = watchToasts(root, (toast) => {
       context.ui.toast.show({
         title: toast.title,
@@ -825,7 +845,6 @@ export default Plugin.define({
           blockers={blockers}
           runtime={runtime}
           sessionID={() => activeSessionID(context)}
-          boardHeight={boardHeight}
           palette={palette}
         />
       ),
@@ -841,7 +860,6 @@ export default Plugin.define({
             blockers={blockers}
             runtime={runtime}
             sessionID={() => activeSessionID(context)}
-            boardHeight={boardHeight}
             palette={palette}
             close={input.close}
           />
@@ -878,9 +896,8 @@ export default Plugin.define({
       board.dispose()
       calls.dispose()
       runtimeBoard.dispose()
-      context.renderer.off("resize", onBoardResize)
     }
   },
 })
 
-export { AION_STATUS_HINT }
+export { AION_STATUS_HINT, ZTXTECH_LOGO_URL }

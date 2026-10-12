@@ -83,9 +83,11 @@ function createContext(root, registrations = { routes: [], slots: [] }) {
 }
 
 describe("AION TUI plan watcher", () => {
-  it("reserves the global status row for board hints", () => {
-    assert.equal(tuiBundle.boardRows(52), 51);
-    assert.equal(tuiBundle.boardRows(20), 20);
+  it("uses the ZTXTECH logo asset and a stable text fallback", () => {
+    assert.equal(
+      tuiBundle.ZTXTECH_LOGO_URL,
+      "https://ztxtech.github.io/images/brand/ztxtech-logo.png",
+    );
   });
 
   it("registers the board against V2 theme tokens", () => {
