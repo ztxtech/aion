@@ -285,6 +285,9 @@ export const _testing = {
   async planGraph() {
     return await import("./shared/plan-graph.js")
   },
+  async runtimeControl() {
+    return await import("./shared/runtime-control.js")
+  },
   async scheduling() {
     return await import("./scheduling/state-machine.js")
   },

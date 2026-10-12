@@ -23,6 +23,7 @@ import { join } from "node:path"
 import { AION_SKILLS, SKILL_AGENT_MAP, TS_BOUND_SKILLS } from "../prompts/skill-registry"
 import { SCHEDULING_MERMAID, resetWorkerProgress } from "../scheduling/state-machine"
 import { COMPLEXITY_CLASSIFIER_PROMPT } from "../scheduling/complexity"
+import { MAX_EVIDENCE_PROMPT } from "../shared/runtime-control"
 
 const PHASE_SYSTEM_HINTS: Record<AionPhase, string> = {
   init: `[AION PHASE HINT: INIT] You are in the initialization phase. Your MANDATORY first actions, in this exact order:
@@ -231,6 +232,22 @@ export function createSystemTransformHook(args: CreateHooksArgs): AionSystemTran
     const phase: AionPhase = managers.phase.current()
     const modelId = model?.id ?? "unknown"
     const round = managers.state.rounds.current
+    managers.runtimeControl.refresh()
+    const executionMode = managers.runtimeControl.current()
+    const previousSessionID = managers.state._lastSessionID
+    const resumeContext = managers.runtimeControl.resumeContext()
+
+    if (
+      previousSessionID !== undefined &&
+      previousSessionID !== sessionID &&
+      resumeContext.lastPhase &&
+      resumeContext.lastPhase !== "done" &&
+      !resumeContext.interrupted
+    ) {
+      managers.runtimeControl.markInterrupted(
+        `previous session ended at ${resumeContext.lastPhase}`,
+      )
+    }
 
     // Inject banner on first turn
     if (!bannerShown) {
@@ -258,8 +275,30 @@ export function createSystemTransformHook(args: CreateHooksArgs): AionSystemTran
     // LLM sees the criteria before it has a chance to dispatch anything.
     // After aion_set_complexity has been called, this injection is
     // suppressed (the LLM already knows the tier).
-    if (round <= 1 && !managers.complexity.isSet()) {
+    if (executionMode !== "AUTO") {
+      injections.push(
+        `[AION RUNTIME MODE] User locked execution to ${executionMode}. ` +
+          `Do not call aion_set_complexity. Use ${managers.runtimeControl.effectiveTier()} dispatch rules.`,
+      )
+    } else if (round <= 1 && !managers.complexity.isSet()) {
       injections.push(COMPLEXITY_CLASSIFIER_PROMPT)
+    }
+
+    if (executionMode === "MAX") {
+      injections.push(MAX_EVIDENCE_PROMPT)
+    }
+
+    const shouldInjectResume =
+      resumeContext.lastPhase !== null &&
+      resumeContext.lastPhase !== "done" &&
+      resumeContext.interrupted
+    if (shouldInjectResume) {
+      injections.push(
+        `[AION RESUME PROTOCOL] A previous session stopped at ${resumeContext.lastPhase}. ` +
+          "Before any new dispatch, read .opencode/memory/todo-map.md, progress.md, decisions.md, and context-snapshot.md. " +
+          "Confirm which plan items are actually complete, then continue from the first incomplete item. " +
+          (resumeContext.resumeHint ?? "Do not restart completed work."),
+      )
     }
 
     // === Shared cache protocol: enforce read/write of .opencode/memory/ + trace.md across agents ===

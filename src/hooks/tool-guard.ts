@@ -471,9 +471,10 @@ export function createToolGuardBeforeHook(args: CreateHooksArgs): AionToolExecut
         // for backward compatibility. This is the "safe" default —
         // refusing all dispatches would deadlock the session before the
         // main agent has a chance to classify.
-        const tier = m.complexity.current()
-        const effectiveTier = tier === "unset" ? "FULL" : tier
-        const legal = isLegalDispatchAt(effectiveTier as "LIGHT" | "MEDIUM" | "FULL", phase, agent)
+        const classifiedTier = m.runtimeControl.effectiveTier()
+        const effectiveTier = classifiedTier === "unset" ? "FULL" : classifiedTier
+        const tier = effectiveTier
+        const legal = isLegalDispatchAt(effectiveTier, phase, agent)
 
         // FORCE-ADVANCE: when ts-critic has returned allow-stop on a
         // contract review (gather/ts-pre-review/ts-post-review) and
@@ -614,7 +615,7 @@ export function createToolGuardBeforeHook(args: CreateHooksArgs): AionToolExecut
     if (toolName === "write" || toolName === "Write" || toolName === "edit" || toolName === "Edit" || toolName === "apply_patch") {
       const toolArgs = (output as { args?: Record<string, unknown> }).args ?? {}
       const filePath = String(toolArgs.filePath ?? toolArgs.path ?? toolArgs.target ?? "")
-      const tier = m.complexity.current()
+      const tier = m.runtimeControl.effectiveTier()
       // Always allowed: orchestration files (.opencode/memory/, trace, todo-map).
       const isOrchestrationFile =
         filePath.includes(".opencode/memory/") ||
@@ -670,7 +671,7 @@ export function createToolGuardBeforeHook(args: CreateHooksArgs): AionToolExecut
     if (toolName === "bash" || toolName === "Bash") {
       const bashArgs = (output as { args?: Record<string, unknown> }).args ?? {}
       const command = String(bashArgs.command ?? bashArgs.cmd ?? "")
-      const tier = m.complexity.current()
+      const tier = m.runtimeControl.effectiveTier()
       // Code-modifying bash patterns (sed/awk/cat<<EOF/redirect to source file).
       // Read-only commands (ls, cat for reading, grep, git status) are fine.
       const codeModifying =

@@ -338,6 +338,12 @@ Memory and git serve different purposes: memory handles abstract experience and 
 
 AION serializes plan dependencies in `.opencode/memory/todo-map.md`. The native TUI bundle parses those dependencies into ready layers, detects cycles and unknown IDs, and renders the result in OpenCode. Run `/aion-board` or choose **AION board** from the command palette; the panel appears as an appended session panel and refreshes as the plan changes.
 
+### Runtime Execution Modes
+
+Use `/aion-mode auto|light|medium|full|max` to set the current project's execution pressure without editing `aion.jsonc`. Use `/aion-status` to show the active mode, last phase, and resume hint. `AUTO` keeps the LLM complexity classifier; `LIGHT`, `MEDIUM`, and `FULL` lock the corresponding dispatch rules; `MAX` uses `FULL` edges and requires a named missing fact plus the smallest useful evidence step before broad search or dispatch.
+
+The setting is stored in `.opencode/memory/runtime-state.json`. AION also records the last non-terminal phase there. If a session is interrupted, the next session receives a resume protocol that checks `todo-map.md`, `progress.md`, `decisions.md`, and `context-snapshot.md` before continuing from the first incomplete item.
+
 ---
 
 ## 📡 CLI Reference

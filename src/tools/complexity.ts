@@ -65,6 +65,23 @@ export function createComplexityTool(args: CreateToolsArgs): ComplexityTools {
       },
       async execute(input, _context) {
         const requested = input.tier as ComplexityTier
+        const runtimeMode = m.runtimeControl.current()
+        if (runtimeMode !== "AUTO") {
+          return JSON.stringify(
+            {
+              recorded: false,
+              reason: "user-locked-runtime-mode",
+              runtimeMode,
+              effectiveTier: m.runtimeControl.effectiveTier(),
+              detail:
+                "Execution mode is locked by /aion-mode. Use the locked dispatch rules; " +
+                "only the user can change the mode.",
+            },
+            null,
+            2,
+          )
+        }
+
         const previous = m.state.governance.complexityTier
 
         // First-time set always wins.

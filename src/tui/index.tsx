@@ -9,6 +9,13 @@ import {
   parsePlanMap,
   type PlanGraph,
 } from "../shared/plan-graph"
+import {
+  EXECUTION_MODES,
+  formatRuntimeStatus,
+  parseExecutionMode,
+  readRuntimeState,
+  setExecutionMode,
+} from "../shared/runtime-control"
 
 function readGraph(root: string): PlanGraph {
   try {
@@ -191,6 +198,10 @@ export function watchPlanGraph(root: string = process.cwd()) {
   }
 }
 
+export function projectRoot(location?: { directory?: string }): string {
+  return location?.directory ?? process.cwd()
+}
+
 export default Plugin.define({
   id: "aion-ts-plugin",
   setup(context) {
@@ -201,6 +212,37 @@ export default Plugin.define({
       if (context.ui.router.current().type === "session")
         context.ui.panel.open("aion-dag")
       else context.ui.router.navigate({ type: "plugin", name: "aion-dag" })
+    }
+
+    const setMode = (input?: string) => {
+      const root = projectRoot(context.location)
+      const mode = parseExecutionMode(input ?? "")
+      if (!mode) {
+        context.ui.toast.show({
+          title: "AION mode",
+          message: `Usage: /aion-mode ${EXECUTION_MODES.join("|").toLowerCase()}`,
+          variant: "warning",
+          duration: 6000,
+        })
+        return
+      }
+
+      const state = setExecutionMode(root, mode)
+      context.ui.toast.show({
+        title: `AION mode: ${state.executionMode}`,
+        message: state.resumeHint ?? "Runtime mode saved for this project.",
+        variant: "success",
+        duration: 6000,
+      })
+    }
+
+    const showStatus = () => {
+      context.ui.toast.show({
+        title: "AION runtime",
+        message: formatRuntimeStatus(readRuntimeState(projectRoot(context.location))),
+        variant: "info",
+        duration: 9000,
+      })
     }
 
     context.keymap.layer(() => ({
@@ -214,6 +256,24 @@ export default Plugin.define({
           palette: true,
           slash: { name: "aion-board" },
           run: openBoard,
+        },
+        {
+          id: "aion.mode",
+          title: "AION mode",
+          description: "Set auto, light, medium, full, or max execution",
+          group: "AION",
+          palette: true,
+          slash: { name: "aion-mode", arguments: true },
+          run: setMode,
+        },
+        {
+          id: "aion.status",
+          title: "AION status",
+          description: "Show execution mode and resume state",
+          group: "AION",
+          palette: true,
+          slash: { name: "aion-status" },
+          run: showStatus,
         },
       ],
     }))

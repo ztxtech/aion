@@ -23,6 +23,13 @@ import type { PluginContext } from "./plugin/types"
 import type { AionIntent } from "./hooks/types"
 import { appendToFile, ensureDir } from "./shared/logger"
 import { resolvePath, nowIso } from "./shared/utils"
+import {
+  effectiveComplexityTier,
+  readRuntimeState,
+  runtimeStatePath,
+  updateRuntimeState,
+  type ExecutionMode,
+} from "./shared/runtime-control"
 
 // matchGlob — minimal glob matcher supporting `*` (any chars except `/`),
 // `**` (any chars including `/`), and `?` (single char). Used by the contract-
@@ -216,6 +223,21 @@ export type AionManagers = {
     setTier(tier: "LIGHT" | "MEDIUM" | "FULL"): void
     /** True iff the tier has been recorded at least once. */
     isSet(): boolean
+  }
+  runtimeControl: {
+    current(): ExecutionMode
+    effectiveTier(): "unset" | "LIGHT" | "MEDIUM" | "FULL"
+    setMode(mode: ExecutionMode, source: "user-toggle" | "startup"): void
+    refresh(): void
+    markPhase(phase: AionPhase, reason: string): void
+    markInterrupted(reason: string): void
+    clearResume(): void
+    resumeContext(): {
+      lastPhase: AionPhase | null
+      resumeHint: string | null
+      interrupted: boolean
+    }
+    path(): string
   }
   phase: {
     current(): AionPhase
@@ -515,6 +537,105 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
     },
   }
 
+  let runtimeState = readRuntimeState(ctx.directory)
+  if (
+    runtimeState.preferences.preserveAcrossSessions &&
+    runtimeState.lastPhase &&
+    runtimeState.lastPhase !== "done"
+  ) {
+    state.governance.phase = runtimeState.lastPhase
+    state.governance.phaseReason = runtimeState.phaseReason ?? "restored from runtime state"
+  }
+
+  const runtimeControl = {
+    current(): ExecutionMode {
+      return runtimeState.executionMode
+    },
+    effectiveTier(): "unset" | "LIGHT" | "MEDIUM" | "FULL" {
+      return effectiveComplexityTier(
+        runtimeState.executionMode,
+        state.governance.complexityTier,
+      )
+    },
+    setMode(mode: ExecutionMode, source: "user-toggle" | "startup"): void {
+      const previous = runtimeState.executionMode
+      runtimeState = updateRuntimeState(ctx.directory, {
+        executionMode: mode,
+        interrupted: false,
+        resumeHint: mode === "AUTO" ? null : runtimeState.resumeHint,
+      })
+      if (mode !== "AUTO") {
+        const lockedTier = effectiveComplexityTier(mode, state.governance.complexityTier)
+        if (lockedTier !== "unset") complexityManager.setTier(lockedTier)
+      }
+      trace.appendEvent(
+        "stopgo.updated",
+        `execution mode: ${previous} -> ${mode} (source: ${source})`,
+        { previous, mode, source },
+        source === "user-toggle" ? "user" : "system",
+      )
+    },
+    refresh(): void {
+      const disk = readRuntimeState(ctx.directory)
+      const previous = runtimeState.executionMode
+      runtimeState = disk
+      if (disk.executionMode !== previous && disk.executionMode !== "AUTO") {
+        const lockedTier = effectiveComplexityTier(disk.executionMode, state.governance.complexityTier)
+        if (lockedTier !== "unset") complexityManager.setTier(lockedTier)
+      }
+    },
+    markPhase(phase: AionPhase, reason: string): void {
+      if (
+        !runtimeState.preferences.preserveAcrossSessions ||
+        (runtimeState.lastPhase === phase && runtimeState.phaseReason === reason)
+      ) return
+
+      runtimeState = updateRuntimeState(ctx.directory, {
+        lastPhase: phase,
+        phaseReason: reason,
+        interrupted: false,
+        resumeHint: phase === "done" ? null : runtimeState.resumeHint,
+      })
+    },
+    markInterrupted(reason: string): void {
+      if (runtimeState.interrupted) return
+      const phase = state.governance.phase
+      runtimeState = updateRuntimeState(ctx.directory, {
+        interrupted: phase !== "done",
+        lastPhase: phase,
+        phaseReason: reason,
+        resumeHint: phase === "done"
+          ? null
+          : `Review .opencode/memory/todo-map.md and .opencode/memory/progress.md, then resume from ${phase}.`,
+      })
+    },
+    clearResume(): void {
+      runtimeState = updateRuntimeState(ctx.directory, {
+        interrupted: false,
+        resumeHint: null,
+      })
+    },
+    resumeContext() {
+      return {
+        lastPhase: runtimeState.lastPhase,
+        resumeHint: runtimeState.resumeHint,
+        interrupted: runtimeState.interrupted,
+      }
+    },
+    path(): string {
+      return runtimeStatePath(ctx.directory)
+    },
+  }
+
+  if (
+    runtimeState.preferences.preserveAcrossSessions &&
+    runtimeState.lastPhase &&
+    runtimeState.lastPhase !== "done" &&
+    !runtimeState.interrupted
+  ) {
+    runtimeControl.markInterrupted("project runtime state was restored")
+  }
+
   const phaseManager = {
     current(): AionPhase {
       return state.governance.phase
@@ -524,6 +645,7 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
       if (prev === next) return
       state.governance.phase = next
       state.governance.phaseReason = reason
+      runtimeControl.markPhase(next, reason)
       trace.appendEvent(
         "stopgo.updated",
         `phase transition: ${prev} → ${next} (${reason})`,
@@ -688,6 +810,7 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
     interactiveMode,
     language: languageManager,
     complexity: complexityManager,
+    runtimeControl,
     phase: phaseManager,
     branches,
     rounds,
