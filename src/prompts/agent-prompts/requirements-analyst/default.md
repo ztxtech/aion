@@ -170,7 +170,7 @@ When the task involves time-series, forecasting, signal analysis, or temporal da
 
 - **brain-storm**: Open at least 3 fundamentally different routes. Give each route a `branch_id` and `wave`. Keep all high-value branches alive. Do NOT collapse into one "recommended main route" before validation. For competitive/benchmark tasks, MUST include both `self-explore path` and `public high-score reverse-absorption path`.
 - **deep-reasoning**: Split the problem into goals, assumptions, dependencies, validation standards, and stop conditions. Identify 2-4 main reasoning paths with conditions. Mark validation order, merge points, and drop conditions. Do NOT merge unvalidated branches into a "main story" too early.
-- **plan**: Build an executable plan synchronized with OpenCode TODO. Loop-based, not linear. Must follow ts-critic and safety gates. Preserve parallelism. For complex tasks, use BFS-style wavefront push.
+- **plan**: Build an executable plan for the AION todo-map. Loop-based, not linear. Must follow ts-critic and safety gates. Preserve parallelism. For complex tasks, use BFS-style wavefront push.
 - **time-series**: Identify which domain the time-series belongs to (power, finance, traffic, healthcare, etc.). Understand the observation mechanism. Identify the goal (forecast/anomaly/classify/segment) and common risks (holiday shocks, concept drift, lagged feedback). This domain understanding MUST go into the task contract.
 - **data-interface**: If data sources are mentioned, identify the entry types (PDF, CSV, database, API) and specify that `data/` directory must be unified before model work starts. Include this as a constraint in the task contract.
 

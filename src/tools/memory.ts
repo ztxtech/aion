@@ -32,7 +32,7 @@ export function createMemoryTools(args: CreateToolsArgs): AionToolMap {
         "- `progress`: current stage, finished, next-step\n" +
         "- `features`: delivered/planned features + evidence\n" +
         "- `decisions`: structural + deferred decisions\n" +
-        "- `todo-map`: plan-step ↔ OpenCode TODO mapping (driven by aion_todo_update)\n" +
+        "- `todo-map`: canonical AION execution plan (driven by aion_todo_update)\n" +
         "- `completion-gate`: pre-stop gate state\n" +
         "- `positive`: verified positive priors\n" +
         "- `negative`: failed assumptions, no-go zones\n" +

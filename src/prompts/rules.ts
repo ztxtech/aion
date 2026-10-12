@@ -66,7 +66,7 @@ export const AION_CORE_RULES = `# Aion Core Rules
 - Every step of the main flow must pass \`safety-gate\` before it starts. High-risk actions, complex input, and key writes to disk should also reuse \`safety-gate\` for recheck.
 - Before real work starts, all agents must read the related skills, governance protocols, rules, and memory context related to the current task, so they do not work with asymmetric context.
 - For complex tasks, multi-stage tasks, and formal delivery tasks, call \`brain-storm -> deep-reasoning -> plan\` first by default. Do not jump into long-chain execution without this full planning chain.
-- For these tasks, the plan-chain output should also be turned into OpenCode TODO by default. If only the plan text exists but TODO was not updated, the plan is not really landed.
+- For these tasks, record the plan-chain output through \`aion_todo_update\` in the AION todo-map by default. If the todo-map is not updated, the plan is not really landed.
 - The following high-value abilities should be checked first to see whether they must be called: \`workspace-init\`, \`safety-gate\`, \`plan\`, \`pdf-intake\`, \`data-interface\`, \`time-series\`, \`information-collector\`, \`brain-storm\` / \`deep-reasoning\`, \`forecast-contract\`, \`critic-loop\`, \`report-writing\`, and \`ztxexp\`.
 - \`time-series\` and \`python-toolbox\` are not skills owned by one role only: \`requirements-analyst\`, \`information-collector\`, \`coder\`, and \`ts-critic\` may call them whenever their current subtask touches time-series task recognition, time format, method family, time-series tool ecosystem, or Python tool choice. Do not misunderstand them as skills mainly usable only by \`coder\` / \`ts-critic\`.
 - The plan chain is not a formality: if it did not first open route branches and then tighten reasoning order and rollback points, then even if \`plan\` was called, the plan is still unqualified.
@@ -371,7 +371,7 @@ OPENCODE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS=172800000 opencode
 
 5. TODO / task list
 
-- OpenCode V2 removed the built-in \`todowrite\` tool. V1-generated TODO history remains display-only compatibility data.
+- OpenCode V2 has no built-in plan tool. The AION todo-map is the sole plan interface.
 - For complex tasks, multi-stage tasks, multi-agent tasks, and formal delivery tasks, the plan must be recorded in AION's todo-map through \`aion_todo_update\`; do not keep it only in plain text.
 - TODO is not a one-time static list: whenever a step finishes, new evidence appears, \`ts-critic\` sends blockers, rebuttal starts, rollback is needed, or the route changes, rewrite or reorder the TODO list.
 - The minimal TODO state meaning should stay \`todo\` / \`in-progress\` / \`done\`. Cases like \`paused\`, \`blocked\`, or \`waiting for external input\` should be expressed by notes or extra follow-up TODO items, not by inventing new hidden states.

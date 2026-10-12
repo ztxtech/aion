@@ -76,7 +76,7 @@ _generated: (pending workspace-init)_
     "progress.md": `# Progress\n\n## Current Stage\n\n- (pending workspace-init)\n\n## Finished Actions\n\n- (none yet)\n\n## Next-Step Suggestions\n\n- (pending workspace-init)\n`,
     "features.md": `# Features\n\n## Delivered\n\n- (none yet)\n\n## Planned\n\n- (pending workspace-init)\n`,
     "decisions.md": `# Decisions\n\n## Structural Decisions\n\n- (none yet)\n\n## Deferred Decisions\n\n- (none yet)\n`,
-    "todo-map.md": `# TODO Map\n\n> Plan-step <-> OpenCode TODO mapping\n\n- (pending workspace-init)\n`,
+    "todo-map.md": `# TODO Map\n\n> Canonical AION execution plan\n\n- (pending workspace-init)\n`,
     "completion-gate.md": `# Completion Gate\n\n> Pre-stop gate: remaining action count and complete-state judgment.\n\n## Verdict\n\n- (pending pre-stop-gate)\n\n## Blockers\n\n- (none yet)\n`,
     "positive.md": `# Positive Priors\n\n> Verified positive priors and reusable experience.\n\n- (none yet)\n`,
     "negative.md": `# Negative Priors\n\n> Failed assumptions, invalid paths, no-go zones.\n\n- (none yet)\n`,

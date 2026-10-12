@@ -100,7 +100,7 @@ export const AION_SKILLS: AionSkillDef[] = [
   },
   {
     name: "plan",
-    description: "Build an executable plan synchronized with OpenCode TODO. Plan must be loop-based, follow ts-critic and safety gates, preserve parallelism, and not collapse branches before validation.",
+    description: "Build an executable plan for the AION todo-map. Plan must be loop-based, follow ts-critic and safety gates, preserve parallelism, and not collapse branches before validation.",
     trigger: "Task has multiple actions or stage dependencies; multiple agents/skills need coordination",
     agents: ["aion", "requirements-analyst"],
     tsBinding: false,

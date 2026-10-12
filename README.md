@@ -290,7 +290,7 @@ AION tools are programmable primitives invoked by the agents. All return JSON st
 | **Governance** | `aion_critic_dispatch`, `aion_critic_verdict`, `aion_record_blocker`, `aion_resolve_blocker`, `aion_pre_stop_gate` | Stop-go gate, blocker ledger, c-critic supremacy enforcement |
 | **Memory** | `aion_memory_sync`, `aion_workspace_init`, `aion_compaction` | Shared cache across agents, snapshot refresh |
 | **Safety** | `aion_safety_gate`, `aion_leakage_check` | Pre-action safety, leakage detection (hidden-set, future info, credentials) |
-| **Plan** | `aion_todo_update` | Plan-step ↔ OpenCode TODO mapping with stop-impact analysis |
+| **Plan** | `aion_todo_update` | AION todo-map with plan state, owners, rollback rules, and stop-impact analysis |
 | **Session** | `aion_set_interactive_mode`, `aion_set_language` | User-mode toggles driven by session-start question |
 | **Hugging Face** | `aion_hf_search`, `aion_hf_info`, `aion_hf_ingest`, `aion_hf_suggest` | Zero-dependency HF Hub REST integration. Cached 24h under `.opencode/hf-cache/` |
 

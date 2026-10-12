@@ -387,6 +387,13 @@ describe("tools: aion_todo_update", async () => {
     assert.ok(result.tool?.aion_todo_update);
   });
 
+  it("describes plan_items as the canonical V2 snapshot", () => {
+    const description = result.tool.aion_todo_update.description;
+    assert.match(description, /`plan_items` array is the canonical flat plan snapshot/);
+    assert.ok(!description.includes("`todos`"), "description should not advertise the removed todos field");
+    assert.ok(!description.includes("TUI"), "description should not advertise TUI syncing");
+  });
+
   it("adds a todo item", async () => {
     const output = await result.tool.aion_todo_update.execute({
       action: "add",

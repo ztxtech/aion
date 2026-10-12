@@ -49,7 +49,7 @@ describe("hard role boundaries (orchestrator must not do worker work)", () => {
     const allowedActions = [
       "Dispatch",
       "Read & integrate reports",
-      "Update the todo list",
+      "Update the AION todo map",
       "question",
       "orchestration tools",
     ];
@@ -58,6 +58,14 @@ describe("hard role boundaries (orchestrator must not do worker work)", () => {
         prompt.toLowerCase().includes(action.toLowerCase()),
         `aion prompt missing allowed-action declaration: "${action}"`,
       );
+    }
+  });
+
+  it("aion prompt uses the V2 AION-only plan contract", () => {
+    const prompt = readPrompt("aion");
+    assert.match(prompt, /canonical `plan_items` snapshot/);
+    for (const staleContract of ["OpenCode TODO", "TUI sync", "returned todos", "canonical `todos`"]) {
+      assert.ok(!prompt.includes(staleContract), `aion prompt contains stale contract: "${staleContract}"`);
     }
   });
 

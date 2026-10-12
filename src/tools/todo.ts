@@ -8,8 +8,8 @@
  *   - get             — read the current map
  *   - add-from-reportback — absorb items from a subagent's reportback
  *
- * The todo-map is the bridge between the high-level plan and OpenCode's
- * own TODO list; the tool-guard after-hook tracks TUI todo-sync state.
+ * The todo-map is the canonical bridge between the high-level plan and the
+ * flat `plan_items` snapshot returned to the model.
  */
 import { tool } from "../plugin/tool"
 import type { CreateToolsArgs } from "./_shared"
@@ -123,7 +123,7 @@ export function createTodoTools(args: CreateToolsArgs): AionToolMap {
     aion_todo_update: tool({
       description:
         "Dynamic TODO map manager. This is the ONLY way to update the plan-driven TODO map. The TODO map IS the execution plan — every step must be tracked here. Subagent findings (new routes, blockers, gaps) MUST be reflected as new TODO items or state changes. Call this tool: after each subagent reportback, when blockers appear, when ts-critic requests rollback, and whenever the plan changes.\n\n" +
-        "The returned `todos` array is the canonical flat plan snapshot:\n" +
+        "The returned `plan_items` array is the canonical flat plan snapshot:\n" +
         "- [in_progress] TODO-001: brainstorm task contract with requirements-analyst\n" +
         "- [pending] TODO-002: dispatch parallel EDA + public-solution search\n" +
         "- [completed] TODO-000: ask user about interactive mode\n" +
