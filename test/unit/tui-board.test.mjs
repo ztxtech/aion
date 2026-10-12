@@ -37,7 +37,56 @@ function writeTodoMap(root, content) {
   writeFileSync(join(root, ".opencode", "memory", "todo-map.md"), content);
 }
 
+function createContext(root, registrations = { routes: [], slots: [] }) {
+  return {
+    location: { directory: root },
+    theme: {
+      text: {
+        base: {},
+        muted: {},
+        feedback: {
+          success: { base: {} },
+          warning: { base: {} },
+          error: { base: {} },
+        },
+      },
+      hue: {
+        accent: { 400: {} },
+        interactive: { 300: {} },
+      },
+      background: { raised: { base: {} } },
+      border: { base: {} },
+    },
+    ui: {
+      router: {
+        current: () => ({ type: "session", sessionID: "session-live" }),
+        register: (page) => registrations.routes.push(page),
+        navigate: () => {},
+      },
+      panel: { open: () => true, close: () => {}, current: () => undefined },
+      slot: (claim) => registrations.slots.push(claim),
+      toast: { show: () => {} },
+    },
+    keymap: { layer: (factory) => factory() },
+  };
+}
+
 describe("AION TUI plan watcher", () => {
+  it("registers the board against V2 theme tokens", () => {
+    const root = createProject();
+    const registrations = { routes: [], slots: [] };
+    const cleanup = tuiBundle.default.setup(createContext(root, registrations));
+
+    assert.deepEqual(
+      registrations.routes.map((route) => route.name),
+      ["aion-dag"],
+    );
+    assert.equal(registrations.slots[0].append, "session.panel");
+    assert.equal(typeof cleanup, "function");
+    cleanup();
+    rmSync(root, { recursive: true, force: true });
+  });
+
   it("exposes blockers beside the plan graph", async () => {
     const root = createProject();
     const board = tuiBundle.watchPlanGraph(root);

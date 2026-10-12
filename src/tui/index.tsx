@@ -496,15 +496,15 @@ export default Plugin.define({
     }
 
     const palette: BoardPalette = {
-      base: context.theme.text.default,
-      muted: context.theme.text.subdued,
-      accent: context.theme.hue.purple[400],
-      active: context.theme.hue.purple[300],
-      success: context.theme.text.feedback.success.default,
-      warning: context.theme.text.feedback.warning.default,
-      danger: context.theme.text.feedback.error.default,
-      surface: context.theme.background.surface.overlay,
-      border: context.theme.border.default,
+      base: context.theme.text.base,
+      muted: context.theme.text.muted,
+      accent: context.theme.hue.accent[400],
+      active: context.theme.hue.interactive[300],
+      success: context.theme.text.feedback.success.base,
+      warning: context.theme.text.feedback.warning.base,
+      danger: context.theme.text.feedback.error.base,
+      surface: context.theme.background.raised.base,
+      border: context.theme.border.base,
     }
 
     context.keymap.layer(() => ({

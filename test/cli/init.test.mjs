@@ -1,6 +1,6 @@
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createTempTarget, runAionInit } from "../helpers/temp-target.mjs";
 
@@ -43,8 +43,49 @@ describe("aion-ts init CLI", () => {
 
     assert.ok(existsSync(target.tuiJsonPath), "tui.json should exist");
     const tui = JSON.parse(readFileSync(target.tuiJsonPath, "utf8"));
-    assert.equal(tui.theme, "aion");
+    assert.deepEqual(tui.theme, { name: "aion" });
     assert.equal(tui.$schema, "https://opencode.ai/tui.json");
+  });
+
+  it("migrates a legacy string theme in tui.json", () => {
+    writeFileSync(
+      target.tuiJsonPath,
+      JSON.stringify({ $schema: "https://opencode.ai/tui.json", theme: "aion" }),
+    );
+    const result = runAionInit(target, ["--force"]);
+    assert.equal(result.status, 0, `init failed: ${result.stderr}\n${result.stdout}`);
+    const tui = JSON.parse(readFileSync(target.tuiJsonPath, "utf8"));
+    assert.deepEqual(tui.theme, { name: "aion" });
+  });
+
+  it("preserves a user-selected non-AION theme", () => {
+    const other = createTempTarget("aion-init-theme");
+    try {
+      writeFileSync(
+        other.tuiJsonPath,
+        JSON.stringify({ $schema: "https://opencode.ai/tui.json", theme: "opencode" }),
+      );
+      const result = runAionInit(other, ["--force"]);
+      assert.equal(result.status, 0, `init failed: ${result.stderr}\n${result.stdout}`);
+      const tui = JSON.parse(readFileSync(other.tuiJsonPath, "utf8"));
+      assert.deepEqual(tui.theme, { name: "opencode" });
+    } finally {
+      other.cleanup();
+    }
+  });
+
+  it("accepts JSONC comments and trailing commas", () => {
+    writeFileSync(
+      target.opencodeJsonPath,
+      `{
+  // comment
+  "$schema": "https://opencode.ai/config.json",
+}
+`,
+    );
+    const result = runAionInit(target, ["--force"]);
+    assert.equal(result.status, 0, `init failed: ${result.stderr}\n${result.stdout}`);
+    assert.doesNotMatch(result.stdout, /not valid JSON/);
   });
 
   it("creates .opencode/agents/ scaffold (aion subdir)", () => {

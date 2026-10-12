@@ -214,13 +214,14 @@ function writeFileEnsuringDir(path, content) {
 }
 
 function readJsonc(path) {
-  // Strip // and /* */ comments before parsing. Sufficient for our templates.
+  // Strip // and /* */ comments plus trailing commas. Sufficient for our templates.
   const raw = readFileSync(path, "utf8");
   const stripped = raw
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .split("\n")
     .map((line) => line.replace(/(^|[^:])\/\/.*$/, "$1"))
-    .join("\n");
+    .join("\n")
+    .replace(/,\s*([}\]])/g, "$1");
   return JSON.parse(stripped);
 }
 
@@ -344,16 +345,38 @@ async function ensureTuiJson(target) {
       console.log(`  ${err.message}`);
       process.exit(7);
     }
-    if (parsed?.theme && parsed.theme !== "aion") {
-      console.log(`  [skip] ${path} already selects "${parsed.theme}"`);
+    const theme = parsed?.theme;
+    const selected =
+      typeof theme === "string"
+        ? theme
+        : theme && typeof theme === "object"
+          ? theme.name
+          : undefined;
+
+    if (typeof theme === "string") {
+      parsed.theme = { name: theme };
+      writeJsonPreserveIndent(path, parsed);
+      console.log(`  [ok] migrated     → ${path}  (V2 theme.name schema)`);
+    }
+
+    if (selected && selected !== "aion") {
+      console.log(`  [skip] ${path} already selects "${selected}"`);
       return;
     }
-    if (parsed?.theme === "aion") return;
+    if (selected === "aion") return;
+
+    writeJsonPreserveIndent(path, {
+      ...parsed,
+      $schema: parsed.$schema ?? "https://opencode.ai/tui.json",
+      theme: { ...(theme && typeof theme === "object" ? theme : {}), name: "aion" },
+    });
+    console.log(`  [ok] updated       → ${path}  (theme = aion)`);
+    return;
   }
 
   writeJsonPreserveIndent(path, {
     $schema: "https://opencode.ai/tui.json",
-    theme: "aion",
+    theme: { name: "aion" },
   });
   console.log(`  [ok] created       → ${path}`);
 }
