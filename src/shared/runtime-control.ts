@@ -68,6 +68,7 @@ const COMPLEXITY_TIERS: readonly SessionRuntimeState["complexityTier"][] = [
 const MAX_SESSIONS = 32
 const LOCK_TIMEOUT_MS = 2000
 const STALE_LOCK_MS = 10_000
+const runtimeStateCache = new Map<string, { fingerprint: string; state: RuntimeState }>()
 
 const MODE_EFFECT: Record<ExecutionMode, string> = {
   AUTO: "Let the task classifier choose LIGHT, MEDIUM, or FULL.",
@@ -176,7 +177,14 @@ export function normalizeSessionRuntimeState(raw: unknown): SessionRuntimeState 
 
 export function readRuntimeState(root: string): RuntimeState {
   try {
-    return normalizeRuntimeState(JSON.parse(readFileSync(runtimeStatePath(root), "utf8")))
+    const path = runtimeStatePath(root)
+    const fingerprint = fileFingerprint(path)
+    const cached = runtimeStateCache.get(root)
+    if (fingerprint && cached?.fingerprint === fingerprint) return cached.state
+
+    const state = normalizeRuntimeState(JSON.parse(readFileSync(path, "utf8")))
+    if (fingerprint) runtimeStateCache.set(root, { fingerprint, state })
+    return state
   } catch {
     return defaultRuntimeState()
   }
@@ -290,6 +298,7 @@ function mutateRuntimeState(
     })
     writeFileSync(temporary, `${JSON.stringify(next, null, 2)}\n`, "utf8")
     renameSync(temporary, target)
+    cacheRuntimeState(root, next)
     return next
   } catch (error) {
     try {
@@ -332,6 +341,20 @@ function cleanID(value: unknown): string | null {
   if (typeof value !== "string") return null
   const trimmed = value.trim()
   return trimmed.length === 0 || trimmed.length > 128 ? null : trimmed
+}
+
+function cacheRuntimeState(root: string, state: RuntimeState): void {
+  const fingerprint = fileFingerprint(runtimeStatePath(root))
+  if (fingerprint) runtimeStateCache.set(root, { fingerprint, state })
+}
+
+function fileFingerprint(path: string): string | null {
+  try {
+    const stats = statSync(path)
+    return `${stats.ino}:${stats.size}:${stats.mtimeMs}`
+  } catch {
+    return null
+  }
 }
 
 function cleanText(value: unknown, maxLength = 500): string | null {

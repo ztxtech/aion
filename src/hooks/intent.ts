@@ -12,7 +12,7 @@
  * fragments consumed by the system-transform hook.
  */
 import type { AionIntent } from "./types"
-import { readFileSync, existsSync } from "node:fs"
+import { readFileSync, existsSync, statSync } from "node:fs"
 import { join } from "node:path"
 import { AION_CORE_RULES, AION_WEBSEARCH_RULES, AION_EXPERIMENT_RULES } from "../prompts/rules"
 import { AION_GOVERNANCE_HEADER } from "../prompts/governance"
@@ -53,6 +53,8 @@ const ANALYZE_KEYWORDS = [
   "inspect", "render", "illustrate", "summarize", "diagnose", "diagnosis",
   "report", "outline",
 ]
+
+const workspaceCache = new Map<string, { fingerprint: string; initialized: boolean }>()
 
 export function detectIntent(text: string): AionIntent {
   const lower = text.toLowerCase()
@@ -167,13 +169,24 @@ export function getIntentContext(intent: AionIntent): string {
 }
 
 export function checkWorkspaceInitialized(directory: string): boolean {
-  const indicatorFiles = [
-    join(directory, ".opencode", "memory", "progress.md"),
-  ]
-  const progressContent = existsSync(indicatorFiles[0])
-    ? readFileSync(indicatorFiles[0], "utf-8").trim()
+  const progressPath = join(directory, ".opencode", "memory", "progress.md")
+  let fingerprint: string | null = null
+  try {
+    const stats = statSync(progressPath)
+    fingerprint = `${stats.ino}:${stats.size}:${stats.mtimeMs}`
+  } catch {
+    fingerprint = "missing"
+  }
+
+  const cached = workspaceCache.get(directory)
+  if (cached && cached.fingerprint === fingerprint) return cached.initialized
+
+  const progressContent = existsSync(progressPath)
+    ? readFileSync(progressPath, "utf-8").trim()
     : ""
-  return progressContent.length > 0 && !progressContent.includes("(pending workspace-init)")
+  const initialized = progressContent.length > 0 && !progressContent.includes("(pending workspace-init)")
+  workspaceCache.set(directory, { fingerprint, initialized })
+  return initialized
 }
 
 export function getWorkspaceInitContext(directory: string): string {

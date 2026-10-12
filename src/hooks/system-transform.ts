@@ -18,10 +18,10 @@ import type { AionPhase } from "../create-managers"
 import { getFullSystemInjection } from "./intent"
 import { info } from "../shared/logger"
 import { readIfExists } from "../shared/logger"
-import { existsSync, readFileSync, statSync } from "node:fs"
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs"
 import { join } from "node:path"
-import { AION_SKILLS, SKILL_AGENT_MAP, TS_BOUND_SKILLS } from "../prompts/skill-registry"
-import { SCHEDULING_MERMAID, resetWorkerProgress } from "../scheduling/state-machine"
+import { AION_SKILLS, TS_BOUND_SKILLS } from "../prompts/skill-registry"
+import { resetWorkerProgress } from "../scheduling/state-machine"
 import { COMPLEXITY_CLASSIFIER_PROMPT } from "../scheduling/complexity"
 import { MAX_EVIDENCE_PROMPT } from "../shared/runtime-control"
 
@@ -55,27 +55,64 @@ const PHASE_BUDGET: Record<AionPhase, { recommended: number; warning: string }> 
   done: { recommended: 2, warning: "Done phase should wrap up quickly." },
 }
 
-const AION_BANNER = `╔══════════════════════════════════════════════════════════════╗
-║  AION — Time-Series Multi-Agent Orchestration Plugin       ║
-║  Phase-driven loop · Governance gates · Anti-leakage       ║
-╚══════════════════════════════════════════════════════════════╝
+const CORE_PROTOCOL_PROMPT = `[AION CORE PROTOCOL]
+Memory: .opencode/memory is the shared cache for all agents except c-critic; read progress, decisions, and negative memory before dispatch and write only through aion_memory_sync. trace.md is append-only. c-critic uses minimal context and may not treat memory as source-of-truth.
+Format: every response starts with [Agent: <name>] Follow: <real active gates>; Current step: <one line>. No deprecated round-count phrases.
+Loop: do not end a turn with only prose; advance state through an AION tool. Stop only when phase=done, c-critic emits approve-stop, pre-stop allows it, and no blocker remains.
+Stop authority: only ts-critic and c-critic may decide stop. TODOs, dispatches, and non-critic wording must use the next concrete action, never stop/finish/task-complete. If stalled, review the todo map and open a useful branch.`
 
-Available subagents (dispatch via \`task\` tool):
-  • requirements-analyst — Task intake, hidden-goal detection
-  • information-collector — External evidence & SOTA search
-  • coder — Implementation, experiments, deliverables
-  • ts-critic — Time-series expert & stop-go governor
-  • c-critic — Final gate, highest authority, cold-start review
+const SCHEDULING_CHAIN = "init -> gather -> ts-pre-review -> implement -> ts-post-review -> c-critic-final -> done; worker next_call may request a bounded backedge; c-critic rejection returns to the requested upstream gate. tool-guard enforces all edges."
 
-Governance order: c-critic > ts-critic > main agent > other subagents
+const LANGUAGE_EFFECT: Record<string, string> = {
+  en: "Use English for reasoning, interaction, and delivery.",
+  "zh-reason-en-deliver": "Use Chinese reasoning/interaction; keep code, APIs, identifiers, and artifacts English.",
+  "zh-deliver": "Use Chinese for delivery and interaction.",
+  bilingual: "Deliver in both Chinese and English.",
+}
 
-Loop lifecycle: init → gather → ts-pre-review → implement → ts-post-review → c-critic-final → done
-                               ↑                                    ↓
-                               └────────── loop-back ←─────────────┘
+const ENVIRONMENT_CACHE = new Map<string, { fingerprint: string; prompt: string | null }>()
 
-Current phase will be shown in every turn. You MUST follow the phase-specific instructions.`
+function fingerprintEnvironment(directory: string): string {
+  const watched = [
+    join(directory, ".opencode", "agents"),
+    join(directory, "opencode.json"),
+    join(directory, ".opencode", "aion.jsonc"),
+    join(directory, ".opencode", "plugins"),
+    join(directory, ".opencode", "skills"),
+  ]
+
+  return watched.map((path) => {
+    try {
+      const stats = statSync(path)
+      return `${path}:${stats.ino}:${stats.size}:${stats.mtimeMs}`
+    } catch {
+      return `${path}:missing`
+    }
+  }).join("|")
+}
+
+function readOpencodeConfig(path: string): Record<string, unknown> | null {
+  if (!existsSync(path)) return null
+  try {
+    const stripped = readFileSync(path, "utf-8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/.*$/gm, "")
+    const parsed = JSON.parse(stripped)
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : null
+  } catch {
+    return null
+  }
+}
+
+const AION_BANNER = "[AION] Time-series multi-agent orchestration with governance gates and anti-leakage. Agents: requirements-analyst, information-collector, coder, ts-critic, c-critic. Authority: c-critic > ts-critic > main agent > workers."
 
 function discoverEnvironment(directory: string): string | null {
+  const fingerprint = fingerprintEnvironment(directory)
+  const cached = ENVIRONMENT_CACHE.get(directory)
+  if (cached && cached.fingerprint === fingerprint) return cached.prompt
+
   const sections: string[] = []
 
   // 1. Discover agent definitions
@@ -83,7 +120,6 @@ function discoverEnvironment(directory: string): string | null {
   const agentsDir = join(directory, ".opencode", "agents")
   if (existsSync(agentsDir)) {
     try {
-      const { readdirSync } = require("node:fs")
       const files = readdirSync(agentsDir)
       for (const f of files) {
         if (f.endsWith(".md") || f.endsWith(".markdown")) {
@@ -98,18 +134,10 @@ function discoverEnvironment(directory: string): string | null {
 
   // Parse opencode.json for additional agent names
   const ocJsonPath = join(directory, "opencode.json")
-  if (existsSync(ocJsonPath)) {
-    try {
-      const raw = readFileSync(ocJsonPath, "utf-8")
-      const stripped = raw.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "")
-      const parsed = JSON.parse(stripped)
-      if (parsed && typeof parsed === "object" && parsed.agent && !Array.isArray(parsed.agent)) {
-        for (const name of Object.keys(parsed.agent as Record<string, unknown>)) {
-          if (!agents.includes(name)) agents.push(name)
-        }
-      }
-    } catch {
-      // ignore parse errors
+  const opencodeConfig = readOpencodeConfig(ocJsonPath)
+  if (opencodeConfig?.agent && !Array.isArray(opencodeConfig.agent)) {
+    for (const name of Object.keys(opencodeConfig.agent as Record<string, unknown>)) {
+      if (!agents.includes(name)) agents.push(name)
     }
   }
 
@@ -120,7 +148,6 @@ function discoverEnvironment(directory: string): string | null {
   const pluginsDir = join(directory, ".opencode", "plugins")
   if (existsSync(pluginsDir)) {
     try {
-      const { readdirSync } = require("node:fs")
       const files = readdirSync(pluginsDir)
       for (const f of files) {
         if (f === "aion" && statSync(join(pluginsDir, f)).isDirectory()) {
@@ -139,49 +166,24 @@ function discoverEnvironment(directory: string): string | null {
 
   // 3. MCP servers
   const mcpServers: string[] = []
-  if (existsSync(ocJsonPath)) {
-    try {
-      const raw = readFileSync(ocJsonPath, "utf-8")
-      const stripped = raw.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "")
-      const parsed = JSON.parse(stripped)
-      if (parsed && typeof parsed === "object" && parsed.mcp_servers && !Array.isArray(parsed.mcp_servers)) {
-        for (const name of Object.keys(parsed.mcp_servers as Record<string, unknown>)) {
-          mcpServers.push(name)
-        }
-      }
-    } catch {
-      // ignore
+  if (opencodeConfig?.mcp_servers && !Array.isArray(opencodeConfig.mcp_servers)) {
+    for (const name of Object.keys(opencodeConfig.mcp_servers as Record<string, unknown>)) {
+      mcpServers.push(name)
     }
   }
 
-  // 4. Skills from .opencode/skills/ (local) + ~/.config/opencode/skills/ (global)
+  // Local skills are enough here. OpenCode already resolves global skills and
+  // scanning HOME on every project would add IO and duplicate prompt text.
   const skills: string[] = []
   const skillsDir = join(directory, ".opencode", "skills")
   if (existsSync(skillsDir)) {
     try {
-      const { readdirSync } = require("node:fs")
       const entries = readdirSync(skillsDir, { withFileTypes: true })
       for (const entry of entries) {
         if (entry.isDirectory()) {
           skills.push(entry.name)
         } else if (entry.name.endsWith(".md")) {
           skills.push(entry.name.replace(/\.md$/, ""))
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }
-  const globalSkillsDir = join(process.env.HOME || "/tmp", ".config", "opencode", "skills")
-  if (existsSync(globalSkillsDir)) {
-    try {
-      const { readdirSync } = require("node:fs")
-      const entries = readdirSync(globalSkillsDir, { withFileTypes: true })
-      for (const entry of entries) {
-        if (entry.isDirectory() && !skills.includes(entry.name)) {
-          skills.push(entry.name + " (global)")
-        } else if (entry.name.endsWith(".md") && !skills.includes(entry.name.replace(/\.md$/, ""))) {
-          skills.push(entry.name.replace(/\.md$/, "") + " (global)")
         }
       }
     } catch {
@@ -203,28 +205,21 @@ function discoverEnvironment(directory: string): string | null {
     sections.push(`Skills (directories): ${skills.join(", ")}`)
   }
 
-  // 5. Skills with descriptions (from built-in registry)
-  const availableSkills = AION_SKILLS.filter((s) => s.name !== "template")
-  const skillLines = availableSkills.map(
-    (s) => `- **${s.name}**: ${s.description} (trigger: ${s.trigger})`,
-  )
-  sections.push("")
-  sections.push("## Available AION Skills (invoke via skill tool or reference in dispatch prompts)")
-  sections.push(skillLines.join("\n"))
+  sections.push(`AION skills: ${AION_SKILLS.filter((s) => s.name !== "template").map((s) => s.name).join(", ")}`)
+  sections.push(`Time-series-bound skills: ${TS_BOUND_SKILLS.join(", ")}`)
 
-  // 6. Time-series binding section
-  sections.push("")
-  sections.push(`## Time-Series Bound Skills (MUST be referenced when task involves time-series, forecasting, signal analysis, or temporal data)`)
-  sections.push(TS_BOUND_SKILLS.map((s) => `- ${s}`).join(", "))
-  sections.push("When the task involves time-series as a major dimension, you MUST reference these skills in your dispatch prompts and apply their rules throughout the flow.")
-
-  if (sections.length === 0) return null
-  return `[AION ENVIRONMENT — Available in this OpenCode session]\n${sections.join("\n")}\n\nYou MAY use any of these agents, MCP servers, and skills to accomplish the task. Subagents have full access to the \`skill\` tool (and MCP servers, bash, websearch, webfetch, etc.) — do NOT pre-load skill content yourself and stuff it into dispatch prompts. Instead, tell subagents which skills are relevant and let them call \`skill()\` on demand. This keeps your context clean and lets subagents load exactly what they need.`
+  const prompt = `[AION ENVIRONMENT - OpenCode session]\n${sections.join("\n")}\nUse these resources through native tools. Tell subagents which skills apply and let them call skill() on demand; do not paste skill content into dispatch prompts.`
+  ENVIRONMENT_CACHE.set(directory, { fingerprint, prompt })
+  return prompt
 }
 
 export function createSystemTransformHook(args: CreateHooksArgs): AionSystemTransformHook {
   const { ctx, managers } = args
   let bannerShown = false
+  const todoCache: { fingerprint: string | null; injection: string | null } = {
+    fingerprint: null,
+    injection: null,
+  }
 
   return async function onSystemTransform(input, output) {
     const { sessionID, model } = input
@@ -244,17 +239,21 @@ export function createSystemTransformHook(args: CreateHooksArgs): AionSystemTran
       bannerShown = true
     }
 
-    const injections = getFullSystemInjection(
-      ctx.directory,
-      intent,
-      sessionID,
-    )
+    const injections: string[] = []
 
-    // === Environment discovery: inject available skills, MCP servers, and agents ===
+    // Stable context comes first so provider prompt caches see a stable prefix.
     const envInfo = discoverEnvironment(ctx.directory)
     if (envInfo) {
       injections.push(envInfo)
     }
+    injections.push(CORE_PROTOCOL_PROMPT)
+
+    injections.push(...getFullSystemInjection(
+      ctx.directory,
+      intent,
+      sessionID,
+    )
+    )
 
     // === Complexity classifier prompt (injected once at round 1) ===
     // Per devnotes/proposals/2026-07-08-dynamic-complexity-scheduler.md,
@@ -289,31 +288,6 @@ export function createSystemTransformHook(args: CreateHooksArgs): AionSystemTran
       )
     }
 
-    // === Shared cache protocol: enforce read/write of .opencode/memory/ + trace.md across agents ===
-    const sharedCacheProtocol = `[AION SHARED CACHE PROTOCOL — APPLIES TO ALL AGENTS EXCEPT c-critic]
-\`\`\`
-.opencode/memory/  = shared whiteboard / cache (READ + WRITE for all agents except c-critic)
-.opencode/trace.md  = shared event bus       (append-only, all agents can append)
-\`\`\`
-
-- ALL agents (main, requirements-analyst, information-collector, coder, ts-critic) have READ access to all .opencode/memory/ files.
-- ALL agents have WRITE access via the \`aion_memory_sync\` tool. Going through this tool is the only sanctioned write path for memory files (do NOT use the generic \`write\` tool on .opencode/memory/).
-- trace.md is appended via the trace system — never overwrite it with the generic \`write\` tool.
-- Before dispatching a subagent, READ the latest .opencode/memory/progress.md + decisions.md + negative.md and pass a 1-2 sentence summary in the dispatch prompt. This avoids the subagent re-deriving context that already exists.
-- When a subagent reports back, EXTRACT any new findings and append them to the relevant memory artifact via aion_memory_sync so the NEXT round inherits the knowledge.
-- c-critic is the EXCEPTION: it runs under minimal context and may NOT use memory files as source-of-truth.`
-    injections.push(sharedCacheProtocol)
-    // === C. Debug prefix enforcement ===
-    const debugPrefix = `[AION FORMAT RULE] Every response MUST start with: [Agent: <your-name>] Follow: <active rules/skills>; Current step: <one-line note>. The Follow field must only contain real active gates (e.g. ts-critic, rebuttal, core). Do NOT include deprecated phrases like "minimum rounds" or "default three rounds". Keep the prefix short and grep-able.`
-
-    // === Loop control: NEVER stop unless c-critic approves ===
-    const noStopRule = `[AION LOOP CONTROL — CRITICAL]
-You are inside an autonomous multi-agent loop. You MUST NOT end your turn without calling at least one tool. Every response MUST end with a tool call (aion_todo_update, aion_memory_sync, aion_compaction, task, etc.). The loop will NOT stop unless ALL of these conditions are true:
-  1. Phase is "done"
-  2. c-critic has explicitly output "approve-stop" via aion_critic_verdict
-  3. aion_pre_stop_gate returned allowStop=true
-  4. No open governance blockers exist
-If you have nothing left to do in this phase, call aion_todo_update(action="update-state") or aion_memory_sync to advance state. NEVER output a plain text conclusion without a tool call. If you are stuck, call aion_todo_update(action="get") to review the plan.`
     // === Language: session-start question OR config-default fallback ===
     // The LLM is supposed to ask the user via the 'question' tool on round 1.
     // The user's answer triggers aion_set_language, which resolves the state
@@ -351,13 +325,7 @@ GRACEFUL DEGRADE: if the 'question' tool is unavailable in this environment (e.g
 
     // === Language: inject directive every turn ===
     const langMode = managers.language.getMode()
-    const langEffectMap: Record<string, string> = {
-      "en": "Use English everywhere — reasoning, interaction, delivery.",
-      "zh-reason-en-deliver": "Use Chinese for interaction and reasoning. Final code, API names, variable names, and delivery artifacts must be in English.",
-      "zh-deliver": "Use Chinese for all delivery and interaction.",
-      "bilingual": "Deliver in both Chinese and English.",
-    }
-    const langDirective = `[AION LANGUAGE] ${langEffectMap[langMode] ?? langEffectMap["en"]}`
+    const langDirective = `[AION LANGUAGE] ${LANGUAGE_EFFECT[langMode] ?? LANGUAGE_EFFECT.en}`
     injections.push(langDirective)
 
     // === Interactive mode: session-start MANDATORY question ===
@@ -457,48 +425,39 @@ The user chose 'stop'. You MUST now finalize:
       }
     }
 
-    injections.push(debugPrefix)
-    injections.push(noStopRule)
-
-    // === Anti-stop contamination: ONLY critics know "stop". All other agents loop forever. ===
-    const antiStopRule = `[AION ANTI-STOP CONTAMINATION — CRITICAL]
-The concept of "stopping" does NOT exist for you, the main agent, or any subagent except ts-critic and c-critic. ONLY critics can decide to stop. You and all subagents operate under the assumption that the loop NEVER ends — you always have more work to do, more branches to explore, more evidence to gather.
-
-Rules:
-1. TODO items MUST NOT contain ANY of these words: end, stop, wrap up, delivery complete, finalize, close out, finish up, all done, nothing left, no more work, task complete. If you catch yourself writing any of these in a TODO, DELETE it immediately and replace with a concrete NEXT ACTION (e.g., "run ablation on model X", "search for method family Y", "plot residuals for experiment Z").
-2. When you think "we're almost done", that is a signal to call brain-storm to OPEN NEW ROUTES, not to wind down. The loop WIDENS near the end, never narrows.
-3. "No more work to do" is NEVER true. If you cannot think of what to do next, call aion_todo_update(action="get") to review the plan, then call brain-storm or deep-reasoning to find new branches.
-4. Your dispatch prompts to subagents MUST NOT say "this is the last round" or "we're wrapping up". Every dispatch should read as if the loop has 10 more rounds to go.
-5. Only ts-critic and c-critic may use the words "stop", "allow-stop", "approve-stop", "reject-stop". These words are FORBIDDEN in your own reasoning and in any TODO content.`
-    injections.push(antiStopRule)
-
     // === TODO map as driving plan ===
-    const todoContent = readIfExists(managers.workspace.todoMapPath())
-    if (todoContent && todoContent.length > 50) {
-      const todoLines = todoContent.split("\n")
-      const summaryLines = todoLines.filter((l) => l.match(/^[-*]\s*(Total|Done|In-progress|Todo):/) || l.match(/^####\s*TODO-/))
-      if (summaryLines.length > 0) {
-        injections.push(
-          `[AION TODO MAP — THIS IS YOUR DRIVING PLAN]\nThe todo-map IS the execution plan. You MUST follow it step by step. After each subagent reportback, call aion_todo_update to reflect progress. If a subagent found new gaps or suggested next steps, call aion_todo_update(action="add-from-reportback") to expand the plan.\n\n${summaryLines.join("\n")}`,
-        )
-      }
-    } else {
-      injections.push(
-        `[AION TODO MAP] No plan steps exist yet. You MUST create the initial plan: call aion_todo_update(action="add", plan_step="...") for each major step after requirements-analyst reports back.`,
-      )
+    const todoPath = managers.workspace.todoMapPath()
+    let nextTodoFingerprint: string
+    try {
+      const stats = statSync(todoPath)
+      nextTodoFingerprint = `${stats.ino}:${stats.size}:${stats.mtimeMs}`
+    } catch {
+      nextTodoFingerprint = "missing"
     }
+    if (nextTodoFingerprint !== todoCache.fingerprint) {
+      const todoContent = readIfExists(todoPath)
+      if (todoContent && todoContent.length > 50) {
+        const summaryLines = todoContent.split("\n").filter((line) =>
+          /^[-*]\s*(Total|Done|In-progress|Todo):/.test(line) || /^####\s*TODO-/.test(line),
+        )
+        todoCache.injection = summaryLines.length > 0
+          ? `[AION TODO MAP]\n${summaryLines.join("\n")}`
+          : null
+      } else {
+        todoCache.injection = "[AION TODO MAP] No plan exists yet. Create major steps with aion_todo_update(action=\"add\") after requirements-analyst reports."
+      }
+      todoCache.fingerprint = nextTodoFingerprint
+    }
+    if (todoCache.injection) injections.push(todoCache.injection)
 
     const phaseHint = PHASE_SYSTEM_HINTS[phase]
     if (phaseHint) {
       injections.push(phaseHint)
     }
 
-    // === Serial-loop scheduling diagram (injected once per session) ===
-    // The Mermaid diagram is the canonical description of legal transitions.
-    // We inject it every turn alongside the phase hint so the LLM always has
-    // it in context. The G1 hook backs it up with hard edge checks.
+    // The compact chain is enough for planning; tool-guard still enforces edges.
     if (phase !== "done") {
-      injections.push(`[AION SCHEDULING — Serial-Loop State Machine]\n${SCHEDULING_MERMAID}`)
+      injections.push(`[AION SCHEDULING] ${SCHEDULING_CHAIN}`)
     }
 
     // === Reset worker progress on loop-back ===
