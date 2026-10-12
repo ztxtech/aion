@@ -21,10 +21,12 @@ import { nowIso } from "../shared/utils"
 type TodoState = PlanState
 type TodoItem = PlanItem
 
-let todoCounter = 0
-
 function parseTodoMap(content: string): TodoItem[] {
   return parsePlanMap(content)
+}
+
+function planField(name: string, value: string | number) {
+  return `- ${name}:${value === "" ? "" : ` ${value}`}`
 }
 
 function serializeTodoMap(items: TodoItem[], blockers: string[]): string {
@@ -32,19 +34,19 @@ function serializeTodoMap(items: TodoItem[], blockers: string[]): string {
     ? items.map((item) => {
         return `#### ${item.id}
 
-- Plan step: ${item.planStep}
-- branch_id: ${item.branchId}
-- Wave: ${item.wave}
-- Owner: ${item.owner}
+${planField("Plan step", item.planStep)}
+${planField("branch_id", item.branchId)}
+${planField("Wave", item.wave)}
+${planField("Owner", item.owner)}
 - State: **${item.state}**
-- Frontier state: ${item.frontierState}
-- Compare gate: ${item.compareGate}
-- Update trigger: ${item.updateTrigger}
-- Rollback rule: ${item.rollbackRule}
-- Loop handoff: ${item.loopHandoff}
-- Depends on: ${item.dependsOn.join(", ")}
-- added: ${item.addedAt}
-- updated: ${item.updatedAt}`
+${planField("Frontier state", item.frontierState)}
+${planField("Compare gate", item.compareGate)}
+${planField("Update trigger", item.updateTrigger)}
+${planField("Rollback rule", item.rollbackRule)}
+${planField("Loop handoff", item.loopHandoff)}
+${planField("Depends on", item.dependsOn.join(", "))}
+${planField("added", item.addedAt)}
+${planField("updated", item.updatedAt)}`
       }).join("\n\n")
     : "(no items yet)"
 
@@ -117,15 +119,20 @@ export function createTodoTools(args: CreateToolsArgs): AionToolMap {
 
         const existing = readIfExists(todoPath) ?? ""
         let items = parseTodoMap(existing)
+        let todoCounter = Math.max(
+          0,
+          ...items.map((item) => Number.parseInt(item.id.slice("TODO-".length), 10) || 0),
+        )
 
         if (action === "add" || action === "add-from-reportback") {
           const newItems: TodoItem[] = []
 
+          const nextId = `TODO-${(todoCounter + 1).toString().padStart(3, "0")}`
+          if (action === "add" && dependsOn.includes(nextId)) {
+            return JSON.stringify({ error: "depends_on cannot reference the new item" }, null, 2)
+          }
           if (dependsOn.some((id) => !items.some((item) => item.id === id))) {
             return JSON.stringify({ error: "depends_on contains an unknown TODO ID" }, null, 2)
-          }
-          if (dependsOn.includes(`TODO-${(items.length + 1).toString().padStart(3, "0")}`)) {
-            return JSON.stringify({ error: "depends_on cannot reference the new item" }, null, 2)
           }
 
           if (action === "add" && planStep) {

@@ -17,7 +17,6 @@ import {
   type PlanGraph,
 } from "../shared/plan-graph"
 import {
-  AION_TEXT_LOGO,
   agentGraphView,
   executionLayerRows,
   type BoardNode,
@@ -40,7 +39,8 @@ import {
 } from "../shared/toast-queue"
 
 const AION_STATUS_HINT = "ctrl+g AION board · ctrl+p commands"
-const ZTXTECH_LOGO_URL = "https://ztxtech.github.io/images/brand/ztxtech-logo.png"
+const ZTXTECH_LOGO_TEXT = "ZTXTECH"
+const ZTXTECH_LOGO_FONT = "block"
 
 type BoardPalette = {
   base: RGBA
@@ -112,6 +112,20 @@ function mark(state: PlanGraph["items"][number]["state"]) {
   return state === "done" ? "[x]" : state === "in-progress" ? "[~]" : "[ ]"
 }
 
+function agentStateIcon(state: BoardNode["state"]) {
+  return state === "done"
+    ? "✓"
+    : state === "active"
+      ? "●"
+      : state === "blocked"
+        ? "✗"
+        : "○"
+}
+
+function agentListLine(node: BoardNode) {
+  return `${agentStateIcon(node.state)} ${node.id} · ${node.lines[2]}`
+}
+
 function Board(props: {
   graph: () => PlanGraph
   callGraph: () => CallGraphState
@@ -140,8 +154,6 @@ function Board(props: {
     graph().items.find((item) => item.state === "todo") ??
     graph().items[0]
   const [tick, setTick] = createSignal(0)
-  const [logoFailed, setLogoFailed] = createSignal(false)
-  const [logoReady, setLogoReady] = createSignal(false)
   const timer = setInterval(() => setTick((value) => value + 1), 280)
 
   onCleanup(() => {
@@ -155,6 +167,9 @@ function Board(props: {
       columns: 92,
       tick: tick(),
     }),
+  )
+  const agentRows = createMemo(() =>
+    agentGraph().rows.flatMap((row) => row.nodes),
   )
 
   const nodeColor = (node: BoardNode) =>
@@ -231,33 +246,17 @@ function Board(props: {
             flexDirection="column"
             flexShrink={0}
             marginTop={1}
-            minWidth={24}
-            minHeight={4}
+            minWidth={56}
+            minHeight={6}
             alignItems="center"
             justifyContent="center"
           >
-            <Show
-              when={logoReady() && !logoFailed()}
-              fallback={
-                <For each={AION_TEXT_LOGO}>
-                  {(line) => (
-                    <text fg={props.palette.accent} wrapMode="none">
-                      {line}
-                    </text>
-                  )}
-                </For>
-              }
-            >
-              <image
-                source={ZTXTECH_LOGO_URL}
-                fit="fit"
-                protocol="blocks"
-                width={24}
-                height={4}
-                onLoad={() => setLogoReady(true)}
-                onError={() => setLogoFailed(true)}
-              />
-            </Show>
+            <ascii_font
+              text={ZTXTECH_LOGO_TEXT}
+              font={ZTXTECH_LOGO_FONT}
+              color={props.palette.accent}
+              selectable={false}
+            />
           </box>
         </box>
       </box>
@@ -311,7 +310,7 @@ function Board(props: {
         >
           <box
             flexDirection="column"
-          flexShrink={0}
+            flexShrink={0}
             borderStyle="rounded"
             borderColor={props.palette.border}
             title=" EXECUTION DAG "
@@ -362,55 +361,22 @@ function Board(props: {
           </box>
         </Show>
 
-        <Show when={agentGraph().rows.length > 0}>
+        <Show when={agentRows().length > 0}>
           <box
             flexDirection="column"
             flexShrink={0}
             borderStyle="rounded"
             borderColor={props.palette.accent}
-            title=" AGENT GRAPH "
+            title=" AGENT ACTIVITY "
             titleAlignment="left"
             paddingLeft={1}
             paddingRight={1}
-            gap={1}
           >
-            <For each={agentGraph().rows}>
-              {(row) => (
-                <box flexDirection="column" flexShrink={0} minWidth={0}>
-                  <box flexDirection="row" gap={agentGraph().gap} flexShrink={0} minWidth={0}>
-                    <For each={row.nodes}>
-                      {(node) => (
-                        <box
-                          flexDirection="column"
-                          flexShrink={0}
-                          width={agentGraph().nodeWidth}
-                          borderStyle="rounded"
-                          borderColor={nodeColor(node)}
-                          paddingLeft={1}
-                          paddingRight={1}
-                        >
-                          <For each={node.lines}>
-                            {(line) => (
-                              <text fg={nodeColor(node)} wrapMode="none">
-                                {line}
-                              </text>
-                            )}
-                          </For>
-                        </box>
-                      )}
-                    </For>
-                  </box>
-                  <For each={row.connectors}>
-                    {(line) => (
-                      <text
-                        fg={row.active ? props.palette.active : props.palette.border}
-                        wrapMode="none"
-                      >
-                        {line || " "}
-                      </text>
-                    )}
-                  </For>
-                </box>
+            <For each={agentRows()}>
+              {(node) => (
+                <text fg={nodeColor(node)} wrapMode="none">
+                  {agentListLine(node)}
+                </text>
               )}
             </For>
             <text fg={props.palette.muted} wrapMode="none">
@@ -900,4 +866,9 @@ export default Plugin.define({
   },
 })
 
-export { AION_STATUS_HINT, ZTXTECH_LOGO_URL }
+export {
+  AION_STATUS_HINT,
+  ZTXTECH_LOGO_FONT,
+  ZTXTECH_LOGO_TEXT,
+  agentListLine,
+}

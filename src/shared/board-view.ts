@@ -22,11 +22,6 @@ export type ExecutionBoard = {
   gap: number
 }
 
-export const AION_TEXT_LOGO = [
-  "ZTXTECH",
-  "AION",
-] as const
-
 type LayoutOptions = {
   columns?: number
   nodeWidth?: number

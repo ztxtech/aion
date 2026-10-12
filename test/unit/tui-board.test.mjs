@@ -83,10 +83,20 @@ function createContext(root, registrations = { routes: [], slots: [] }) {
 }
 
 describe("AION TUI plan watcher", () => {
-  it("uses the ZTXTECH logo asset and a stable text fallback", () => {
+  it("uses a text-only ZTXTECH logo", () => {
+    assert.equal(tuiBundle.ZTXTECH_LOGO_TEXT, "ZTXTECH");
+    assert.equal(tuiBundle.ZTXTECH_LOGO_FONT, "block");
+  });
+
+  it("formats agent activity as a compact state list", () => {
     assert.equal(
-      tuiBundle.ZTXTECH_LOGO_URL,
-      "https://ztxtech.github.io/images/brand/ztxtech-logo.png",
+      tuiBundle.agentListLine({
+        id: "information-collector",
+        label: "information-collector",
+        state: "active",
+        lines: ["● information-collector", "evidence", "2↑ · 1↓"],
+      }),
+      "● information-collector · 2↑ · 1↓",
     );
   });
 

@@ -279,13 +279,29 @@ describe("coverage: aion_workspace_init — full branch coverage", async () => {
     assert.ok(existsSync(p));
   });
 
-  it("is idempotent: calling twice does not throw and the second overwrites", async () => {
+  it("is idempotent and preserves prompts and TODO items across repeated init", async () => {
     const r1 = await result.tool.aion_workspace_init.execute({ initial_prompt: "first" }, {});
+    await result.tool.aion_todo_update.execute({
+      action: "add",
+      plan_step: "preserve this plan step",
+      owner: "coder",
+    }, {});
     const r2 = await result.tool.aion_workspace_init.execute({ initial_prompt: "second" }, {});
     assert.ok(r1.includes("workspace initialized"));
     assert.ok(r2.includes("workspace initialized"));
     const c = readFileSync(join(tmp, ".opencode", "memory", "initial-prompt.md"), "utf-8");
+    assert.ok(c.includes("first"));
     assert.ok(c.includes("second"));
+    const todo = readFileSync(join(tmp, ".opencode", "memory", "todo-map.md"), "utf-8");
+    assert.ok(todo.includes("preserve this plan step"));
+  });
+
+  it("preserves a nonempty TODO map even when its format is unexpected", async () => {
+    const todoPath = join(tmp, ".opencode", "memory", "todo-map.md");
+    writeFileSync(todoPath, "# TODO Map\n\npreserve this unexpected map\n");
+    await result.tool.aion_workspace_init.execute({ initial_prompt: "third" }, {});
+    const todo = readFileSync(todoPath, "utf-8");
+    assert.ok(todo.includes("preserve this unexpected map"));
   });
 
   it("handles missing optional task_goal/evaluation/non_goals gracefully", async () => {

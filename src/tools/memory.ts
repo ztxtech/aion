@@ -13,6 +13,7 @@ import { tool } from "../plugin/tool"
 import type { CreateToolsArgs } from "./_shared"
 import type { AionToolMap } from "./types"
 import { appendToFile, ensureDir, writeFileEnsuringDir, readIfExists } from "../shared/logger"
+import { parsePlanMap } from "../shared/plan-graph"
 import { nowIso } from "../shared/utils"
 
 export function createMemoryTools(args: CreateToolsArgs): AionToolMap {
@@ -116,22 +117,36 @@ export function createMemoryTools(args: CreateToolsArgs): AionToolMap {
         ensureDir(m.workspace.memoryDir())
 
         const initialPath = m.workspace.initialPromptPath()
-        const initialContent = `# Initial Prompt (anti-drift baseline)\n\n> append-only. do not overwrite this block.\n\n## Original Prompt\n\n${initialPrompt}\n\n${taskGoal ? `## Task Goal\n\n${taskGoal}\n` : ""}${evaluation ? `## Evaluation\n\n${evaluation}\n` : ""}${nonGoals ? `## Non-Goals\n\n${nonGoals}\n` : ""}`
-        writeFileEnsuringDir(initialPath, initialContent)
+        const promptEntry = `${initialPrompt}\n${taskGoal ? `\nTask goal: ${taskGoal}` : ""}${evaluation ? `\nEvaluation: ${evaluation}` : ""}${nonGoals ? `\nNon-goals: ${nonGoals}` : ""}`
+        const existingInitialPrompt = readIfExists(initialPath)
+        if (existingInitialPrompt) {
+          appendToFile(initialPath, `\n## Prompt Entry ${nowIso()}\n\n${promptEntry}\n`)
+        } else {
+          writeFileEnsuringDir(initialPath, `# Initial Prompt (anti-drift baseline)\n\n> append-only. do not overwrite this block.\n\n## Original Prompt\n\n${promptEntry}\n`)
+        }
 
         const snapshotPath = m.workspace.snapshotPath()
         const snapshot = `# Context Snapshot\n\n_generated: ${nowIso()}_\n\n## Task Anchors\n\n- goal: ${taskGoal ?? "(unset)"}\n- evaluation: ${evaluation ?? "(unset)"}\n- non_goals: ${nonGoals ?? "(unset)"}\n\n## Current Phase\n\n- phase: workspace-init\n- round: 0\n\n## Explicit Constraints\n\n- governance: c-critic > ts-critic > main agent > other subagents\n- leakage: hard-blocked (future info / hidden-set / credentials / prompts / memory)\n- stops: only allow-stop lifts the no-stop order\n\n## Most Obvious Gaps\n\n- (no gaps yet)\n\n## Default Next-Dispatch Focus\n\n- requirements-analyst + information-collector in parallel\n`
         writeFileEnsuringDir(snapshotPath, snapshot)
 
+        const todoPath = m.workspace.todoMapPath()
+        const existingTodo = readIfExists(todoPath) ?? ""
+        const existingItems = parsePlanMap(existingTodo)
+        let todoAction = "seeded empty plan"
+        if (existingTodo.trim()) {
+          todoAction = existingItems.length > 0
+            ? `preserved ${existingItems.length} items`
+            : "preserved existing map"
+        } else {
+          writeFileEnsuringDir(todoPath, `# TODO Map\n\n_TODO items must not contain meanings like "end", "stop", "wrap up", or "delivery complete". The last item may only be a review action, next-round entry, or loop-back check._\n\n## Plan-to-TODO Mapping\n\n(no items yet — call aion_todo_update with action="add" to create plan steps)\n\n## Current Blockers\n\n(none)\n\n## Stop / Continue Impact\n\n- Updated at: ${nowIso()}\n- Total items: 0\n- Done: 0\n- In-progress: 0\n- Todo: 0\n`)
+        }
+
         m.trace.appendEvent(
           "file.written",
-          `workspace_init: initial-prompt + context-snapshot + todo-map`,
-          { initialPath, snapshotPath },
+          `workspace_init: initial-prompt + context-snapshot + todo-map (${todoAction})`,
+          { initialPath, snapshotPath, todoPath },
           "main-agent",
         )
-
-        const todoPath = m.workspace.todoMapPath()
-        writeFileEnsuringDir(todoPath, `# TODO Map\n\n_TODO items must not contain meanings like "end", "stop", "wrap up", or "delivery complete". The last item may only be a review action, next-round entry, or loop-back check._\n\n## Plan-to-TODO Mapping\n\n(no items yet — call aion_todo_update with action="add" to create plan steps)\n\n## Current Blockers\n\n(none)\n\n## Stop / Continue Impact\n\n- Updated at: ${nowIso()}\n- Total items: 0\n- Done: 0\n- In-progress: 0\n- Todo: 0\n`)
 
         return `workspace initialized: ${initialPath}, ${snapshotPath}, ${todoPath}`
       },

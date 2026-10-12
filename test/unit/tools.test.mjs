@@ -406,6 +406,14 @@ describe("tools: aion_todo_update", async () => {
     assert.ok(parsed.totalItems >= 1);
   });
 
+  it("serializes empty fields without trailing whitespace", async () => {
+    const content = readFileSync(
+      join(tmp, ".opencode", "memory", "todo-map.md"),
+      "utf-8",
+    );
+    assert.equal(content.split("\n").some((line) => /\s$/.test(line)), false);
+  });
+
   it("stores and returns explicit dependencies", async () => {
     const firstOutput = await result.tool.aion_todo_update.execute({
       action: "add",
@@ -607,6 +615,48 @@ describe("tools: aion_todo_update", async () => {
     const rbParsed = JSON.parse(rbOutput);
     assert.ok(rbParsed.rolledBack.includes(parentId), `parent should be rolled back: ${JSON.stringify(rbParsed.rolledBack)}`);
     assert.ok(rbParsed.plan_items, "should have plan_items");
+  });
+});
+
+describe("tools: aion_todo_update ID recovery", async () => {
+  const tmp = createTmp();
+  let result;
+
+  before(async () => { result = await createPlugin(tmp); });
+  after(() => { try { rmSync(tmp, { recursive: true, force: true }); } catch {} });
+
+  it("continues IDs after sparse persisted items and rejects a self-dependency", async () => {
+    const todoPath = join(tmp, ".opencode", "memory", "todo-map.md");
+    mkdirSync(join(tmp, ".opencode", "memory"), { recursive: true });
+    writeFileSync(todoPath, [
+      "# TODO Map",
+      "",
+      "## Plan-to-TODO Mapping",
+      "",
+      "#### TODO-005",
+      "",
+      "- Plan step: persisted sparse item",
+      "- branch_id: main",
+      "- Wave: 1",
+      "- Owner: coder",
+      "- State: **todo**",
+      "- added: 2026-10-12T00:00:00.000Z",
+      "- updated: 2026-10-12T00:00:00.000Z",
+      "",
+    ].join("\n"));
+
+    const selfDependency = JSON.parse(await result.tool.aion_todo_update.execute({
+      action: "add",
+      plan_step: "must reject self dependency",
+      depends_on: ["TODO-006"],
+    }, {}));
+    assert.equal(selfDependency.error, "depends_on cannot reference the new item");
+
+    const added = JSON.parse(await result.tool.aion_todo_update.execute({
+      action: "add",
+      plan_step: "next recovered item",
+    }, {}));
+    assert.equal(added.added[0].id, "TODO-006");
   });
 });
 
