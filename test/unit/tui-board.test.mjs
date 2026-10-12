@@ -38,6 +38,135 @@ function writeTodoMap(root, content) {
 }
 
 describe("AION TUI plan watcher", () => {
+  it("exposes blockers beside the plan graph", async () => {
+    const root = createProject();
+    const board = tuiBundle.watchPlanGraph(root);
+
+    try {
+      mkdirSync(join(root, ".opencode", "memory"), { recursive: true });
+      writeTodoMap(
+        root,
+        `# TODO Map
+
+#### TODO-001 First
+
+- Plan step: First
+- Depends on:
+
+## Current Blockers
+
+- Evidence gate needs a second seeded run.
+`,
+      );
+
+      await waitFor(() => board.graph().items.length === 1);
+      await waitFor(() => board.blockers().length === 1);
+      assert.match(board.blockers()[0], /Evidence gate/);
+    } finally {
+      board.dispose();
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("reads execution mode and active session phase", () => {
+    const root = createProject();
+    mkdirSync(join(root, ".opencode", "memory"), { recursive: true });
+    writeFileSync(
+      join(root, ".opencode", "memory", "runtime-state.json"),
+      JSON.stringify({
+        version: 2,
+        executionMode: "MAX",
+        preferences: { tokenEconomy: "balanced", preserveAcrossSessions: true },
+        activeSessionID: "session-live",
+        sessions: {
+          "session-live": {
+            lastPhase: "implement",
+            phaseReason: "implementation",
+            resumeHint: "Continue TODO-001.",
+            interrupted: true,
+            complexityTier: "FULL",
+          },
+        },
+      }),
+    );
+
+    const runtimeBoard = tuiBundle.watchRuntimeSnapshot(root, () => "session-live");
+    try {
+      const runtime = runtimeBoard.runtime();
+      assert.equal(runtime.mode, "MAX");
+      assert.equal(runtime.phase, "implement");
+      assert.equal(runtime.tier, "FULL");
+      assert.equal(runtime.interrupted, true);
+      assert.equal(runtime.resumeHint, "Continue TODO-001.");
+    } finally {
+      runtimeBoard.dispose();
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("gates auto-open to an unopened session panel", () => {
+    const root = createProject();
+    mkdirSync(join(root, ".opencode", "memory"), { recursive: true });
+    writeTodoMap(
+      root,
+      `# TODO Map
+
+#### TODO-001 First
+
+- Plan step: First
+- State: in-progress
+- Depends on:
+`,
+    );
+    assert.equal(
+      tuiBundle.shouldAutoOpen({
+        hasPlan: true,
+        routeType: "session",
+        armed: true,
+        panelOpen: false,
+      }),
+      true,
+    );
+    assert.equal(
+      tuiBundle.shouldAutoOpen({
+        hasPlan: true,
+        routeType: "session",
+        armed: false,
+        panelOpen: false,
+      }),
+      false,
+    );
+    assert.equal(
+      tuiBundle.shouldAutoOpen({
+        hasPlan: true,
+        routeType: "session",
+        armed: true,
+        panelOpen: true,
+      }),
+      false,
+    );
+    assert.equal(
+      tuiBundle.shouldAutoOpen({
+        hasPlan: false,
+        routeType: "session",
+        armed: true,
+        panelOpen: false,
+      }),
+      false,
+    );
+    assert.equal(
+      tuiBundle.shouldAutoOpen({
+        hasPlan: true,
+        routeType: "other",
+        armed: true,
+        panelOpen: false,
+      }),
+      false,
+    );
+
+    rmSync(root, { recursive: true, force: true });
+  });
+
   it("recovers when plan directories are created after startup", async () => {
     const root = createProject();
     const board = tuiBundle.watchPlanGraph(root);

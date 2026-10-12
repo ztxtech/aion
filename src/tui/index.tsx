@@ -2,7 +2,7 @@ import { watch } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import { existsSync, readFileSync } from "node:fs"
 import { Plugin } from "@opencode/plugin/tui"
-import { For, Show, createSignal } from "solid-js"
+import { For, Show, createEffect, createMemo, createSignal } from "solid-js"
 import type { RGBA } from "@opentui/core"
 import {
   buildPlanGraph,
@@ -15,8 +15,29 @@ import {
   formatRuntimeStatus,
   parseExecutionMode,
   readRuntimeState,
+  sessionRuntimeState,
   setExecutionMode,
 } from "../shared/runtime-control"
+
+type BoardPalette = {
+  base: RGBA
+  muted: RGBA
+  accent: RGBA
+  active: RGBA
+  success: RGBA
+  warning: RGBA
+  danger: RGBA
+  surface: RGBA
+  border: RGBA
+}
+
+type RuntimeSnapshot = {
+  mode: string
+  tier: string
+  phase: string
+  interrupted: boolean
+  resumeHint: string | null
+}
 
 function readGraph(root: string): PlanGraph {
   try {
@@ -30,21 +51,76 @@ function readGraph(root: string): PlanGraph {
   }
 }
 
+function readBlockers(root: string): string[] {
+  try {
+    const content = readFileSync(
+      join(root, ".opencode", "memory", "todo-map.md"),
+      "utf8",
+    )
+    const section = content
+      .split(/^##\s+Current Blockers\s*$/m)[1]
+      ?.split(/^##\s+/m)[0] ?? ""
+    return section
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.startsWith("- ") && line !== "- (none)")
+      .map((line) => line.slice(2))
+  } catch {
+    return []
+  }
+}
+
+function readRuntimeSnapshot(
+  root: string,
+  sessionID?: string | null,
+): RuntimeSnapshot {
+  const state = readRuntimeState(root)
+  const session = sessionRuntimeState(state, sessionID ?? state.activeSessionID)
+  return {
+    mode: state.executionMode,
+    tier: session?.complexityTier ?? "unset",
+    phase: session?.lastPhase ?? "init",
+    interrupted: session?.interrupted ?? false,
+    resumeHint: session?.resumeHint,
+  }
+}
+
 function mark(state: PlanGraph["items"][number]["state"]) {
   return state === "done" ? "[x]" : state === "in-progress" ? "[~]" : "[ ]"
 }
 
 function Board(props: {
   graph: () => PlanGraph
-  muted: RGBA
-  base: RGBA
+  blockers: () => string[]
+  runtime: () => RuntimeSnapshot
+  sessionID: () => string | null
+  palette: BoardPalette
   close?: () => void
 }) {
   const graph = props.graph
-  const done = () =>
-    graph().items.filter((item) => item.state === "done").length
+  const runtime = createMemo(() => props.runtime())
+  const sessionID = createMemo(() => props.sessionID())
+  const done = () => graph().items.filter((item) => item.state === "done").length
   const active = () =>
     graph().items.filter((item) => item.state === "in-progress").length
+  const progress = () => {
+    const total = graph().items.length
+    const width = 12
+    if (total === 0) return `${"░".repeat(width)} 0%`
+    const filled = Math.min(width, Math.max(1, Math.round((done() / total) * width)))
+    const percent = Math.round((done() / total) * 100)
+    return `${"█".repeat(filled)}${"░".repeat(width - filled)} ${percent}%`
+  }
+  const focusItem = () =>
+    graph().items.find((item) => item.state === "in-progress") ??
+    graph().items.find((item) => item.state === "todo") ??
+    graph().items[0]
+  const stateColor = (state: PlanGraph["items"][number]["state"]) =>
+    state === "done"
+      ? props.palette.success
+      : state === "in-progress"
+        ? props.palette.active
+        : props.palette.muted
 
   return (
     <box
@@ -52,38 +128,112 @@ function Board(props: {
       flexGrow={1}
       flexShrink={1}
       minWidth={0}
+      backgroundColor={props.palette.surface}
       paddingLeft={1}
       paddingRight={1}
+      paddingTop={1}
       gap={1}
     >
-      <box flexDirection="row" flexShrink={0} minWidth={0}>
-        <text fg={props.base} wrapMode="none" flexGrow={1}>
-          AION DAG
+      <box
+        flexDirection="column"
+        flexShrink={0}
+        borderStyle="rounded"
+        borderColor={props.palette.accent}
+        backgroundColor={props.palette.surface}
+        title=" AION CONTROL "
+        titleAlignment="left"
+        paddingLeft={1}
+        paddingRight={1}
+      >
+        <text fg={props.palette.accent} wrapMode="none">
+          ORCHESTRATION CONSOLE
         </text>
-        <text fg={props.muted} wrapMode="none" flexShrink={0}>
-          {done()}/{graph().items.length} done - {active()} active
+        <text fg={props.palette.base} wrapMode="none">
+          {progress()}
+        </text>
+        <box flexDirection="row" gap={1} flexShrink={0} minWidth={0}>
+          <text fg={props.palette.muted} wrapMode="none">
+            MODE
+          </text>
+          <text fg={props.palette.base} wrapMode="none" flexGrow={1}>
+            {runtime().mode}
+          </text>
+        </box>
+        <box flexDirection="row" gap={1} flexShrink={0} minWidth={0}>
+          <text fg={props.palette.muted} wrapMode="none">
+            PHASE
+          </text>
+          <text
+            fg={runtime().interrupted ? props.palette.warning : props.palette.base}
+            wrapMode="none"
+            flexGrow={1}
+          >
+            {runtime().phase}{runtime().interrupted ? " - resume" : ""}
+          </text>
+        </box>
+        <box flexDirection="row" gap={1} flexShrink={0} minWidth={0}>
+          <text fg={props.palette.muted} wrapMode="none">
+            TIER
+          </text>
+          <text fg={props.palette.base} wrapMode="none" flexGrow={1}>
+            {runtime().tier}
+          </text>
+        </box>
+      </box>
+
+      <box
+        flexDirection="row"
+        gap={1}
+        flexShrink={0}
+        minWidth={0}
+        paddingLeft={1}
+        paddingRight={1}
+      >
+        <text fg={props.palette.success} wrapMode="none">
+          {done()} done
+        </text>
+        <text fg={props.palette.active} wrapMode="none">
+          {active()} active
+        </text>
+        <text fg={props.palette.muted} wrapMode="none" flexGrow={1}>
+          {graph().items.length - done() - active()} queued
         </text>
       </box>
 
       <Show
         when={graph().items.length > 0}
         fallback={
-          <text fg={props.muted} wrapMode="none">
-            No AION plan yet. Call aion_todo_update.
-          </text>
+          <box
+            flexGrow={1}
+            borderStyle="rounded"
+            borderColor={props.palette.border}
+            title=" EXECUTION DAG "
+            titleAlignment="left"
+            paddingLeft={1}
+          >
+            <text fg={props.palette.muted} wrapMode="none">
+              Waiting for aion_todo_update
+            </text>
+          </box>
         }
       >
         <box
           flexDirection="column"
           flexGrow={1}
           flexShrink={1}
+          borderStyle="rounded"
+          borderColor={props.palette.border}
+          title=" EXECUTION DAG "
+          titleAlignment="left"
+          paddingLeft={1}
+          paddingRight={1}
           overflow="hidden"
           gap={1}
         >
           <For each={graph().layers}>
             {(layer, index) => (
-              <box flexDirection="column" flexShrink={0} minWidth={0} gap={0}>
-                <text fg={props.muted} wrapMode="none">
+              <box flexDirection="column" flexShrink={0} minWidth={0}>
+                <text fg={props.palette.muted} wrapMode="none">
                   Layer {index() + 1}
                 </text>
                 <For each={layer}>
@@ -97,16 +247,17 @@ function Board(props: {
                         flexShrink={0}
                         minWidth={0}
                       >
-                        <text fg={props.base} wrapMode="none">
+                        <text fg={stateColor(item().state)} wrapMode="none">
                           {mark(item().state)} {item().id} · {item().planStep}
                         </text>
                         <Show when={item().dependsOn.length > 0}>
-                          <text
-                            fg={props.muted}
-                            wrapMode="none"
-                            paddingLeft={4}
-                          >
+                          <text fg={props.palette.muted} wrapMode="none" paddingLeft={4}>
                             after {item().dependsOn.join(", ")}
+                          </text>
+                        </Show>
+                        <Show when={item().owner}>
+                          <text fg={props.palette.muted} wrapMode="none" paddingLeft={4}>
+                            owner {item().owner} - wave {item().wave || 1}
                           </text>
                         </Show>
                       </box>
@@ -119,22 +270,60 @@ function Board(props: {
         </box>
       </Show>
 
-      <Show when={graph().hasCycle || graph().invalidDependencies.length > 0}>
-        <box flexDirection="column" flexShrink={0} minWidth={0}>
-          <Show when={graph().hasCycle}>
-            <text fg={props.base} wrapMode="none">
-              Circular dependencies detected
+      <Show when={focusItem()}>
+        <box
+          flexDirection="column"
+          flexShrink={0}
+          borderStyle="rounded"
+          borderColor={props.palette.accent}
+          title=" CURRENT FOCUS "
+          titleAlignment="left"
+          paddingLeft={1}
+          paddingRight={1}
+        >
+          <text fg={props.palette.base} wrapMode="none">
+            {focusItem()!.id} {focusItem()!.planStep}
+          </text>
+          <Show when={focusItem()!.compareGate}>
+            <text fg={props.palette.muted} wrapMode="none">
+              gate {focusItem()!.compareGate}
             </text>
           </Show>
-          <Show when={graph().invalidDependencies.length > 0}>
-            <text fg={props.muted} wrapMode="none">
-              Unknown dependencies: {graph().invalidDependencies.join(", ")}
+          <Show when={focusItem()!.rollbackRule}>
+            <text fg={props.palette.muted} wrapMode="none">
+              rollback {focusItem()!.rollbackRule}
             </text>
           </Show>
         </box>
       </Show>
 
-      <text fg={props.muted} wrapMode="none" flexShrink={0}>
+      <Show
+        when={
+          graph().hasCycle ||
+          graph().invalidDependencies.length > 0 ||
+          props.blockers().length > 0
+        }
+      >
+        <box flexDirection="column" flexShrink={0} minWidth={0}>
+          <Show when={graph().hasCycle}>
+            <text fg={props.palette.danger} wrapMode="none">
+              Circular dependencies detected
+            </text>
+          </Show>
+          <Show when={graph().invalidDependencies.length > 0}>
+            <text fg={props.palette.warning} wrapMode="none">
+              Unknown dependencies: {graph().invalidDependencies.join(", ")}
+            </text>
+          </Show>
+          <Show when={props.blockers().length > 0}>
+            <text fg={props.palette.danger} wrapMode="none">
+              Blockers: {props.blockers().length}
+            </text>
+          </Show>
+        </box>
+      </Show>
+
+      <text fg={props.palette.muted} wrapMode="none" flexShrink={0}>
         <Show when={props.close} fallback="/aion-board">
           esc close
         </Show>
@@ -145,10 +334,12 @@ function Board(props: {
 
 export function watchPlanGraph(root: string = process.cwd()) {
   const [graph, setGraph] = createSignal(readGraph(root))
+  const [blockers, setBlockers] = createSignal(readBlockers(root))
   const [version, setVersion] = createSignal(0)
   const todoPath = join(root, ".opencode", "memory", "todo-map.md")
   const refresh = () => {
     setGraph(readGraph(root))
+    setBlockers(readBlockers(root))
     setVersion((count) => count + 1)
   }
   let watcher: ReturnType<typeof watch> | undefined
@@ -190,12 +381,31 @@ export function watchPlanGraph(root: string = process.cwd()) {
 
   return {
     graph,
+    blockers,
     version,
     dispose: () => {
       clearTimeout(debounce)
       clearInterval(pollTimer)
       watcher?.close()
     },
+  }
+}
+
+export function watchRuntimeSnapshot(
+  root: string = process.cwd(),
+  getSessionID: () => string | null = () => null,
+) {
+  const [version, setVersion] = createSignal(0)
+  const runtime = createMemo(() => {
+    version()
+    return readRuntimeSnapshot(root, getSessionID())
+  })
+  const pollTimer = setInterval(() => setVersion((count) => count + 1), 500)
+  pollTimer.unref?.()
+
+  return {
+    runtime,
+    dispose: () => clearInterval(pollTimer),
   }
 }
 
@@ -215,11 +425,24 @@ export function activeSessionID(context: {
     : context.ui.panel.current()?.sessionID ?? null
 }
 
+export function shouldAutoOpen(input: {
+  hasPlan: boolean
+  routeType: string
+  armed: boolean
+  panelOpen: boolean
+}) {
+  return input.hasPlan && input.routeType === "session" && input.armed && !input.panelOpen
+}
+
 export default Plugin.define({
   id: "aion-ts-plugin",
   setup(context) {
-    const board = watchPlanGraph()
-    const { graph } = board
+    const root = projectRoot(context.location)
+    const board = watchPlanGraph(root)
+    const runtimeBoard = watchRuntimeSnapshot(root, () => activeSessionID(context))
+    const { graph, blockers } = board
+    const { runtime } = runtimeBoard
+    let autoOpenArmed = true
 
     const openBoard = () => {
       if (context.ui.router.current().type === "session")
@@ -227,8 +450,22 @@ export default Plugin.define({
       else context.ui.router.navigate({ type: "plugin", name: "aion-dag" })
     }
 
+    createEffect(() => {
+      const route = context.ui.router.current()
+      const hasPlan = graph().items.length > 0
+      const panelOpen = Boolean(context.ui.panel.current())
+
+      if (!hasPlan) {
+        autoOpenArmed = true
+        return
+      }
+      if (!shouldAutoOpen({ hasPlan, routeType: route.type, armed: autoOpenArmed, panelOpen })) return
+
+      autoOpenArmed = false
+      context.ui.panel.open("aion-dag")
+    })
+
     const setMode = (input?: string) => {
-      const root = projectRoot(context.location)
       const mode = parseExecutionMode(input ?? "")
       if (!mode) {
         context.ui.toast.show({
@@ -250,13 +487,24 @@ export default Plugin.define({
     }
 
     const showStatus = () => {
-      const root = projectRoot(context.location)
       context.ui.toast.show({
         title: "AION runtime",
         message: formatRuntimeStatus(readRuntimeState(root), activeSessionID(context)),
         variant: "info",
         duration: 9000,
       })
+    }
+
+    const palette: BoardPalette = {
+      base: context.theme.text.default,
+      muted: context.theme.text.subdued,
+      accent: context.theme.hue.purple[400],
+      active: context.theme.hue.purple[300],
+      success: context.theme.text.feedback.success.default,
+      warning: context.theme.text.feedback.warning.default,
+      danger: context.theme.text.feedback.error.default,
+      surface: context.theme.background.surface.overlay,
+      border: context.theme.border.default,
     }
 
     context.keymap.layer(() => ({
@@ -268,6 +516,7 @@ export default Plugin.define({
           description: "Show the live AION plan DAG",
           group: "AION",
           palette: true,
+          suggested: true,
           slash: { name: "aion-board" },
           run: openBoard,
         },
@@ -297,8 +546,10 @@ export default Plugin.define({
       render: () => (
         <Board
           graph={graph}
-          base={context.theme.text.default}
-          muted={context.theme.text.subdued}
+          blockers={blockers}
+          runtime={runtime}
+          sessionID={() => activeSessionID(context)}
+          palette={palette}
         />
       ),
     })
@@ -309,13 +560,18 @@ export default Plugin.define({
         input.name === "aion-dag" ? (
           <Board
             graph={graph}
-            base={context.theme.text.default}
-            muted={context.theme.text.subdued}
+            blockers={blockers}
+            runtime={runtime}
+            sessionID={() => activeSessionID(context)}
+            palette={palette}
             close={input.close}
           />
         ) : null,
     })
 
-    return board.dispose
+    return () => {
+      board.dispose()
+      runtimeBoard.dispose()
+    }
   },
 })
