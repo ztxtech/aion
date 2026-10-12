@@ -87,7 +87,13 @@ describe("AION TUI plan watcher", () => {
       registrations.routes.map((route) => route.name),
       ["aion-dag"],
     );
-    assert.equal(registrations.slots[0].append, "session.panel");
+    assert.deepEqual(
+      registrations.slots.map((slot) => slot.append),
+      ["session.panel", "sidebar.content"],
+    );
+    for (const slot of registrations.slots) {
+      assert.equal(typeof slot.render, "function");
+    }
     assert.equal(typeof cleanup, "function");
     cleanup();
     rmSync(root, { recursive: true, force: true });

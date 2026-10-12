@@ -6,7 +6,9 @@ import { For, Show, createEffect, createMemo, createSignal } from "solid-js"
 import type { RGBA } from "@opentui/core"
 import {
   buildPlanGraph,
+  dependencyEdges,
   parsePlanMap,
+  planFrontier,
   type PlanGraph,
 } from "../shared/plan-graph"
 import {
@@ -116,11 +118,9 @@ function Board(props: {
     graph().items.find((item) => item.state === "todo") ??
     graph().items[0]
   const stateColor = (state: PlanGraph["items"][number]["state"]) =>
-    state === "done"
-      ? props.palette.success
-      : state === "in-progress"
-        ? props.palette.active
-        : props.palette.muted
+    stateColorFor(props.palette, state)
+  const frontier = createMemo(() => new Set(planFrontier(graph().items)))
+  const edges = createMemo(() => dependencyEdges(graph().items))
 
   return (
     <box
@@ -200,136 +200,235 @@ function Board(props: {
         </text>
       </box>
 
-      <Show
-        when={graph().items.length > 0}
-        fallback={
+      <scrollbox
+        scrollY
+        flexDirection="column"
+        flexGrow={1}
+        flexShrink={1}
+        minWidth={0}
+        gap={1}
+        backgroundColor={props.palette.surface}
+      >
+        <Show
+          when={graph().items.length > 0}
+          fallback={
+            <box
+            flexShrink={0}
+              borderStyle="rounded"
+              borderColor={props.palette.border}
+              title=" EXECUTION DAG "
+              titleAlignment="left"
+              paddingLeft={1}
+            >
+              <text fg={props.palette.muted} wrapMode="none">
+                Waiting for aion_todo_update
+              </text>
+            </box>
+          }
+        >
           <box
-            flexGrow={1}
+            flexDirection="column"
+          flexShrink={0}
             borderStyle="rounded"
             borderColor={props.palette.border}
             title=" EXECUTION DAG "
             titleAlignment="left"
             paddingLeft={1}
+            paddingRight={1}
+            gap={1}
           >
-            <text fg={props.palette.muted} wrapMode="none">
-              Waiting for aion_todo_update
-            </text>
-          </box>
-        }
-      >
-        <box
-          flexDirection="column"
-          flexGrow={1}
-          flexShrink={1}
-          borderStyle="rounded"
-          borderColor={props.palette.border}
-          title=" EXECUTION DAG "
-          titleAlignment="left"
-          paddingLeft={1}
-          paddingRight={1}
-          overflow="hidden"
-          gap={1}
-        >
-          <For each={graph().layers}>
-            {(layer, index) => (
-              <box flexDirection="column" flexShrink={0} minWidth={0}>
-                <text fg={props.palette.muted} wrapMode="none">
-                  Layer {index() + 1}
-                </text>
-                <For each={layer}>
-                  {(id) => {
-                    const item = () =>
-                      graph().items.find((candidate) => candidate.id === id)!
-                    return (
-                      <box
-                        flexDirection="column"
-                        paddingLeft={2}
-                        flexShrink={0}
-                        minWidth={0}
-                      >
-                        <text fg={stateColor(item().state)} wrapMode="none">
+            <For each={graph().layers}>
+              {(layer, index) => (
+                <box flexDirection="column" flexShrink={0} minWidth={0}>
+                <text
+                  fg={
+                    layer.some((id) => frontier().has(id))
+                      ? props.palette.accent
+                      : props.palette.muted
+                  }
+                  wrapMode="none"
+                >
+                  ▼ Layer {index() + 1} ·{" "}
+                  {layer.some((id) => frontier().has(id))
+                    ? "frontier"
+                    : `${layer.length} item${layer.length === 1 ? "" : "s"}`}
+                  </text>
+                  <For each={layer}>
+                    {(id) => {
+                      const item = () =>
+                        graph().items.find((candidate) => candidate.id === id)!
+                      const onFrontier = () => frontier().has(id)
+                      return (
+                        <box
+                          flexDirection="column"
+                          marginLeft={1}
+                          paddingLeft={1}
+                          flexShrink={0}
+                          minWidth={0}
+                        border={["left"]}
+                        borderStyle="single"
+                          borderColor={
+                            onFrontier() ? props.palette.accent : props.palette.border
+                          }
+                        >
+                          <text fg={stateColor(item().state)} wrapMode="none">
                           {mark(item().state)} {item().id} · {item().planStep}
-                        </text>
-                        <Show when={item().dependsOn.length > 0}>
-                          <text fg={props.palette.muted} wrapMode="none" paddingLeft={4}>
-                            after {item().dependsOn.join(", ")}
                           </text>
-                        </Show>
-                        <Show when={item().owner}>
-                          <text fg={props.palette.muted} wrapMode="none" paddingLeft={4}>
-                            owner {item().owner} - wave {item().wave || 1}
+                          <text fg={props.palette.muted} wrapMode="none">
+                            {item().owner || "unassigned"} · wave {item().wave || 1}
+                            {onFrontier() ? " · frontier" : ""}
                           </text>
-                        </Show>
-                      </box>
-                    )
-                  }}
-                </For>
-              </box>
-            )}
-          </For>
-        </box>
-      </Show>
+                        </box>
+                      )
+                    }}
+                  </For>
+                </box>
+              )}
+            </For>
+          </box>
+        </Show>
 
-      <Show when={focusItem()}>
-        <box
-          flexDirection="column"
-          flexShrink={0}
-          borderStyle="rounded"
-          borderColor={props.palette.accent}
-          title=" CURRENT FOCUS "
-          titleAlignment="left"
-          paddingLeft={1}
-          paddingRight={1}
+        <Show when={edges().length > 0}>
+          <box
+            flexDirection="column"
+            flexShrink={0}
+            borderStyle="rounded"
+            borderColor={props.palette.border}
+            title=" DEPENDENCIES "
+            titleAlignment="left"
+            paddingLeft={1}
+            paddingRight={1}
+          >
+            <For each={edges().slice(0, 8)}>
+              {(edge) => (
+                <text fg={props.palette.muted} wrapMode="none">
+                  {edge.from} → {edge.to}
+                </text>
+              )}
+            </For>
+            <Show when={edges().length > 8}>
+              <text fg={props.palette.muted} wrapMode="none">
+                +{edges().length - 8} more
+              </text>
+            </Show>
+          </box>
+        </Show>
+
+        <Show when={focusItem()}>
+          {(item) => (
+            <box
+              flexDirection="column"
+              flexShrink={0}
+              borderStyle="rounded"
+              borderColor={props.palette.accent}
+              title=" CURRENT FOCUS "
+              titleAlignment="left"
+              paddingLeft={1}
+              paddingRight={1}
+            >
+              <text fg={props.palette.base} wrapMode="none">
+                {item().id} {item().planStep}
+              </text>
+              <Show when={item().compareGate}>
+                <text fg={props.palette.muted} wrapMode="none">
+                  gate {item().compareGate}
+                </text>
+              </Show>
+              <Show when={item().rollbackRule}>
+                <text fg={props.palette.muted} wrapMode="none">
+                  rollback {item().rollbackRule}
+                </text>
+              </Show>
+            </box>
+          )}
+        </Show>
+
+        <Show
+          when={
+            graph().hasCycle ||
+            graph().invalidDependencies.length > 0 ||
+            props.blockers().length > 0
+          }
         >
-          <text fg={props.palette.base} wrapMode="none">
-            {focusItem()!.id} {focusItem()!.planStep}
-          </text>
-          <Show when={focusItem()!.compareGate}>
-            <text fg={props.palette.muted} wrapMode="none">
-              gate {focusItem()!.compareGate}
-            </text>
-          </Show>
-          <Show when={focusItem()!.rollbackRule}>
-            <text fg={props.palette.muted} wrapMode="none">
-              rollback {focusItem()!.rollbackRule}
-            </text>
-          </Show>
-        </box>
-      </Show>
-
-      <Show
-        when={
-          graph().hasCycle ||
-          graph().invalidDependencies.length > 0 ||
-          props.blockers().length > 0
-        }
-      >
-        <box flexDirection="column" flexShrink={0} minWidth={0}>
-          <Show when={graph().hasCycle}>
-            <text fg={props.palette.danger} wrapMode="none">
-              Circular dependencies detected
-            </text>
-          </Show>
-          <Show when={graph().invalidDependencies.length > 0}>
-            <text fg={props.palette.warning} wrapMode="none">
-              Unknown dependencies: {graph().invalidDependencies.join(", ")}
-            </text>
-          </Show>
-          <Show when={props.blockers().length > 0}>
-            <text fg={props.palette.danger} wrapMode="none">
-              Blockers: {props.blockers().length}
-            </text>
-          </Show>
-        </box>
-      </Show>
+          <box flexDirection="column" flexShrink={0} minWidth={0}>
+            <Show when={graph().hasCycle}>
+              <text fg={props.palette.danger} wrapMode="none">
+                Circular dependencies detected
+              </text>
+            </Show>
+            <Show when={graph().invalidDependencies.length > 0}>
+              <text fg={props.palette.warning} wrapMode="none">
+                Unknown dependencies: {graph().invalidDependencies.join(", ")}
+              </text>
+            </Show>
+            <Show when={props.blockers().length > 0}>
+              <text fg={props.palette.danger} wrapMode="none">
+                Blockers: {props.blockers().length}
+              </text>
+            </Show>
+          </box>
+        </Show>
+      </scrollbox>
 
       <text fg={props.palette.muted} wrapMode="none" flexShrink={0}>
-        <Show when={props.close} fallback="/aion-board">
-          esc close
+        <Show when={props.close} fallback="/aion-board · /aion-mode · /aion-status">
+          esc close · /aion-mode · /aion-status
         </Show>
       </text>
     </box>
   )
+}
+
+function Summary(props: {
+  graph: () => PlanGraph
+  runtime: () => RuntimeSnapshot
+  blockers: () => string[]
+  palette: BoardPalette
+}) {
+  const done = () =>
+    props.graph().items.filter((item) => item.state === "done").length
+  const total = () => props.graph().items.length
+  const percent = () =>
+    total() === 0 ? 0 : Math.round((done() / total()) * 100)
+  const focus = () =>
+    props.graph().items.find((item) => item.state === "in-progress") ??
+    props.graph().items.find((item) => item.state === "todo")
+
+  return (
+    <Show when={total() > 0}>
+      <box flexDirection="column" flexShrink={0} minWidth={0} gap={1}>
+        <text fg={props.palette.accent} wrapMode="none">
+          AION · {props.runtime().mode.toUpperCase()} · {percent()}%
+        </text>
+        <text fg={props.palette.muted} wrapMode="none">
+          {done()}/{total()} done · {props.runtime().phase} · {props.runtime().tier}
+        </text>
+        <Show when={focus()}>
+          {(item) => (
+            <text fg={stateColorFor(props.palette, item().state)} wrapMode="none">
+              {mark(item().state)} {item().id} {item().planStep}
+            </text>
+          )}
+        </Show>
+        <Show when={props.blockers().length > 0}>
+          <text fg={props.palette.danger} wrapMode="none">
+            blockers {props.blockers().length}
+          </text>
+        </Show>
+      </box>
+    </Show>
+  )
+}
+
+function stateColorFor(
+  palette: BoardPalette,
+  state: PlanGraph["items"][number]["state"],
+) {
+  return state === "done"
+    ? palette.success
+    : state === "in-progress"
+      ? palette.active
+      : palette.muted
 }
 
 export function watchPlanGraph(root: string = process.cwd()) {
@@ -569,7 +668,20 @@ export default Plugin.define({
         ) : null,
     })
 
+    const disposeSidebar = context.ui.slot({
+      append: "sidebar.content",
+      render: () => (
+        <Summary
+          graph={graph}
+          runtime={runtime}
+          blockers={blockers}
+          palette={palette}
+        />
+      ),
+    })
+
     return () => {
+      disposeSidebar()
       disposeSlot()
       disposeRoute()
       board.dispose()

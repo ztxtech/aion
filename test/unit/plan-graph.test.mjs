@@ -48,6 +48,30 @@ describe("plan graph", async () => {
     assert.equal(items[1].state, "in-progress");
   });
 
+  it("reports the runnable frontier", () => {
+    const items = [
+      { id: "TODO-001", state: "done", dependsOn: [] },
+      { id: "TODO-002", state: "in-progress", dependsOn: ["TODO-001"] },
+      { id: "TODO-003", state: "todo", dependsOn: ["TODO-002"] },
+      { id: "TODO-004", state: "todo", dependsOn: ["TODO-001"] },
+      { id: "TODO-005", state: "todo", dependsOn: ["TODO-404"] },
+    ];
+
+    assert.deepEqual(planGraph.planFrontier(items), ["TODO-002", "TODO-004", "TODO-005"]);
+    assert.deepEqual(planGraph.planFrontier([{ id: "TODO-001", state: "done", dependsOn: [] }]), []);
+  });
+
+  it("lists dependency edges and drops unknown ids", () => {
+    const items = [
+      { id: "TODO-001", dependsOn: [] },
+      { id: "TODO-002", dependsOn: ["TODO-001", "TODO-404"] },
+    ];
+
+    assert.deepEqual(planGraph.dependencyEdges(items), [
+      { from: "TODO-001", to: "TODO-002" },
+    ]);
+  });
+
   it("layers dependency fronts and reports invalid dependencies", () => {
     const graph = planGraph.buildPlanGraph([
       { id: "TODO-001", dependsOn: [] },

@@ -63,6 +63,33 @@ export function parsePlanMap(content: string): PlanItem[] {
   return items
 }
 
+/**
+ * Items whose dependencies are all satisfied and which are not done yet: the
+ * set a scheduler is allowed to start right now. Unknown dependency ids are
+ * treated as satisfied, matching buildPlanGraph.
+ */
+export function planFrontier(items: PlanItem[]): string[] {
+  const ids = new Set(items.map((item) => item.id))
+  const completed = new Set(
+    items.filter((item) => item.state === "done").map((item) => item.id),
+  )
+  return items
+    .filter((item) => item.state !== "done")
+    .filter((item) => item.dependsOn.every((id) => !ids.has(id) || completed.has(id)))
+    .map((item) => item.id)
+}
+
+export function dependencyEdges(
+  items: PlanItem[],
+): Array<{ from: string; to: string }> {
+  const ids = new Set(items.map((item) => item.id))
+  return items.flatMap((item) =>
+    item.dependsOn
+      .filter((id) => ids.has(id))
+      .map((id) => ({ from: id, to: item.id })),
+  )
+}
+
 export function buildPlanGraph(items: PlanItem[]): PlanGraph {
   const ids = new Set(items.map((item) => item.id))
   const invalidDependencies = [
