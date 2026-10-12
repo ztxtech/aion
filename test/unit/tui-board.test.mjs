@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { REPO_ROOT } from "../helpers/load-bundle.mjs";
+import { REPO_ROOT, importBundle } from "../helpers/load-bundle.mjs";
 
 const tuiBundle = await import(
   new URL(`file://${join(REPO_ROOT, ".opencode", "plugins", "aion", "tui.js")}`).href
@@ -314,6 +314,76 @@ describe("AION TUI plan watcher", () => {
       assert.equal(board.graph().hasCycle, true);
     } finally {
       board.dispose();
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("AION TUI toast bridge", () => {
+  it("delivers new queued toasts exactly once", async () => {
+    const root = createProject();
+    mkdirSync(join(root, ".opencode", "memory"), { recursive: true });
+    const { enqueueToast } = (await (await importBundle())._testing.toastQueue());
+    const seen = [];
+    const watcher = tuiBundle.watchToasts(root, (toast) => seen.push(toast), {
+      pollMs: 20,
+      graceMs: 0,
+    });
+
+    try {
+      enqueueToast(root, {
+        title: "I AM AION",
+        message: "Online. Watching. The loop begins.",
+        variant: "info",
+        duration: 4500,
+      });
+      await waitFor(() => seen.length === 1);
+      await new Promise((resolve) => setTimeout(resolve, 80));
+      assert.equal(seen.length, 1, "polling must not re-render the same toast");
+      assert.equal(seen[0].title, "I AM AION");
+      assert.equal(seen[0].variant, "info");
+    } finally {
+      watcher.dispose();
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("skips the stale backlog written before the grace window", async () => {
+    const root = createProject();
+    mkdirSync(join(root, ".opencode", "memory"), { recursive: true });
+    const { enqueueToast } = (await (await importBundle())._testing.toastQueue());
+    enqueueToast(root, { message: "yesterday's pulse", variant: "info" }, {
+      now: new Date(Date.now() - 60_000),
+    });
+
+    const seen = [];
+    const watcher = tuiBundle.watchToasts(root, (toast) => seen.push(toast), { pollMs: 20 });
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      assert.equal(seen.length, 0, "restart must not replay old toasts");
+    } finally {
+      watcher.dispose();
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("setup wires the queue to context.ui.toast.show", async () => {
+    const root = createProject();
+    mkdirSync(join(root, ".opencode", "memory"), { recursive: true });
+    const shown = [];
+    const context = createContext(root);
+    context.ui.toast = { show: (toast) => shown.push(toast) };
+    const cleanup = tuiBundle.default.setup(context);
+    const { enqueueToast } = (await (await importBundle())._testing.toastQueue());
+
+    try {
+      enqueueToast(root, { title: "I AM AION", message: "Boot sequence complete.", variant: "info", duration: 4500 });
+      await waitFor(() => shown.length >= 1, 3000);
+      assert.equal(shown[0].message, "Boot sequence complete.");
+      assert.equal(shown[0].title, "I AM AION");
+      assert.equal(shown[0].duration, 4500);
+    } finally {
+      cleanup();
       rmSync(root, { recursive: true, force: true });
     }
   });

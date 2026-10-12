@@ -1,75 +1,86 @@
 /**
- * TUI toast notifier for aion diagnostics.
+ * TUI toast notifier for aion diagnostics and personality quips.
  *
- * Why this exists: aion produces many `warn(...)` lines via console.warn, but
- * TUI users see those as text in the scrolling log area, easily buried. The
- * OpenCode TUI also has a native toast channel (client.tui.showToast) that
- * renders a transient banner — perfect for the small set of "LLM must notice
- * this" diagnostics (leakage blocks, pre-stop-gate failures, etc.).
+ * Two delivery channels, picked automatically:
+ *  1. Legacy hosts (OpenCode V1, unit tests): the plugin context carries a
+ *     `client.tui.showToast` — call it directly.
+ *  2. OpenCode V2: the server context has no TUI handle, so the toast is
+ *     appended to the disk queue (`shared/toast-queue.ts`) which the TUI
+ *     plugin polls and renders through `context.ui.toast.show`.
  *
  * Design constraints:
  *  - Must NEVER throw. The caller path is hot and already does its own work;
  *    a toast failure must not propagate.
  *  - Must be cheap. No awaits in the hot path that don't need them.
- *  - Must be feature-gated. Most warns stay in console; only a curated set of
- *    "important" diagnostics call this.
- *  - Must survive missing client (test env, headless server). Falls back
- *    silently to console.warn only.
+ *  - Must feature-gate itself: only a curated set of "user must notice"
+ *    diagnostics call this, and personality has its own config gate.
  */
 
-type TuiVariant = "info" | "success" | "warning" | "error"
+import { enqueueToast, type ToastVariant } from "./toast-queue"
+
+export type { ToastVariant }
 
 export type AionClient = {
   tui?: {
     showToast?: (input: {
-      body?: { title?: string; message: string; variant: TuiVariant; duration?: number }
+      body?: { title?: string; message: string; variant: ToastVariant; duration?: number }
     }) => Promise<{ data?: boolean } | unknown> | unknown
   }
 } | undefined
 
 export type NotifyInput = {
-  variant: TuiVariant
+  variant: ToastVariant
   title?: string
   message: string
   duration?: number
 }
 
+export type NotifyTarget = {
+  client?: AionClient
+  directory?: string
+}
+
 const DEFAULT_DURATION_MS = 5000
 
 /**
- * Fire-and-forget TUI toast. Errors are swallowed (console.warn only).
- * Returns true if the toast call was actually issued, false if the client
- * is missing / the channel is unavailable / we're in a non-TUI context.
+ * Fire-and-forget toast. Errors are swallowed.
+ * Returns true if the toast was actually issued (legacy call or queue write),
+ * false when no channel is available (headless server without directory).
  */
-export function notifyTui(client: AionClient, input: NotifyInput): boolean {
-  if (!client?.tui?.showToast) return false
+export function notifyTui(target: NotifyTarget | undefined, input: NotifyInput): boolean {
+  const showToast = target?.client?.tui?.showToast
   const body = {
     title: input.title,
     message: input.message,
     variant: input.variant,
     duration: input.duration ?? DEFAULT_DURATION_MS,
   }
-  try {
-    const ret = client.tui.showToast({ body })
-    // Some clients return a promise; swallow rejections async without blocking.
-    if (ret && typeof (ret as Promise<unknown>).then === "function") {
-      ;(ret as Promise<unknown>).catch(() => {
-        /* intentionally swallowed */
-      })
+
+  if (typeof showToast === "function") {
+    try {
+      const ret = showToast({ body })
+      // Some clients return a promise; swallow rejections async without blocking.
+      if (ret && typeof (ret as Promise<unknown>).then === "function") {
+        ;(ret as Promise<unknown>).catch(() => {
+          /* intentionally swallowed */
+        })
+      }
+      return true
+    } catch {
+      return false
     }
-    return true
-  } catch {
-    return false
   }
+
+  if (target?.directory) {
+    return enqueueToast(target.directory, body) !== null
+  }
+  return false
 }
 
 /**
- * Convenience: notify from a plugin context (`ctx.client` may be undefined in
- * tests). Same return semantics as notifyTui.
+ * Convenience: notify from a plugin context (`ctx.client` / `ctx.directory`
+ * may be undefined in tests). Same return semantics as notifyTui.
  */
-export function notifyFromCtx(
-  ctx: { client?: AionClient } | undefined,
-  input: NotifyInput,
-): boolean {
-  return notifyTui(ctx?.client, input)
+export function notifyFromCtx(ctx: NotifyTarget | undefined, input: NotifyInput): boolean {
+  return notifyTui(ctx, input)
 }

@@ -20,6 +20,12 @@ import {
   sessionRuntimeState,
   setExecutionMode,
 } from "../shared/runtime-control"
+import {
+  initialToastCursor,
+  readToastQueue,
+  toastsAfter,
+  type QueuedToast,
+} from "../shared/toast-queue"
 
 type BoardPalette = {
   base: RGBA
@@ -508,6 +514,47 @@ export function watchRuntimeSnapshot(
   }
 }
 
+/**
+ * Server -> TUI toast bridge consumer. The server plugin cannot reach the
+ * TUI runtime on OpenCode V2, so it appends toasts (diagnostics, personality
+ * quips) to a disk queue; this watcher delivers each new item exactly once.
+ *
+ * The initial cursor skips stale backlog (a TUI restart must not replay old
+ * toasts) while keeping items written within the grace window, so the boot
+ * entrance quip survives the race between server setup and TUI setup.
+ */
+export function watchToasts(
+  root: string = process.cwd(),
+  show: (toast: QueuedToast) => void,
+  options: { pollMs?: number; graceMs?: number; now?: number } = {},
+) {
+  let cursor = initialToastCursor(readToastQueue(root), {
+    now: options.now,
+    graceMs: options.graceMs,
+  })
+
+  const poll = () => {
+    const queue = readToastQueue(root)
+    for (const toast of toastsAfter(queue, cursor)) {
+      cursor = toast.id
+      try {
+        show(toast)
+      } catch {
+        /* a bad toast must never break the watcher */
+      }
+    }
+  }
+
+  const pollTimer = setInterval(poll, options.pollMs ?? 500)
+  pollTimer.unref?.()
+
+  return {
+    cursor: () => cursor,
+    poll,
+    dispose: () => clearInterval(pollTimer),
+  }
+}
+
 export function projectRoot(location?: { directory?: string }): string {
   return location?.directory ?? process.cwd()
 }
@@ -539,6 +586,14 @@ export default Plugin.define({
     const root = projectRoot(context.location)
     const board = watchPlanGraph(root)
     const runtimeBoard = watchRuntimeSnapshot(root, () => activeSessionID(context))
+    const toasts = watchToasts(root, (toast) => {
+      context.ui.toast.show({
+        title: toast.title,
+        message: toast.message,
+        variant: toast.variant,
+        duration: toast.duration,
+      })
+    })
     const { graph, blockers } = board
     const { runtime } = runtimeBoard
     let autoOpenArmed = true
@@ -684,6 +739,7 @@ export default Plugin.define({
       disposeSidebar()
       disposeSlot()
       disposeRoute()
+      toasts.dispose()
       board.dispose()
       runtimeBoard.dispose()
     }

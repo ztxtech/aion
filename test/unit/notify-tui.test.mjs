@@ -22,6 +22,12 @@ function createSpyClient() {
   return { client: { tui: { showToast: spy } }, calls, spy };
 }
 
+// The plugin now fires the boot entrance quip ("I AM AION") during setup, so
+// "no toast" assertions must look past that one beat.
+function diagnosticsOnly(calls) {
+  return calls.filter((call) => !/I AM AION/.test(call.body?.title ?? ""));
+}
+
 async function loadPluginWith(client) {
   const bundle = await importBundle();
   const tmp = createTmp();
@@ -103,7 +109,7 @@ describe("toast: aion_safety_gate verdict=block fires toast", async () => {
     const parsed = JSON.parse(json);
     assert.equal(parsed.verdict, "allow");
     await new Promise((r) => setImmediate(r));
-    assert.equal(calls.length, 0, "allow should not produce a toast");
+    assert.equal(diagnosticsOnly(calls).length, 0, "allow should not produce a toast");
     rmSync(ttmp, { recursive: true, force: true });
   });
 });
@@ -140,7 +146,7 @@ describe("toast: aion_leakage_check unsafe fires error toast", async () => {
       file_path: "src/legit.ts",
     }, { directory: ttmp });
     await new Promise((r) => setImmediate(r));
-    assert.equal(calls.length, 0);
+    assert.equal(diagnosticsOnly(calls).length, 0);
     rmSync(ttmp, { recursive: true, force: true });
   });
 });
@@ -258,6 +264,31 @@ describe("toast: null-safe when client is undefined", () => {
       visual_test_loop: false,
     }, { directory: ttmp });
     assert.equal(JSON.parse(json).allowStop, false);
+    rmSync(ttmp, { recursive: true, force: true });
+  });
+});
+
+describe("toast: V2 disk-queue fallback (no server client)", () => {
+  it("delivers the safety block toast through the workspace queue", async () => {
+    const bundle = await importBundle();
+    const ttmp = createTmp();
+    const p = await bundle.default.server({
+      directory: ttmp, client: undefined, project: undefined, $: undefined,
+    }, {});
+    const json = await p.tool.aion_safety_gate.execute({
+      action: "execute arbitrary shell",
+      input_source: "user",
+      impact_scope: "exec",
+      alternates: [],
+    }, { directory: ttmp });
+    assert.equal(JSON.parse(json).verdict, "block");
+
+    const { readToastQueue } = await bundle._testing.toastQueue();
+    const queue = readToastQueue(ttmp);
+    const blocked = queue.items.find((item) => item.variant === "error");
+    assert.ok(blocked, "expected an error toast in the disk queue");
+    assert.match(blocked.title, /Safety gate: BLOCK/);
+    assert.equal(blocked.duration, 8000);
     rmSync(ttmp, { recursive: true, force: true });
   });
 });

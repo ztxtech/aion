@@ -1,4 +1,4 @@
-import { describe, it, before, after } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -70,19 +70,27 @@ describe("personality: pickup pool + rarity (unit-level via bundle)", () => {
   });
 });
 
-describe("personality: integration — entrance quip on session.created", () => {
-  it("fires one toast on session.created with I AM AION style title", async () => {
+describe("personality: integration — entrance cadence", () => {
+  it("fires the boot quip once and folds a fast session.created into it", async () => {
     const { client, calls } = createSpyClient();
     const { tmp, plugin } = await loadPluginWith(client);
-    after(() => { try { rmSync(tmp, { recursive: true, force: true }); } catch {} });
-    // Simulate the session.created event reaching the event hook.
-    await plugin.event({
-      event: { type: "session.created", properties: {} },
-    }, {});
-    await new Promise((r) => setImmediate(r));
-    assert.ok(calls.length >= 1, "expected at least one toast");
-    const t = calls[0];
-    assert.match(getLastTitle(t), /I AM AION|phase|aion|completion|milestone/);
+    try {
+      await new Promise((r) => setImmediate(r));
+      const entrances = () => calls.filter((c) => /I AM AION/.test(getLastTitle(c)));
+      assert.equal(entrances().length, 1, "boot entrance fires exactly once on plugin setup");
+
+      // Simulate the session.created event reaching the event hook.
+      await plugin.event({
+        event: { type: "session.created", properties: {} },
+      }, {});
+      assert.equal(
+        entrances().length,
+        1,
+        "a session.created inside the debounce window must not stack a second entrance",
+      );
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
   });
 });
 
@@ -222,6 +230,53 @@ describe("personality: createPersonality handle", () => {
       p.onMilestone();
       for (let i = 0; i < 5; i++) p.onOpportunity();
     });
+  });
+
+  it("debounces stacked entrances but lets a later session ring again", async () => {
+    const bundle = await importBundle();
+    const { createPersonality, DEFAULT_PERSONALITY_CONFIG } = await bundle._testing.personality();
+    const { client, calls } = createSpyClient();
+    let now = 0;
+    const p = createPersonality({
+      client,
+      config: DEFAULT_PERSONALITY_CONFIG,
+      clock: () => now,
+    });
+
+    p.onSessionCreated();
+    assert.equal(calls.length, 1, "first entrance fires");
+
+    now = 30_000;
+    p.onSessionCreated();
+    assert.equal(calls.length, 1, "inside the 60s window the entrance is folded");
+
+    now = 61_000;
+    p.onSessionCreated();
+    assert.equal(calls.length, 2, "a later session gets its own entrance");
+  });
+
+  it("writes the entrance quip to the disk queue when there is no client", async () => {
+    const bundle = await importBundle();
+    const { createPersonality, DEFAULT_PERSONALITY_CONFIG } = await bundle._testing.personality();
+    const { readToastQueue } = await bundle._testing.toastQueue();
+    const root = createTmp();
+    try {
+      const p = createPersonality({
+        client: undefined,
+        directory: root,
+        config: DEFAULT_PERSONALITY_CONFIG,
+        rng: () => 0.5, // roll 50 -> common tier -> info variant
+      });
+      p.onSessionCreated();
+
+      const queue = readToastQueue(root);
+      assert.equal(queue.items.length, 1);
+      assert.match(queue.items[0].title, /I AM AION/);
+      assert.equal(queue.items[0].variant, "info");
+      assert.ok(queue.items[0].message.length > 0);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });
 

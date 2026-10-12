@@ -6,6 +6,8 @@
  *  - The toast channel is the only "ambient" surface the user sees. Filling
  *    it with personality makes the plugin feel alive without polluting the
  *    LLM's context (so the agent does not start writing "I AM AION" back).
+ *    On OpenCode V2 the quip travels through the disk toast queue, which the
+ *    TUI plugin renders in the top-right notification panel.
  *  - The frequency is bounded by config: a min/max interval between
  *    heartbeats, and a per-session cap on the total number of heartbeats
  *    so a long session does not toast-spam.
@@ -40,6 +42,9 @@ export const DEFAULT_PERSONALITY_CONFIG: PersonalityConfig = {
   maxHeartbeatsPerSession: 12,
 }
 
+/** Two entrance beats closer than this collapse into one (boot + first session). */
+const ENTRANCE_MIN_INTERVAL_MS = 60_000
+
 export type PersonalityHandle = {
   /** Fired when a new session is born. Fires entrance quip. */
   onSessionCreated: () => void
@@ -66,7 +71,11 @@ export type PersonalityHandle = {
 export type CreatePersonalityArgs = {
   client: AionClient
   config: PersonalityConfig
+  /** Workspace root — where the V2 toast queue lives. */
+  directory?: string
   rng?: () => number
+  /** Injectable clock for tests; defaults to Date.now. */
+  clock?: () => number
 }
 
 /**
@@ -75,11 +84,13 @@ export type CreatePersonalityArgs = {
  * only ever run one).
  */
 export function createPersonality(args: CreatePersonalityArgs): PersonalityHandle {
-  const { client, config } = args
+  const { client, config, directory } = args
   const rng = args.rng ?? Math.random
+  const clock = args.clock ?? (() => Date.now())
 
   let lastQuip: Quip | undefined
   let lastHeartbeatAt = 0
+  let lastEntranceAt: number | null = null
   let heartbeatCount = 0
   let sessionId: number | null = null
 
@@ -93,6 +104,13 @@ export function createPersonality(args: CreatePersonalityArgs): PersonalityHandl
     if (slot === "dispatch" && !config.transitions) return
     if (slot === "critic" && !config.transitions) return
     if (slot === "easter-egg" && !config.heartbeats) return
+    // Boot fire + the session.created that follows right after must read as
+    // one "AION is awake" beat, not two stacked toasts.
+    if (slot === "entrance") {
+      const stamp = clock()
+      if (lastEntranceAt !== null && stamp - lastEntranceAt < ENTRANCE_MIN_INTERVAL_MS) return
+      lastEntranceAt = stamp
+    }
     const quip = pickQuip(slot, lastQuip, rng)
     lastQuip = quip
     // Rarity-driven visual differentiation:
@@ -107,7 +125,7 @@ export function createPersonality(args: CreatePersonalityArgs): PersonalityHandl
       quip.rarity === "legendary" ? 8000
         : quip.rarity === "rare" ? 6000
           : 4500
-    notifyFromCtx({ client }, {
+    notifyFromCtx({ client, directory }, {
       variant,
       title: quip.rarity === "legendary" ? `\u2728 ${quip.title}` : quip.rarity === "rare" ? `\u2728 ${quip.title}` : quip.title,
       message: quip.message,
@@ -125,8 +143,8 @@ export function createPersonality(args: CreatePersonalityArgs): PersonalityHandl
 
   return {
     onSessionCreated() {
-      sessionId = Date.now()
-      lastHeartbeatAt = Date.now()
+      sessionId = clock()
+      lastHeartbeatAt = clock()
       heartbeatCount = 0
       fire("entrance")
     },
@@ -148,7 +166,7 @@ export function createPersonality(args: CreatePersonalityArgs): PersonalityHandl
     onEasterEgg() {
       fire("easter-egg")
     },
-    onOpportunity(now: number = Date.now()) {
+    onOpportunity(now: number = clock()) {
       if (!isHeartbeatDue(now)) return
       if (config.heartbeatMaxMs > 0) {
         // Optionally extend the wait: only fire if min elapsed AND a jittered
@@ -167,6 +185,7 @@ export function createPersonality(args: CreatePersonalityArgs): PersonalityHandl
     _reset() {
       lastQuip = undefined
       lastHeartbeatAt = 0
+      lastEntranceAt = null
       heartbeatCount = 0
       sessionId = null
     },

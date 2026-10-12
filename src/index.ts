@@ -139,7 +139,7 @@ const aionPlugin = Plugin.define({
       ...DEFAULT_PERSONALITY_CONFIG,
       ...(config.personality ?? {}),
     }
-    const personality = createPersonality({ client, config: personalityConfig })
+    const personality = createPersonality({ client, directory, config: personalityConfig })
     const managers = createAionManagers({
       ctx: { directory, client, options: context.options },
       config,
@@ -270,6 +270,11 @@ const aionPlugin = Plugin.define({
       registrationCount: registrations.length,
     })
 
+    // Boot quip: one "AION is awake" beat per workspace load. The 60s entrance
+    // debounce in the personality handle folds the session.created that
+    // follows a cold start into this same toast.
+    personality.onSessionCreated()
+
     const cleanup = async () => {
       for (const registration of registrations.reverse()) await registration.dispose()
     }
@@ -308,5 +313,8 @@ export const _testing = {
       createPersonality: handleModule.createPersonality,
       DEFAULT_PERSONALITY_CONFIG: handleModule.DEFAULT_PERSONALITY_CONFIG,
     }
+  },
+  async toastQueue() {
+    return await import("./shared/toast-queue.js")
   },
 }
