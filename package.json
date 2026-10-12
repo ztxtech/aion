@@ -47,10 +47,10 @@
     "url": "git+https://github.com/ztxtech/aion.git"
   },
   "dependencies": {
-    "@opencode/plugin": "0.0.0-beta-19425",
     "@opencode/client": "0.0.0-beta-19425",
+    "@opencode/plugin": "0.0.0-beta-19425",
     "@opencode/schema": "0.0.0-beta-19425",
-    "zod": "^4.1.0"
+    "zod": "4.1.8"
   },
   "devDependencies": {
     "bun-types": "^1.2.0",

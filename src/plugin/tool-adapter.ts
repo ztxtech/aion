@@ -44,7 +44,7 @@ function zodToJsonSchema(zodType: z.ZodTypeAny): JsonSchemaProperty {
     return schema
   }
   if (zodType instanceof z.ZodEnum) {
-    const values = (zodType as unknown as { values: readonly string[] }).values
+    const values = (zodType as unknown as { options: readonly string[] }).options
     const schema: JsonSchemaProperty = { type: "string", enum: [...values] }
     const desc = (zodType as unknown as { description?: string }).description
     if (desc) schema.description = desc
@@ -62,9 +62,9 @@ function zodToJsonSchema(zodType: z.ZodTypeAny): JsonSchemaProperty {
     return zodToJsonSchema(inner)
   }
   if (zodType instanceof z.ZodDefault) {
-    const inner = (zodType as unknown as { _def: { innerType: z.ZodTypeAny; defaultValue: () => unknown } })._def
+    const inner = (zodType as unknown as { _def: { innerType: z.ZodTypeAny } })._def
     const schema = zodToJsonSchema(inner.innerType)
-    schema.default = inner.defaultValue()
+    schema.default = zodType.parse(undefined)
     return schema
   }
   if (zodType instanceof z.ZodObject) {
