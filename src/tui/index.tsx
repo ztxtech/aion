@@ -107,6 +107,7 @@ function Board(props: {
   blockers: () => string[]
   runtime: () => RuntimeSnapshot
   sessionID: () => string | null
+  boardHeight: () => number
   palette: BoardPalette
   close?: () => void
 }) {
@@ -147,6 +148,7 @@ function Board(props: {
   return (
     <box
       flexDirection="column"
+      height={Math.max(20, props.boardHeight())}
       flexGrow={1}
       flexShrink={1}
       minWidth={0}
@@ -224,9 +226,8 @@ function Board(props: {
 
       <scrollbox
         scrollY
-        flexDirection="column"
-        flexGrow={1}
-        flexShrink={1}
+        viewportCulling={false}
+        height={Math.max(8, props.boardHeight() - 13)}
         minWidth={0}
         gap={1}
         backgroundColor={props.palette.surface}
@@ -408,7 +409,11 @@ function Board(props: {
         </Show>
       </scrollbox>
 
-      <text fg={props.palette.muted} wrapMode="none" flexShrink={0}>
+      <text
+        fg={props.palette.muted}
+        wrapMode="none"
+        flexShrink={0}
+      >
         <Show when={props.close} fallback="/aion-board · /aion-mode · /aion-status">
           esc close · /aion-mode · /aion-status
         </Show>
@@ -650,6 +655,11 @@ export default Plugin.define({
     const board = watchPlanGraph(root)
     const calls = watchCallGraph(root, () => activeSessionID(context))
     const runtimeBoard = watchRuntimeSnapshot(root, () => activeSessionID(context))
+    const readBoardHeight = () =>
+      context.renderer?.height ?? process.stdout.rows ?? 40
+    const [boardHeight, setBoardHeight] = createSignal(readBoardHeight())
+    const onBoardResize = () => setBoardHeight(readBoardHeight())
+    context.renderer.on("resize", onBoardResize)
     const toasts = watchToasts(root, (toast) => {
       context.ui.toast.show({
         title: toast.title,
@@ -769,6 +779,7 @@ export default Plugin.define({
           blockers={blockers}
           runtime={runtime}
           sessionID={() => activeSessionID(context)}
+          boardHeight={boardHeight}
           palette={palette}
         />
       ),
@@ -784,6 +795,7 @@ export default Plugin.define({
             blockers={blockers}
             runtime={runtime}
             sessionID={() => activeSessionID(context)}
+            boardHeight={boardHeight}
             palette={palette}
             close={input.close}
           />
@@ -810,6 +822,7 @@ export default Plugin.define({
       board.dispose()
       calls.dispose()
       runtimeBoard.dispose()
+      context.renderer.off("resize", onBoardResize)
     }
   },
 })

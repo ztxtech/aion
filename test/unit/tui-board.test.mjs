@@ -74,6 +74,11 @@ function createContext(root, registrations = { routes: [], slots: [] }) {
       toast: { show: () => {} },
     },
     keymap: { layer: (factory) => factory() },
+    renderer: {
+      height: 52,
+      on: () => {},
+      off: () => {},
+    },
   };
 }
 
