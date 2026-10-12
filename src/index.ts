@@ -290,6 +290,12 @@ export const _testing = {
   async planGraph() {
     return await import("./shared/plan-graph.js")
   },
+  async boardView() {
+    return await import("./shared/board-view.js")
+  },
+  async callGraph() {
+    return await import("./shared/call-graph.js")
+  },
   async runtimeControl() {
     return await import("./shared/runtime-control.js")
   },

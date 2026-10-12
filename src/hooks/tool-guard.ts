@@ -36,6 +36,7 @@ import {
 } from "../scheduling/state-machine"
 import { isLegalDispatchAt } from "../scheduling/dispatch-rules"
 import { coerceTier } from "../scheduling/complexity"
+import { recordAgentCall } from "../shared/call-graph"
 
 // All leakage pattern checks (path + content) are centralized in
 // `managers.enforce.leakageCheck()` (see create-managers.ts). The hook here
@@ -584,6 +585,12 @@ export function createToolGuardBeforeHook(args: CreateHooksArgs): AionToolExecut
               })
             }
           }
+          recordAgentCall(m.ctx.directory, {
+            from: "aion",
+            to: agent,
+            kind: "dispatch",
+            status: "dispatched",
+          })
         }
       }
     }
@@ -762,6 +769,18 @@ export function createToolGuardAfterHook(args: CreateHooksArgs): AionToolExecute
     // === E. Rebuttal mode detection ===
     if (toolName === "aion_critic_verdict") {
       const verdict = toolArgs.verdict as string | undefined
+      const critic = String(toolArgs.critic ?? "")
+      if (critic === "ts-critic" || critic === "c-critic") {
+        recordAgentCall(m.ctx.directory, {
+          from: critic,
+          to: "aion",
+          kind: "verdict",
+          status:
+            verdict === "allow-stop" || verdict === "approve-stop"
+              ? "allow"
+              : "reject",
+        })
+      }
       if (verdict === "rebuttal-mode" || verdict === "absolutely-cannot-stop-now") {
         m.state.governance.rebuttalMode = true
         m.trace.appendEvent(
@@ -826,6 +845,12 @@ export function createToolGuardAfterHook(args: CreateHooksArgs): AionToolExecute
         subagentType === "coder"
       if (isWorker) {
         const rb = parseReportback(outputText)
+        recordAgentCall(m.ctx.directory, {
+          from: subagentType,
+          to: "aion",
+          kind: "return",
+          status: rb.status === "done" ? "done" : "blocked",
+        })
         if (rb.status === "done") {
           recordWorkerDone(subagentType as WorkerAgent)
         }

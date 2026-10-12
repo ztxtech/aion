@@ -6,11 +6,15 @@ import { For, Show, createEffect, createMemo, createSignal } from "solid-js"
 import type { RGBA } from "@opentui/core"
 import {
   buildPlanGraph,
-  dependencyEdges,
   parsePlanMap,
-  planFrontier,
   type PlanGraph,
 } from "../shared/plan-graph"
+import {
+  agentGraphView,
+  executionLayerRows,
+  type BoardNode,
+} from "../shared/board-view"
+import { buildAgentGraph, readCallGraph, type CallGraphState } from "../shared/call-graph"
 import {
   EXECUTION_MODES,
   describeExecutionMode,
@@ -99,6 +103,7 @@ function mark(state: PlanGraph["items"][number]["state"]) {
 
 function Board(props: {
   graph: () => PlanGraph
+  callGraph: () => CallGraphState
   blockers: () => string[]
   runtime: () => RuntimeSnapshot
   sessionID: () => string | null
@@ -123,10 +128,21 @@ function Board(props: {
     graph().items.find((item) => item.state === "in-progress") ??
     graph().items.find((item) => item.state === "todo") ??
     graph().items[0]
-  const stateColor = (state: PlanGraph["items"][number]["state"]) =>
-    stateColorFor(props.palette, state)
-  const frontier = createMemo(() => new Set(planFrontier(graph().items)))
-  const edges = createMemo(() => dependencyEdges(graph().items))
+  const executionRows = createMemo(() =>
+    executionLayerRows(graph(), { columns: 92 }),
+  )
+  const agentGraph = createMemo(() => agentGraphView(buildAgentGraph(props.callGraph())))
+
+  const nodeColor = (node: BoardNode) =>
+    node.state === "done"
+      ? props.palette.success
+      : node.state === "active"
+        ? props.palette.active
+        : node.state === "blocked"
+          ? props.palette.danger
+          : node.state === "todo"
+            ? props.palette.accent
+            : props.palette.muted
 
   return (
     <box
@@ -243,50 +259,38 @@ function Board(props: {
             paddingRight={1}
             gap={1}
           >
-            <For each={graph().layers}>
-              {(layer, index) => (
+            <For each={executionRows().rows}>
+              {(row) => (
                 <box flexDirection="column" flexShrink={0} minWidth={0}>
-                <text
-                  fg={
-                    layer.some((id) => frontier().has(id))
-                      ? props.palette.accent
-                      : props.palette.muted
-                  }
-                  wrapMode="none"
-                >
-                  ▼ Layer {index() + 1} ·{" "}
-                  {layer.some((id) => frontier().has(id))
-                    ? "frontier"
-                    : `${layer.length} item${layer.length === 1 ? "" : "s"}`}
-                  </text>
-                  <For each={layer}>
-                    {(id) => {
-                      const item = () =>
-                        graph().items.find((candidate) => candidate.id === id)!
-                      const onFrontier = () => frontier().has(id)
-                      return (
+                  <box flexDirection="row" gap={executionRows().gap} flexShrink={0} minWidth={0}>
+                    <For each={row.nodes}>
+                      {(node) => (
                         <box
                           flexDirection="column"
-                          marginLeft={1}
-                          paddingLeft={1}
                           flexShrink={0}
-                          minWidth={0}
-                        border={["left"]}
-                        borderStyle="single"
-                          borderColor={
-                            onFrontier() ? props.palette.accent : props.palette.border
-                          }
+                          width={executionRows().nodeWidth}
+                          borderStyle="rounded"
+                          borderColor={nodeColor(node)}
+                          paddingLeft={1}
+                          paddingRight={1}
                         >
-                          <text fg={stateColor(item().state)} wrapMode="none">
-                          {mark(item().state)} {item().id} · {item().planStep}
-                          </text>
-                          <text fg={props.palette.muted} wrapMode="none">
-                            {item().owner || "unassigned"} · wave {item().wave || 1}
-                            {onFrontier() ? " · frontier" : ""}
-                          </text>
+                          <For each={node.lines}>
+                            {(line) => (
+                              <text fg={nodeColor(node)} wrapMode="none">
+                                {line}
+                              </text>
+                            )}
+                          </For>
                         </box>
-                      )
-                    }}
+                      )}
+                    </For>
+                  </box>
+                  <For each={row.connectors}>
+                    {(line) => (
+                      <text fg={props.palette.border} wrapMode="none">
+                        {line || " "}
+                      </text>
+                    )}
                   </For>
                 </box>
               )}
@@ -294,29 +298,57 @@ function Board(props: {
           </box>
         </Show>
 
-        <Show when={edges().length > 0}>
+        <Show when={agentGraph().rows.length > 0}>
           <box
             flexDirection="column"
             flexShrink={0}
             borderStyle="rounded"
-            borderColor={props.palette.border}
-            title=" DEPENDENCIES "
+            borderColor={props.palette.accent}
+            title=" AGENT GRAPH "
             titleAlignment="left"
             paddingLeft={1}
             paddingRight={1}
+            gap={1}
           >
-            <For each={edges().slice(0, 8)}>
-              {(edge) => (
-                <text fg={props.palette.muted} wrapMode="none">
-                  {edge.from} → {edge.to}
-                </text>
+            <For each={agentGraph().rows}>
+              {(row) => (
+                <box flexDirection="column" flexShrink={0} minWidth={0}>
+                  <box flexDirection="row" gap={agentGraph().gap} flexShrink={0} minWidth={0}>
+                    <For each={row.nodes}>
+                      {(node) => (
+                        <box
+                          flexDirection="column"
+                          flexShrink={0}
+                          width={agentGraph().nodeWidth}
+                          borderStyle="rounded"
+                          borderColor={nodeColor(node)}
+                          paddingLeft={1}
+                          paddingRight={1}
+                        >
+                          <For each={node.lines}>
+                            {(line) => (
+                              <text fg={nodeColor(node)} wrapMode="none">
+                                {line}
+                              </text>
+                            )}
+                          </For>
+                        </box>
+                      )}
+                    </For>
+                  </box>
+                  <For each={row.connectors}>
+                    {(line) => (
+                      <text fg={props.palette.border} wrapMode="none">
+                        {line || " "}
+                      </text>
+                    )}
+                  </For>
+                </box>
               )}
             </For>
-            <Show when={edges().length > 8}>
-              <text fg={props.palette.muted} wrapMode="none">
-                +{edges().length - 8} more
-              </text>
-            </Show>
+            <text fg={props.palette.muted} wrapMode="none">
+              {agentGraph().summary}
+            </text>
           </box>
         </Show>
 
@@ -496,6 +528,37 @@ export function watchPlanGraph(root: string = process.cwd()) {
   }
 }
 
+export function watchCallGraph(
+  root: string = process.cwd(),
+  getSessionID: () => string | null = () => null,
+) {
+  const [callGraph, setCallGraph] = createSignal(readCallGraph(root))
+  const pollTimer = setInterval(
+    () => {
+      const state = readCallGraph(root)
+      const sessionID = getSessionID()
+      setCallGraph(
+        !sessionID
+          ? state
+        : {
+              ...state,
+              activeSessionID: sessionID,
+              calls: state.calls.filter(
+                (call) => !call.sessionID || call.sessionID === sessionID,
+              ),
+            },
+      )
+    },
+    500,
+  )
+  pollTimer.unref?.()
+
+  return {
+    callGraph,
+    dispose: () => clearInterval(pollTimer),
+  }
+}
+
 export function watchRuntimeSnapshot(
   root: string = process.cwd(),
   getSessionID: () => string | null = () => null,
@@ -585,6 +648,7 @@ export default Plugin.define({
   setup(context) {
     const root = projectRoot(context.location)
     const board = watchPlanGraph(root)
+    const calls = watchCallGraph(root, () => activeSessionID(context))
     const runtimeBoard = watchRuntimeSnapshot(root, () => activeSessionID(context))
     const toasts = watchToasts(root, (toast) => {
       context.ui.toast.show({
@@ -595,6 +659,7 @@ export default Plugin.define({
       })
     })
     const { graph, blockers } = board
+    const { callGraph } = calls
     const { runtime } = runtimeBoard
     let autoOpenArmed = true
 
@@ -700,6 +765,7 @@ export default Plugin.define({
       render: () => (
         <Board
           graph={graph}
+          callGraph={callGraph}
           blockers={blockers}
           runtime={runtime}
           sessionID={() => activeSessionID(context)}
@@ -714,6 +780,7 @@ export default Plugin.define({
         input.name === "aion-dag" ? (
           <Board
             graph={graph}
+            callGraph={callGraph}
             blockers={blockers}
             runtime={runtime}
             sessionID={() => activeSessionID(context)}
@@ -741,6 +808,7 @@ export default Plugin.define({
       disposeRoute()
       toasts.dispose()
       board.dispose()
+      calls.dispose()
       runtimeBoard.dispose()
     }
   },
