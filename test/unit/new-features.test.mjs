@@ -248,79 +248,128 @@ describe("personality: new quip pools exist and produce valid quips", () => {
 });
 
 /* ============================================================
- * Personality: rarity-driven toast variant mapping
+ * Personality: tone-driven toast variant mapping
+ *   calm -> info (violet), flow -> success (green),
+ *   attention -> warning (amber); error is reserved for diagnostics.
  * ============================================================ */
 
-describe("personality: rarity-driven toast variant", () => {
-  it("legendary quips produce warning variant (amber)", async () => {
+describe("personality: tone-driven toast variant", () => {
+  it("every quip carries a valid tone and the palette mapping is total", async () => {
     const bundle = await importBundle();
-    const { createPersonality, DEFAULT_PERSONALITY_CONFIG, pickQuip } = await bundle._testing.personality();
-    const { client, calls } = createSpyClient();
-    const p = createPersonality({
-      client,
-      config: { ...DEFAULT_PERSONALITY_CONFIG },
-      rng: () => 0.01, // Forces legendary tier (roll < 0.05)
+    const { QUIP_POOLS, TONE_VARIANT } = await bundle._testing.personality();
+    assert.deepEqual(TONE_VARIANT, {
+      calm: "info",
+      flow: "success",
+      attention: "warning",
     });
-    p.onSessionCreated();
-    // The entrance quip should be legendary → variant=warning
-    if (calls.length > 0) {
-      const toast = calls[calls.length - 1];
-      // With rng=0.01, the rarity roll should produce legendary
-      // Legendary → variant="warning"
-      // We can't guarantee the entrance pool has legendary at rng=0.01 due to
-      // filtering, so we just assert the variant is valid.
-      assert.ok(["info", "success", "warning"].includes(toast.body.variant));
-    }
-  });
-
-  it("legendary quips get longer duration than common", async () => {
-    const bundle = await importBundle();
-    const { createPersonality, DEFAULT_PERSONALITY_CONFIG } = await bundle._testing.personality();
-    const durations = new Set();
-    // Fire many toasts with different rng values to hit different rarities
-    for (const rngVal of [0.01, 0.5, 0.9]) {
-      const { client, calls } = createSpyClient();
-      const p = createPersonality({
-        client,
-        config: {
-          ...DEFAULT_PERSONALITY_CONFIG,
-          heartbeatMinMs: 0,
-          heartbeatMaxMs: 0,
-          maxHeartbeatsPerSession: 1,
-        },
-        rng: () => rngVal,
-      });
-      p.onSessionCreated();
-      p.onOpportunity();
-      if (calls.length > 0) {
-        for (const c of calls) {
-          durations.add(c.body.duration);
-        }
+    for (const [slot, pool] of Object.entries(QUIP_POOLS)) {
+      assert.ok(pool.length > 0, `${slot} pool must not be empty`);
+      for (const quip of pool) {
+        assert.ok(
+          ["calm", "flow", "attention"].includes(quip.tone),
+          `${slot} quip "${quip.title}" has invalid tone: ${quip.tone}`,
+        );
       }
     }
-    // We should see at least 2 different durations (common=4500, rare=6000, legendary=8000)
-    assert.ok(durations.size >= 1, `expected at least 1 duration, got ${[...durations]}`);
-    // All durations should be in the expected set
-    for (const d of durations) {
-      assert.ok([4500, 6000, 8000].includes(d), `unexpected duration ${d}`);
-    }
   });
 
-  it("rare quips produce success variant (green)", async () => {
+  it("slot-level tone contracts hold", async () => {
+    const bundle = await importBundle();
+    const { QUIP_POOLS } = await bundle._testing.personality();
+    assert.ok(QUIP_POOLS.entrance.every((q) => q.tone === "calm"));
+    assert.ok(QUIP_POOLS.heartbeat.every((q) => q.tone === "calm"));
+    assert.ok(QUIP_POOLS.completion.every((q) => q.tone === "flow"));
+    assert.ok(QUIP_POOLS.milestone.every((q) => q.tone === "flow"));
+    assert.ok(QUIP_POOLS.critic.some((q) => q.tone === "attention"));
+    assert.ok(QUIP_POOLS["easter-egg"].some((q) => q.tone === "attention"));
+  });
+
+  it("entrance is violet (info) and completion is green (success)", async () => {
     const bundle = await importBundle();
     const { createPersonality, DEFAULT_PERSONALITY_CONFIG } = await bundle._testing.personality();
     const { client, calls } = createSpyClient();
-    // rng=0.06 → roll falls in the rare band (0.05 < roll < 0.30)
     const p = createPersonality({
       client,
-      config: { ...DEFAULT_PERSONALITY_CONFIG },
-      rng: () => 0.06,
+      config: DEFAULT_PERSONALITY_CONFIG,
+      rng: () => 0.5,
     });
     p.onSessionCreated();
-    // If the entrance pool has a rare quip at this rng, variant should be success
-    if (calls.length > 0) {
-      const toast = calls[calls.length - 1];
-      assert.ok(["info", "success", "warning"].includes(toast.body.variant));
+    p.onCompletion();
+    assert.equal(calls[0].body.variant, "info", "calm entrance renders violet");
+    assert.equal(calls[1].body.variant, "success", "flow completion renders green");
+  });
+
+  it("legendary keeps the long duration and gets the star glyph", async () => {
+    const bundle = await importBundle();
+    const { createPersonality, DEFAULT_PERSONALITY_CONFIG } = await bundle._testing.personality();
+    const { client, calls } = createSpyClient();
+    const p = createPersonality({
+      client,
+      config: DEFAULT_PERSONALITY_CONFIG,
+      rng: () => 0.01, // roll 1 -> legendary tier
+    });
+    p.onSessionCreated();
+    const toast = calls[0].body;
+    assert.equal(toast.variant, "info", "calm tone stays violet at any rarity");
+    assert.equal(toast.duration, 8000);
+    assert.ok(toast.title.startsWith("\uD83C\uDF1F"), `expected star glyph, got ${toast.title}`);
+  });
+
+  it("rare beats sparkle and linger longer than common", async () => {
+    const bundle = await importBundle();
+    const { createPersonality, DEFAULT_PERSONALITY_CONFIG } = await bundle._testing.personality();
+    const { client, calls } = createSpyClient();
+    const p = createPersonality({
+      client,
+      config: DEFAULT_PERSONALITY_CONFIG,
+      rng: () => 0.06, // roll 6 -> rare tier
+    });
+    p.onSessionCreated();
+    const toast = calls[0].body;
+    assert.equal(toast.variant, "info");
+    assert.equal(toast.duration, 6000);
+    assert.ok(toast.title.startsWith("\u2728"), `expected sparkle glyph, got ${toast.title}`);
+  });
+
+  it("personality never uses the error variant", async () => {
+    const bundle = await importBundle();
+    const { createPersonality, DEFAULT_PERSONALITY_CONFIG } = await bundle._testing.personality();
+    const { client, calls } = createSpyClient();
+    let now = 0;
+    let roll = 0;
+    const p = createPersonality({
+      client,
+      config: {
+        ...DEFAULT_PERSONALITY_CONFIG,
+        heartbeatMinMs: 0,
+        heartbeatMaxMs: 0,
+        maxHeartbeatsPerSession: 50,
+      },
+      clock: () => now,
+      rng: () => {
+        roll = (roll + 0.17) % 1;
+        return roll;
+      },
+    });
+    p.onSessionCreated();
+    p.onPhaseTransition("implement");
+    p.onPhaseTransition("loop-back");
+    p.onDispatch("coder");
+    p.onCriticVerdict("ts-critic", "rollback");
+    p.onMilestone();
+    p.onEasterEgg();
+    p.onCompletion();
+    for (let i = 0; i < 10; i++) {
+      now += 10;
+      p.onOpportunity();
+    }
+    assert.ok(calls.length > 0, "expected a spread of personality toasts");
+    for (const call of calls) {
+      assert.notEqual(
+        call.body.variant,
+        "error",
+        "personality toasts stay in the calm/flow/attention palette",
+      );
     }
   });
 });

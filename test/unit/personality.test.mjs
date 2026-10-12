@@ -265,7 +265,7 @@ describe("personality: createPersonality handle", () => {
         client: undefined,
         directory: root,
         config: DEFAULT_PERSONALITY_CONFIG,
-        rng: () => 0.5, // roll 50 -> common tier -> info variant
+        rng: () => 0.5, // calm entrance tone -> info variant
       });
       p.onSessionCreated();
 

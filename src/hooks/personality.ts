@@ -15,7 +15,7 @@
  *    state changes — no separate timer thread, no setInterval loop.
  */
 
-import { pickQuip, type Quip, type QuipSlot } from "../shared/personality"
+import { TONE_VARIANT, pickQuip, type Quip, type QuipSlot } from "../shared/personality"
 import { notifyFromCtx, type AionClient } from "../shared/notify-tui"
 
 export type PersonalityConfig = {
@@ -113,21 +113,20 @@ export function createPersonality(args: CreatePersonalityArgs): PersonalityHandl
     }
     const quip = pickQuip(slot, lastQuip, rng)
     lastQuip = quip
-    // Rarity-driven visual differentiation:
-    //   common    → info toast, standard duration
-    //   rare      → success toast (green), longer duration
-    //   legendary → warning toast (amber/gold), longest duration
-    const variant =
-      quip.rarity === "legendary" ? "warning"
-        : quip.rarity === "rare" ? "success"
-          : "info"
+    // Color follows the emotional tone (violet / green / amber); rarity only
+    // decides the glyph and how long the toast lingers.
+    const variant = TONE_VARIANT[quip.tone]
     const duration =
       quip.rarity === "legendary" ? 8000
         : quip.rarity === "rare" ? 6000
           : 4500
+    const glyph =
+      quip.rarity === "legendary" ? "\uD83C\uDF1F "   // star, for the rarest beats
+        : quip.rarity === "rare" ? "\u2728 "            // sparkles
+          : ""
     notifyFromCtx({ client, directory }, {
       variant,
-      title: quip.rarity === "legendary" ? `\u2728 ${quip.title}` : quip.rarity === "rare" ? `\u2728 ${quip.title}` : quip.title,
+      title: `${glyph}${quip.title}`,
       message: quip.message,
       duration,
     })
