@@ -30,13 +30,13 @@ Run this skill after every task completes (before or as part of the final closeo
   - medium: 3 occurrences
   - low: 5 occurrences
 - Group by `root_cause` + `scope`. If any group crosses its threshold, write a **gap report** to `memory/evolution-log.md`:
-- If found, write a **gap report** to `memory/evolution-log.md`:
   ```yaml
-  gap: <root_cause>
-  occurrences: <N>
-  proposed_skill: <name>
-  rationale: <why a new skill would close this gap>
-  status: proposed
+  - gap: "repeated root_cause from negative.md"
+    occurrences: 1
+    severity: "high"
+    proposed_skill: "name"
+    rationale: "why this closes the gap"
+    status: proposed
   ```
 
 ### 3. Shadow-Test Proposals

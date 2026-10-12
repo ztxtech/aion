@@ -107,7 +107,7 @@ AION organizes work through named agents, native OpenCode skills, runtime protoc
 │   ├── regression-matrix.md  # Regression test matrix
 │   └── release-gates.md      # Release gate criteria
 ├── memory/
-│   └── template/     # 11 memory templates
+│   └── template/     # 13 memory templates
 │       ├── initial-prompt.md  # Anti-drift task baseline
 │       ├── context-snapshot.md # Canonical compaction artifact
 │       ├── progress.md        # Task progress tracking
@@ -120,7 +120,7 @@ AION organizes work through named agents, native OpenCode skills, runtime protoc
 │       ├── relation.md        # Agent relationship graph
 │       ├── memory.md          # Persistent memory
 │       ├── dir.md             # Directory structure
-│       └── trace.md           # Trace template seed
+│       └── evolution-log.md   # Skill gap pipeline
 └── .gitignore
 ```
 

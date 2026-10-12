@@ -60,5 +60,5 @@ When a goal is active (via `get_goal`), the goal loop drives continuation. Each 
 1. Read `memory/todo-map.md` and `memory/context-snapshot.md` for current state.
 2. Pick the highest-value remaining action and dispatch the matching subagent (or do it directly for L0/L1).
 3. Update `memory/progress.md` and `memory/context-snapshot.md` after each iteration.
-4. When all stop conditions hold AND every todo item is resolved, call `update_goal` with status `complete` and evidence (cited file paths, session IDs). If blocked, call `update_goal` with status `blocked` and the concrete blocker.
+4. When all stop conditions hold AND every todo item is resolved, call `update_goal` with status `complete` and evidence (cited file paths, session IDs). If blocked, call `update_goal` with status `unmet` and the concrete blocker.
 5. The goal plugin auto-continues on idle until the goal reaches a terminal state or the budget runs out. Do NOT manually prompt the user to continue — the goal loop handles that.

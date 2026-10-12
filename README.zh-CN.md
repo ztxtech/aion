@@ -107,7 +107,7 @@ AION 通过专业化 agent、OpenCode 原生 skill、运行时协议、记忆文
 │   ├── regression-matrix.md  # 回归测试矩阵
 │   └── release-gates.md      # 发布门禁
 ├── memory/
-│   └── template/     # 11 个记忆模板
+│   └── template/     # 13 个记忆模板
 │       ├── initial-prompt.md  # 反漂移任务基线
 │       ├── context-snapshot.md # 规范化压缩 artifact
 │       ├── progress.md        # 任务进度追踪
@@ -120,7 +120,7 @@ AION 通过专业化 agent、OpenCode 原生 skill、运行时协议、记忆文
 │       ├── relation.md        # Agent 关系图
 │       ├── memory.md          # 持久记忆
 │       ├── dir.md             # 目录结构
-│       └── trace.md           # Trace 模板种子
+│       └── evolution-log.md   # Skill gap 流水线
 └── .gitignore
 ```
 
