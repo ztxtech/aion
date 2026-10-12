@@ -17,9 +17,12 @@ import {
   type PlanGraph,
 } from "../shared/plan-graph"
 import {
-  agentGraphView,
-  executionLayerRows,
-  type BoardNode,
+  agentActivityView,
+  agentListLine,
+  boardStateIcon,
+  executionListItems,
+  executionListLine,
+  type BoardListItem,
 } from "../shared/board-view"
 import { buildAgentGraph, readCallGraph, type CallGraphState } from "../shared/call-graph"
 import {
@@ -40,7 +43,7 @@ import {
 
 const AION_STATUS_HINT = "ctrl+g AION board · ctrl+p commands"
 const ZTXTECH_LOGO_TEXT = "ZTXTECH"
-const ZTXTECH_LOGO_FONT = "block"
+const ZTXTECH_LOGO_FONT = "tiny"
 
 type BoardPalette = {
   base: RGBA
@@ -108,24 +111,6 @@ function readRuntimeSnapshot(
   }
 }
 
-function mark(state: PlanGraph["items"][number]["state"]) {
-  return state === "done" ? "[x]" : state === "in-progress" ? "[~]" : "[ ]"
-}
-
-function agentStateIcon(state: BoardNode["state"]) {
-  return state === "done"
-    ? "✓"
-    : state === "active"
-      ? "●"
-      : state === "blocked"
-        ? "✗"
-        : "○"
-}
-
-function agentListLine(node: BoardNode) {
-  return `${agentStateIcon(node.state)} ${node.id} · ${node.lines[2]}`
-}
-
 function Board(props: {
   graph: () => PlanGraph
   callGraph: () => CallGraphState
@@ -159,27 +144,19 @@ function Board(props: {
   onCleanup(() => {
     clearInterval(timer)
   })
-  const executionRows = createMemo(() =>
-    executionLayerRows(graph(), { columns: 92, tick: tick() }),
-  )
-  const agentGraph = createMemo(() =>
-    agentGraphView(buildAgentGraph(props.callGraph()), {
-      columns: 92,
-      tick: tick(),
-    }),
-  )
-  const agentRows = createMemo(() =>
-    agentGraph().rows.flatMap((row) => row.nodes),
+  const executionItems = createMemo(() => executionListItems(graph()))
+  const agentBoard = createMemo(() =>
+    agentActivityView(buildAgentGraph(props.callGraph())),
   )
 
-  const nodeColor = (node: BoardNode) =>
-    node.state === "done"
+  const itemColor = (item: BoardListItem) =>
+    item.state === "done"
       ? props.palette.success
-      : node.state === "active"
+      : item.state === "active"
         ? props.palette.active
-        : node.state === "blocked"
+        : item.state === "blocked"
           ? props.palette.danger
-          : node.state === "todo"
+          : item.state === "todo"
             ? props.palette.accent
             : props.palette.muted
 
@@ -246,8 +223,8 @@ function Board(props: {
             flexDirection="column"
             flexShrink={0}
             marginTop={1}
-            minWidth={56}
-            minHeight={6}
+            minWidth={22}
+            minHeight={2}
             alignItems="center"
             justifyContent="center"
           >
@@ -295,10 +272,10 @@ function Board(props: {
           when={graph().items.length > 0}
           fallback={
             <box
-            flexShrink={0}
+              flexShrink={0}
               borderStyle="rounded"
               borderColor={props.palette.border}
-              title=" EXECUTION DAG "
+              title=" EXECUTION PLAN "
               titleAlignment="left"
               paddingLeft={1}
             >
@@ -313,55 +290,22 @@ function Board(props: {
             flexShrink={0}
             borderStyle="rounded"
             borderColor={props.palette.border}
-            title=" EXECUTION DAG "
+            title=" EXECUTION PLAN "
             titleAlignment="left"
             paddingLeft={1}
             paddingRight={1}
-            gap={1}
           >
-            <For each={executionRows().rows}>
-              {(row) => (
-                <box flexDirection="column" flexShrink={0} minWidth={0}>
-                  <box flexDirection="row" gap={executionRows().gap} flexShrink={0} minWidth={0}>
-                    <For each={row.nodes}>
-                      {(node) => (
-                        <box
-                          flexDirection="column"
-                          flexShrink={0}
-                          width={executionRows().nodeWidth}
-                          borderStyle="rounded"
-                          borderColor={nodeColor(node)}
-                          paddingLeft={1}
-                          paddingRight={1}
-                        >
-                          <For each={node.lines}>
-                            {(line) => (
-                              <text fg={nodeColor(node)} wrapMode="none">
-                                {line}
-                              </text>
-                            )}
-                          </For>
-                        </box>
-                      )}
-                    </For>
-                  </box>
-                  <For each={row.connectors}>
-                    {(line) => (
-                      <text
-                        fg={row.active ? props.palette.active : props.palette.border}
-                        wrapMode="none"
-                      >
-                        {line || " "}
-                      </text>
-                    )}
-                  </For>
-                </box>
+            <For each={executionItems()}>
+              {(item) => (
+                <text fg={itemColor(item)} wrapMode="word">
+                  {executionListLine(item, tick())}
+                </text>
               )}
             </For>
           </box>
         </Show>
 
-        <Show when={agentRows().length > 0}>
+        <Show when={agentBoard().items.length > 0}>
           <box
             flexDirection="column"
             flexShrink={0}
@@ -372,15 +316,15 @@ function Board(props: {
             paddingLeft={1}
             paddingRight={1}
           >
-            <For each={agentRows()}>
-              {(node) => (
-                <text fg={nodeColor(node)} wrapMode="none">
-                  {agentListLine(node)}
+            <For each={agentBoard().items}>
+              {(item) => (
+                <text fg={itemColor(item)} wrapMode="word">
+                  {agentListLine(item, tick())}
                 </text>
               )}
             </For>
             <text fg={props.palette.muted} wrapMode="none">
-              {agentGraph().summary}
+              {agentBoard().summary}
             </text>
           </box>
         </Show>
@@ -481,7 +425,7 @@ function Summary(props: {
         <Show when={focus()}>
           {(item) => (
             <text fg={stateColorFor(props.palette, item().state)} wrapMode="none">
-              {mark(item().state)} {item().id} {item().planStep}
+              {boardStateIcon(item().state)} {item().id} {item().planStep}
             </text>
           )}
         </Show>
@@ -871,4 +815,5 @@ export {
   ZTXTECH_LOGO_FONT,
   ZTXTECH_LOGO_TEXT,
   agentListLine,
+  executionListLine,
 }

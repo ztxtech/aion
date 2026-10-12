@@ -85,18 +85,28 @@ function createContext(root, registrations = { routes: [], slots: [] }) {
 describe("AION TUI plan watcher", () => {
   it("uses a text-only ZTXTECH logo", () => {
     assert.equal(tuiBundle.ZTXTECH_LOGO_TEXT, "ZTXTECH");
-    assert.equal(tuiBundle.ZTXTECH_LOGO_FONT, "block");
+    assert.equal(tuiBundle.ZTXTECH_LOGO_FONT, "tiny");
   });
 
-  it("formats agent activity as a compact state list", () => {
+  it("formats execution and agent activity as compact lists", () => {
+    const item = {
+      id: "TODO-005",
+      state: "active",
+      title: "Reproduce baseline",
+      detail: "coder · w5 · after TODO-004",
+    };
+    assert.equal(
+      tuiBundle.executionListLine(item, 0),
+      "● TODO-005 Reproduce baseline · coder · w5 · after TODO-004",
+    );
     assert.equal(
       tuiBundle.agentListLine({
         id: "information-collector",
-        label: "information-collector",
-        state: "active",
-        lines: ["● information-collector", "evidence", "2↑ · 1↓"],
-      }),
-      "● information-collector · 2↑ · 1↓",
+        state: "done",
+        title: "information-collector",
+        detail: "2↑ · 1↓",
+      }, 0),
+      "✓ information-collector · 2↑ · 1↓",
     );
   });
 
