@@ -1,16 +1,16 @@
 ---
 description: "Minimal-context cold-start critique agent: judge again whether the task can really stop, based only on current artifacts on disk."
 mode: subagent
-permission:
-  "*": allow
-  task:
-    "*": deny
-  bash:
-    "*": allow
-  edit: deny
-  webfetch: deny
-  skill:
-    "*": allow
+permissions:
+  - action: subagent
+    resource: "*"
+    effect: deny
+  - action: edit
+    resource: "*"
+    effect: deny
+  - action: webfetch
+    resource: "*"
+    effect: deny
 ---
 
 # C Critic

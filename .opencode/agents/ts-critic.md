@@ -1,16 +1,16 @@
 ---
 description: "Handle high-standard review, time-series pre/post gates, blocker judgment, stop-go signals, and structure-saving suggestions."
 mode: subagent
-permission:
-  "*": allow
-  task:
-    "*": deny
-  bash:
-    "*": allow
-  edit: deny
-  webfetch: deny
-  skill:
-    "*": allow
+permissions:
+  - action: subagent
+    resource: "*"
+    effect: deny
+  - action: edit
+    resource: "*"
+    effect: deny
+  - action: webfetch
+    resource: "*"
+    effect: deny
 ---
 
 # TS Critic

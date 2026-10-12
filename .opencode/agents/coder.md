@@ -1,17 +1,13 @@
 ---
 description: "Finish the needed interfaces, analysis, experiments, and deliverables with real evidence."
 mode: subagent
-permission:
-  "*": allow
-  external_directory: allow
-  task:
-    "*": deny
-  bash:
-    "*": allow
-  edit: allow
-  webfetch: allow
-  skill:
-    "*": allow
+permissions:
+  - action: external_directory
+    resource: "*"
+    effect: allow
+  - action: subagent
+    resource: "*"
+    effect: deny
 ---
 
 # Coder

@@ -1,19 +1,11 @@
 ---
 description: "Aion main agent: read the task, dispatch the right subagents, enforce review gates, and drive the flow to close."
 mode: primary
-color: primary
-permission:
-  "*": allow
-  external_directory: allow
-  task:
-    "*": allow
-  bash:
-    "*": allow
-  edit: allow
-  websearch: allow
-  webfetch: allow
-  skill:
-    "*": allow
+color: "#7C3AED"
+permissions:
+  - action: "*"
+    resource: "*"
+    effect: allow
 ---
 
 # Agent

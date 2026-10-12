@@ -1,0 +1,12 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugins": [
+    {
+      "package": "@prevalentware/opencode-goal-plugin",
+      "options": {
+        "auto_continue": true,
+        "max_auto_turns": 50
+      }
+    }
+  ]
+}
