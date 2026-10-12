@@ -440,13 +440,13 @@ describe("coverage: aion_pre_stop_gate — exhaustive branches", async () => {
     assert.ok(out.blockers.some(b => b.includes("c-critic has rejected")));
   });
 
-  it("blocks when c_critic verdict=unset", async () => {
+  it("allows c_critic verdict=unset before final review", async () => {
     const out = JSON.parse(await result.tool.aion_pre_stop_gate.execute({
       ...allTrue,
       c_critic_verdict: "unset",
     }, {}));
-    assert.equal(out.allowStop, false);
-    assert.ok(out.blockers.some(b => b.includes("c-critic verdict missing")));
+    assert.equal(out.allowStop, true);
+    assert.deepEqual(out.blockers, []);
   });
 
   it("each individual false flag produces a specific blocker", async () => {
@@ -505,7 +505,7 @@ describe("coverage: aion_critic_dispatch — exhaustive branches", async () => {
       goal: "minimal",
     }, {}));
     assert.equal(out.critic, "ts-critic");
-    assert.ok(out.instructions.some(i => i.includes("(none)")));
+    assert.ok(out.instructions.includes("(none)"));
   });
 
   it("truncates long goal in trace but keeps full goal in payload", async () => {
@@ -526,10 +526,9 @@ describe("coverage: aion_critic_dispatch — exhaustive branches", async () => {
       evidence_artifacts: [],
       unresolved_blockers: ["BLK-001", "BLK-002"],
     }, {}));
-    const rebutLine = out.instructions.find(i => i.includes("REBUT"));
-    assert.ok(rebutLine);
-    assert.ok(rebutLine.includes("BLK-001"));
-    assert.ok(rebutLine.includes("BLK-002"));
+    assert.match(out.instructions, /REBUT unresolved_blockers/);
+    assert.match(out.instructions, /BLK-001/);
+    assert.match(out.instructions, /BLK-002/);
   });
 
   it("does NOT include REBUT instructions when unresolved_blockers empty", async () => {
@@ -539,8 +538,7 @@ describe("coverage: aion_critic_dispatch — exhaustive branches", async () => {
       evidence_artifacts: [],
       unresolved_blockers: [],
     }, {}));
-    const rebutLine = out.instructions.find(i => i.includes("REBUT"));
-    assert.equal(rebutLine, undefined);
+    assert.doesNotMatch(out.instructions, /REBUT unresolved_blockers/);
   });
 
   it("emits a critic.review event to trace", async () => {
@@ -609,7 +607,23 @@ describe("coverage: aion_critic_verdict — exhaustive branches", async () => {
   });
 
   it("c-critic approve-stop maps to allow-stop signal", async () => {
-    const out = JSON.parse(await result.tool.aion_critic_verdict.execute({
+    const tmp2 = createTmp("aion-critic-stop-");
+    const fresh = await createPlugin(tmp2);
+    const allTrue = {
+      brain_storm_done: true,
+      deep_reasoning_done: true,
+      ts_critic_allow_stop: true,
+      completion_gate_fresh: true,
+      workspace_cleaned: true,
+      search_coverage: true,
+      todo_semantics: true,
+      report_evidence: true,
+      figure_analysis: true,
+      visual_test_loop: true,
+    };
+    const gate = JSON.parse(await fresh.tool.aion_pre_stop_gate.execute(allTrue, {}));
+    assert.equal(gate.allowStop, true);
+    const out = JSON.parse(await fresh.tool.aion_critic_verdict.execute({
       critic: "c-critic",
       verdict: "approve-stop",
       blockers: [],
@@ -617,6 +631,7 @@ describe("coverage: aion_critic_verdict — exhaustive branches", async () => {
       next_call: "",
     }, {}));
     assert.equal(out.signal, "allow-stop");
+    try { rmSync(tmp2, { recursive: true, force: true }); } catch {}
   });
 
   it("c-critic reject-stop maps to absolutely-cannot-stop-now", async () => {

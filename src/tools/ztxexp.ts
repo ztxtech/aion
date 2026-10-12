@@ -13,7 +13,7 @@
  */
 import { tool } from "../plugin/tool"
 import type { CreateToolsArgs } from "./_shared"
-import type { AionShimTools } from "./types"
+import type { AionToolMap } from "./types"
 import { existsSync, mkdirSync, writeFileSync, readdirSync, statSync, readFileSync } from "node:fs"
 import { join, relative, dirname } from "node:path"
 
@@ -76,7 +76,7 @@ function collectEmptyDirs(dirPath: string): string[] {
   return empty
 }
 
-export function createZtxexpTools(args: CreateToolsArgs): AionShimTools {
+export function createZtxexpTools(args: CreateToolsArgs): AionToolMap {
   const { managers } = args
   const m = managers
   const z = tool.schema
@@ -302,7 +302,7 @@ if __name__ == "__main__":
         timeout_ms: z.number().int().min(0).default(600_000),
       },
       async execute(args, context) {
-        const cwd = context?.directory ?? m.ctx.directory
+        const cwd = (context as { directory?: string } | undefined)?.directory ?? m.ctx.directory
         const expRoot = join(cwd, "exp", args.experiment_id)
 
         if (!existsSync(expRoot)) {

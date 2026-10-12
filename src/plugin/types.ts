@@ -12,4 +12,4 @@ export type PluginContext = {
 }
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export type PluginInstance = Record<string, any>
-export type ToolsRecord = Record<string, import("./tool-adapter").V2ToolDefinition>
+export type ToolsRecord = Record<string, import("./tool").AionTool>

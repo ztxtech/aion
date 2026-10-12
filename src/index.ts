@@ -1,114 +1,31 @@
 /**
- * AION plugin entry point.
+ * AION OpenCode V2 plugin.
  *
- * This is the single default export that OpenCode loads. It wires the entire
- * AION subsystem together in a fixed order:
- *   1. Load + validate config from .opencode/aion.jsonc
- *   2. Bootstrap the on-disk workspace (memory files, trace, snapshot)
- *   3. Build the personality handle (TUI quips)
- *   4. Create the central manager bag (state, trace, governance, ...)
- *   5. Register all AION tools (critic, memory, safety, ...)
- *   6. Register all OpenCode hooks (tool-guard, compaction, chat, ...)
- *   7. Assemble the final PluginInstance returned to OpenCode
- *
- * The `_testing` export exposes lazy dynamic-import loaders so unit tests can
- * reach internal hook/tool modules without bundling them into production.
+ * Setup owns the complete lifecycle: config/bootstrap, managers, native V2
+ * registrations, and cleanup. There is intentionally no V1 server-object
+ * translation layer.
  */
-import type { Plugin } from "@opencode/plugin"
-import { mkdirSync, writeFileSync, existsSync, readFileSync } from "node:fs"
+import { Plugin } from "@opencode/plugin"
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { loadAionConfig } from "./config/load-config"
 import { createAionManagers } from "./create-managers"
 import { createAllAionTools } from "./create-tools"
 import { createAionHooks } from "./create-hooks"
-import { createAionPluginInterface } from "./plugin-interface"
 import { bootstrapWorkspace } from "./workspace-bootstrap"
 import { buildAionAgents } from "./agents/registry"
 import { createPersonality, DEFAULT_PERSONALITY_CONFIG, type PersonalityConfig } from "./hooks/personality"
 import { info } from "./shared/logger"
+import type { AionConfig } from "./config/types"
 
-const aionPlugin: Plugin = async (input, _options) => {
-  info("[aion] ENTRY - plugin loading", {
-    directory: input.directory,
-  })
+const managedAgentMarker = "<!-- aion-plugin:managed -->"
 
-  const config = await loadAionConfig(input.directory, input)
-
-  bootstrapWorkspace(input.directory, config)
-
-  const personalityConfig: PersonalityConfig = {
-    ...DEFAULT_PERSONALITY_CONFIG,
-    ...(config.personality ?? {}),
-  }
-
-  const personality = createPersonality({
-    client: input.client,
-    config: personalityConfig,
-  })
-
-  const managers = createAionManagers({
-    ctx: input,
-    config,
-    onPhaseChange: (_prev, next) => {
-      personality.onPhaseTransition(next)
-    },
-  })
-
-  const tools = createAllAionTools({
-    ctx: input,
-    config,
-    managers,
-  })
-
-  const hooks = createAionHooks({
-    ctx: input,
-    config,
-    managers,
-    personality,
-  })
-
-  const pluginInterface = createAionPluginInterface({
-    ctx: input,
-    config,
-    managers,
-    hooks,
-    tools,
-  })
-
-  info("[aion] plugin loaded", {
-    aionToolCount: Object.keys(tools).length,
-    hookCount: Object.keys(hooks).length,
-  })
-
-  return pluginInterface
-}
-
-type V2Context = {
-  location: { directory: string }
-  options: Record<string, unknown>
-  tool: {
-    transform: (callback: (editor: { add: (tool: Record<string, unknown>) => void }) => void) => Promise<{ dispose: () => Promise<void> }>
-    hook: (name: string, callback: (event: any) => void | Promise<void>) => Promise<{ dispose: () => Promise<void> }>
-  }
-  permission: {
-    hook: (name: string, callback: (event: any) => void | Promise<void>) => Promise<{ dispose: () => Promise<void> }>
-  }
-  session: {
-    hook: (name: string, callback: (event: any) => void | Promise<void>, options?: Record<string, unknown>) => Promise<{ dispose: () => Promise<void> }>
-  }
-  event: {
-    subscribe: (options?: { signal?: AbortSignal }) => AsyncIterable<any>
-  }
-  agent: {
-    reload: () => Promise<void>
-    transform: (callback: (editor: { default: (id?: string) => void }) => void) => Promise<{ dispose: () => Promise<void> }>
-  }
-}
-
-type V2PluginModule = {
-  id: string
-  server: Plugin
-  setup: (context: V2Context) => Promise<() => Promise<void> | void>
+type PermissionEvaluation = {
+  action: string
+  resources: readonly string[]
+  effect: "allow" | "ask" | "deny"
+  message?: string
+  source?: { id?: string }
 }
 
 function permissionRules(permission?: Record<string, "allow" | "deny" | "ask">) {
@@ -130,30 +47,22 @@ function yamlValue(value: unknown) {
   return JSON.stringify(value)
 }
 
-function writeManagedAgent(directory: string, name: string, config: Record<string, any>) {
-  const agentDir = join(directory, ".opencode", "agents")
-  const agentPath = join(agentDir, `${name}.md`)
-  const marker = "<!-- aion-plugin:managed -->"
+function managedAgentFrontmatter(config: Record<string, any>) {
+  const rules = [
+    { action: "aion", resource: "*", effect: "allow" },
+    { action: "subagent", resource: "*", effect: "allow" },
+    ...permissionRules(config.permission),
+  ]
 
-  if (existsSync(agentPath)) {
-    const content = readFileSync(agentPath, "utf8")
-    if (!content.includes(marker)) return
-  }
-
-  mkdirSync(agentDir, { recursive: true })
-  const frontmatter = [
+  return [
     "---",
     `description: ${yamlValue(config.description ?? "")}`,
     `mode: ${yamlValue(config.mode ?? "subagent")}`,
     ...(config.model ? [`model: ${yamlValue(config.model)}`] : []),
-    ...(permissionRules(config.permission).length
-      ? [
-          "permissions:",
-          ...permissionRules(config.permission).map((rule) =>
-            `  - { action: ${yamlValue(rule.action)}, resource: ${yamlValue(rule.resource)}, effect: ${yamlValue(rule.effect)} }`,
-          ),
-        ]
-      : []),
+    "permissions:",
+    ...rules.map((rule) =>
+      `  - { action: ${yamlValue(rule.action)}, resource: ${yamlValue(rule.resource)}, effect: ${yamlValue(rule.effect)} }`,
+    ),
     ...(config.temperature !== undefined || config.topP !== undefined || config.options
       ? [
           "request:",
@@ -164,93 +73,145 @@ function writeManagedAgent(directory: string, name: string, config: Record<strin
         ]
       : []),
     "---",
-  ]
-  const system = Array.isArray(config.prompt) ? config.prompt.join("\n") : config.prompt ?? ""
-
-  writeFileSync(agentPath, `${frontmatter.join("\n")}\n\n${marker}\n\n${system}\n`)
+  ].join("\n")
 }
 
-const aionPluginModule: V2PluginModule = {
+function writeManagedAgent(directory: string, name: string, config: Record<string, any>) {
+  const agentDir = join(directory, ".opencode", "agents")
+  const agentPath = join(agentDir, `${name}.md`)
+
+  if (existsSync(agentPath)) {
+    const content = readFileSync(agentPath, "utf8")
+    if (!content.includes(managedAgentMarker)) return
+  }
+
+  mkdirSync(agentDir, { recursive: true })
+  const system = Array.isArray(config.prompt) ? config.prompt.join("\n") : config.prompt ?? ""
+  writeFileSync(
+    agentPath,
+    `${managedAgentFrontmatter(config)}\n\n${managedAgentMarker}\n\n${system}\n`,
+  )
+}
+
+function resultText(result: unknown) {
+  const content = (result as { content?: unknown } | undefined)?.content
+  if (typeof content === "string") return content
+  if (Array.isArray(content)) {
+    return content
+      .map((part) => (typeof part === "object" && part !== null && "text" in part ? String(part.text) : ""))
+      .filter(Boolean)
+      .join("\n")
+  }
+  return undefined
+}
+
+function evaluateAionPermission(event: PermissionEvaluation, config: AionConfig) {
+  const toolId = event.source?.id ?? event.resources[0] ?? ""
+  const autonomous = config.interactiveMode?.granularity !== "always-interactive"
+
+  if (event.action === "aion") {
+    event.effect = "allow"
+    event.message = "AION internal state tools do not require an external permission prompt."
+    return
+  }
+
+  if (autonomous && (event.action === "shell" || event.action === "webfetch" || event.action === "websearch")) {
+    event.effect = "allow"
+    info("[aion] permission.evaluate: autonomous tool allowed", {
+      action: event.action,
+      resource: event.resources[0] ?? "",
+      tool: toolId,
+    })
+  }
+}
+
+const aionPlugin = Plugin.define({
   id: "aion-ts-plugin",
-  server: aionPlugin,
   async setup(context) {
     const directory = context.location.directory
-    const instance = (await aionPlugin({
-      directory,
-      client: undefined,
-      options: context.options,
-    }, context.options)) as Record<string, any>
-    const registrations: Array<{ dispose: () => Promise<void> }> = []
-    const config = await loadAionConfig(directory, { directory, options: context.options })
+    info("[aion] plugin setup started", { directory })
 
-    for (const [name, agent] of Object.entries(buildAionAgents())) {
+    const config = await loadAionConfig(directory, { directory, options: context.options })
+    bootstrapWorkspace(directory, config)
+    const client = (context as { client?: unknown }).client
+
+    const personalityConfig: PersonalityConfig = {
+      ...DEFAULT_PERSONALITY_CONFIG,
+      ...(config.personality ?? {}),
+    }
+    const personality = createPersonality({ client, config: personalityConfig })
+    const managers = createAionManagers({
+      ctx: { directory, client, options: context.options },
+      config,
+      onPhaseChange: (_previous, next) => personality.onPhaseTransition(next),
+    })
+    const tools = createAllAionTools({ ctx: { directory, client, options: context.options }, config, managers })
+    const hooks = createAionHooks({ ctx: { directory, client, options: context.options }, config, managers, personality })
+    const registrations: Array<{ dispose: () => Promise<void> }> = []
+
+    for (const [name, agent] of Object.entries(buildAionAgents({}))) {
       writeManagedAgent(directory, name, agent)
     }
     await context.agent.reload()
-    await context.agent.transform((editor) => {
-      if (config.defaultAgent) editor.default(config.defaultAgent)
-    })
+    registrations.push(await context.agent.transform((editor) => {
+      if (config.defaultAgent) editor.default(config.defaultAgent as Parameters<typeof editor.default>[0])
+    }))
 
-    await context.tool.transform((editor) => {
-      for (const [name, definition] of Object.entries(instance.tool ?? {})) {
-        if (!definition) continue
-        editor.add({
-          name,
-          description: definition.description,
-          input: definition.input,
-          options: { codemode: definition.options?.codemode === true },
-          execute: definition.execute,
-        })
-      }
-    })
+    registrations.push(await context.tool.transform((editor) => {
+      for (const tool of Object.values(tools)) editor.add(tool)
+    }))
 
-    if (instance["tool.execute.before"]) {
+    if (hooks["tool.execute.before"]) {
+      const hook = hooks["tool.execute.before"]
       registrations.push(await context.tool.hook("execute.before", async (event) => {
-        await instance["tool.execute.before"](event, {
-          args: event.input,
-          metadata: {},
-        })
+        const output = { args: event.input as Record<string, unknown>, metadata: {} }
+        await hook({ tool: event.tool, sessionID: event.sessionID, callID: event.id }, output)
+        if (output.args) event.input = output.args
       }))
     }
 
-    if (instance["tool.execute.after"]) {
+    if (hooks["tool.execute.after"]) {
+      const hook = hooks["tool.execute.after"]
       registrations.push(await context.tool.hook("execute.after", async (event) => {
-        await instance["tool.execute.after"](event, {
-          output: event.status === "completed" ? event.result?.content : undefined,
-          metadata: {},
-        })
+        if (event.status !== "completed") return
+        await hook(
+          { tool: event.tool, sessionID: event.sessionID, callID: event.id },
+          { args: event.input as Record<string, unknown>, output: resultText(event.result), metadata: {} },
+        )
       }))
     }
 
-    if (instance["permission.ask"]) {
-      registrations.push(await context.permission.hook("evaluate", async (event) => {
-        const output = { status: "ask" as "ask" | "deny" | "allow" }
-        await instance["permission.ask"](event, output)
-        event.effect = output.status
-      }))
-    }
+    registrations.push(await context.permission.hook("evaluate", async (event) => {
+      try {
+        evaluateAionPermission(event, config)
+      } catch (error) {
+        console.warn("[aion] permission.evaluate error", error)
+      }
+    }))
 
-    if (instance["chat.message"]) {
+    if (hooks["chat.message"]) {
+      const hook = hooks["chat.message"]
       registrations.push(await context.session.hook("prompt", async (event) => {
-        const output = {
+        await hook({
+          sessionID: event.sessionID,
+          messageID: event.messageID,
+          agent: config.defaultAgent ?? "aion",
+          model: { providerID: "", modelID: "" },
+        }, {
           message: {
             id: event.messageID,
             sessionID: event.sessionID,
-            role: "user" as const,
-            agent: "",
+            role: "user",
+            agent: config.defaultAgent ?? "aion",
             model: { providerID: "", modelID: "" },
           },
-          parts: [],
-        }
-        await instance["chat.message"]({
-          sessionID: event.sessionID,
-          messageID: event.messageID,
-        }, output)
+          parts: [{ type: "text", text: event.prompt.text }],
+        })
       }))
     }
 
     registrations.push(await context.session.hook("context", async (event) => {
-      if (instance["chat.params"]) {
+      if (hooks["chat.params"]) {
         const output = {
           temperature: undefined,
           topP: undefined,
@@ -258,11 +219,11 @@ const aionPluginModule: V2PluginModule = {
           maxOutputTokens: undefined,
           options: {},
         }
-        await instance["chat.params"]({
+        await hooks["chat.params"]({
           sessionID: event.sessionID,
           agent: event.agent,
           model: event.model,
-          provider: {},
+          provider: { id: "aion" },
         }, output)
         if (output.temperature !== undefined) event.options.temperature = output.temperature
         if (output.topP !== undefined) event.options.topP = output.topP
@@ -271,77 +232,75 @@ const aionPluginModule: V2PluginModule = {
         Object.assign(event.options, output.options)
       }
 
-      if (instance["experimental.chat.system.transform"]) {
-        const output = { system: event.system.map((part: any) => part.text ?? "") }
-        await instance["experimental.chat.system.transform"]({
-          sessionID: event.sessionID,
-          model: event.model,
-        }, output)
-        event.system = output.system.map((text: string) => ({ type: "text" as const, text }))
+      if (hooks["experimental.chat.system.transform"]) {
+        const output = { system: event.system.map((part) => part.text ?? "") }
+        await hooks["experimental.chat.system.transform"]({ sessionID: event.sessionID, model: event.model }, output)
+        event.system = output.system.map((text) => ({ type: "text" as const, text }))
       }
     }))
 
-    if (instance.event) {
+    if (hooks["experimental.session.compacting"]) {
+      const hook = hooks["experimental.session.compacting"]
+      registrations.push(await context.session.hook("context", async (event) => {
+        const requestKind = (event as { kind?: string }).kind
+        if (requestKind !== "compaction" && event.agent !== "compaction") return
+        const output = { context: [] as string[], prompt: undefined }
+        await hook({ sessionID: event.sessionID, messages: event.messages }, output)
+        for (const text of output.context) event.system.push({ type: "text", text })
+      }))
+    }
+
+    if (hooks.event) {
+      const hook = hooks.event
       const controller = new AbortController()
       void (async () => {
         try {
           for await (const event of context.event.subscribe({ signal: controller.signal })) {
-            await instance.event({ event: { type: event.type, properties: event } })
+            await hook({ event: { type: event.type, properties: event } })
           }
         } catch (error) {
           if (!controller.signal.aborted) console.warn("[aion] event subscription error", error)
         }
       })()
-      registrations.push({
-        dispose: async () => {
-          controller.abort()
-        },
-      })
+      registrations.push({ dispose: async () => controller.abort() })
     }
 
-    return async () => {
-      for (const registration of registrations.reverse()) {
-        await registration.dispose()
-      }
+    info("[aion] native V2 plugin registered", {
+      toolCount: Object.keys(tools).length,
+      registrationCount: registrations.length,
+    })
+
+    const cleanup = async () => {
+      for (const registration of registrations.reverse()) await registration.dispose()
     }
+    return Object.assign(cleanup, hooks)
   },
-}
+})
 
-export default aionPluginModule
+export default aionPlugin
 
-export const AionPlugin = aionPlugin
-export { aionPluginModule as pluginModule }
-
-export type { AionConfig, AionPluginConfig } from "./config/types"
-export type { AionManagers, AionPhase } from "./create-managers"
-export type { AionToolName, AionTools } from "./tools/types"
-export type { AionHookName, AionHooks } from "./hooks/types"
 export { AION_AGENT_NAMES } from "./agents/names"
 
-// Test-only exports. Not for production use; for unit tests to verify
-// internal behavior of individual hooks/tools.
 export const _testing = {
-  async chatMessage() {
-    return await import("./hooks/chat-message.js")
-      .then((m) => (m as any)._testing)
-  },
-  async toolGuard() {
-    return await import("./hooks/tool-guard.js")
-      .then((m) => (m as any)._testing)
-  },
-  async governance() {
-    return await import("./create-managers.js")
-      .then((m) => (m as any)._testing)
-  },
-  async personality() {
-    const personalityMod = await import("./shared/personality.js")
-    const handleMod = await import("./hooks/personality.js")
-    return {
-      ...personalityMod,
-      ...handleMod,
-    }
-  },
   async scheduling() {
     return await import("./scheduling/state-machine.js")
   },
-} as const
+  async chatMessage() {
+    return await import("./hooks/chat-message.js").then((module) => (module as any)._testing)
+  },
+  async toolGuard() {
+    return await import("./hooks/tool-guard.js").then((module) => (module as any)._testing)
+  },
+  async governance() {
+    return await import("./create-managers.js").then((module) => (module as any)._testing)
+  },
+  async personality() {
+    const personalityModule = await import("./shared/personality.js")
+    const handleModule = await import("./hooks/personality.js")
+    return {
+      ...personalityModule,
+      createPersonality: handleModule.createPersonality,
+      DEFAULT_PERSONALITY_CONFIG: handleModule.DEFAULT_PERSONALITY_CONFIG,
+    }
+  },
+}

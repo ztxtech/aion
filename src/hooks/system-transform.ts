@@ -22,6 +22,7 @@ import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { AION_SKILLS, SKILL_AGENT_MAP, TS_BOUND_SKILLS } from "../prompts/skill-registry"
 import { SCHEDULING_MERMAID, resetWorkerProgress } from "../scheduling/state-machine"
+import { COMPLEXITY_CLASSIFIER_PROMPT } from "../scheduling/complexity"
 
 const PHASE_SYSTEM_HINTS: Record<AionPhase, string> = {
   init: `[AION PHASE HINT: INIT] You are in the initialization phase. Your MANDATORY first actions, in this exact order:
@@ -34,10 +35,10 @@ const PHASE_SYSTEM_HINTS: Record<AionPhase, string> = {
 7. After requirements-analyst reports back, dispatch ts-critic for a post-review
 Do NOT fan out workers. The main chain is single-line.`,
   gather: `[AION PHASE HINT: GATHER] You are mid-chain. Verify which worker is next in the serial order (requirements-analyst → information-collector → coder). Each worker MUST be sandwiched between ts-critic pre-review and post-review. Do NOT fan out multiple workers in parallel.`,
-  "ts-pre-review": `[AION PHASE HINT: TS-PRE-REVIEW] ts-critic should review the plan before coder dispatch. Two-step: (1) aion_critic_dispatch("ts-critic", goal, artifacts) to prepare payload; (2) IMMEDIATELY subagent(agent="ts-critic", description, prompt=<returned instructions>) to ACTUALLY RUN it. The subagent tool blocks until ts-critic finishes. Do NOT end your turn between step 1 and 2.`,
-  implement: `[AION PHASE HINT: IMPLEMENT] Dispatch ts-critic for a pre-review of coder's plan (if not done yet): aion_critic_dispatch then IMMEDIATELY subagent(agent="ts-critic"). Then dispatch coder via subagent(agent="coder"). After coder reports back, dispatch ts-critic for post-review (same two-step). Do not skip either review.`,
-  "ts-post-review": `[AION PHASE HINT: TS-POST-REVIEW] ts-critic should review coder's implementation. Two-step: (1) aion_critic_dispatch("ts-critic", goal, artifacts) to prepare payload; (2) IMMEDIATELY subagent(agent="ts-critic", ...) to ACTUALLY RUN it. Then call aion_critic_verdict. Address any blockers before attempting closeout.`,
-  "c-critic-final": `[AION PHASE HINT: C-CRITIC-FINAL] This is the final governance gate. You MUST dispatch c-critic for a minimal-context cold-start review. If not dispatched, do it now: subagent(agent="c-critic", description="Final closeout review", prompt="...")`,
+  "ts-pre-review": `[AION PHASE HINT: TS-PRE-REVIEW] ts-critic should review the plan before coder dispatch. Two-step: (1) aion_critic_dispatch("ts-critic", goal, artifacts) to prepare payload; (2) IMMEDIATELY task(subagent_type="ts-critic", description, prompt=<returned instructions>) to ACTUALLY RUN it. The task tool blocks until ts-critic finishes. Do NOT end your turn between step 1 and 2.`,
+  implement: `[AION PHASE HINT: IMPLEMENT] Dispatch ts-critic for a pre-review of coder's plan (if not done yet): aion_critic_dispatch then IMMEDIATELY task(subagent_type="ts-critic"). Then dispatch coder via task(subagent_type="coder"). After coder reports back, dispatch ts-critic for post-review (same two-step). Do not skip either review.`,
+  "ts-post-review": `[AION PHASE HINT: TS-POST-REVIEW] ts-critic should review coder's implementation. Two-step: (1) aion_critic_dispatch("ts-critic", goal, artifacts) to prepare payload; (2) IMMEDIATELY task(subagent_type="ts-critic", ...) to ACTUALLY RUN it. Then call aion_critic_verdict. Address any blockers before attempting closeout.`,
+  "c-critic-final": `[AION PHASE HINT: C-CRITIC-FINAL] This is the final governance gate. You MUST dispatch c-critic for a minimal-context cold-start review. If not dispatched, do it now: task(subagent_type="c-critic", description="Final closeout review", prompt="...")`,
   "loop-back": `[AION PHASE HINT: LOOP-BACK] Closeout was rejected. Restart the serial chain from the appropriate upstream point: requirements-analyst for contract-level blockers, information-collector for evidence-level blockers. Do NOT fan out — one worker at a time.`,
   done: `[AION PHASE HINT: DONE] Task complete. ALL governance gates have passed. You may now write a final summary and present results to the user. You do NOT need to call any more tools — the loop will stop.`,
 }
@@ -246,6 +247,17 @@ export function createSystemTransformHook(args: CreateHooksArgs): AionSystemTran
       injections.push(envInfo)
     }
 
+    // === Complexity classifier prompt (injected once at round 1) ===
+    // Per devnotes/proposals/2026-07-08-dynamic-complexity-scheduler.md,
+    // the main agent must classify the task on the first non-trivial
+    // turn via aion_set_complexity. We inject the prompt once so the
+    // LLM sees the criteria before it has a chance to dispatch anything.
+    // After aion_set_complexity has been called, this injection is
+    // suppressed (the LLM already knows the tier).
+    if (round <= 1 && !managers.complexity.isSet()) {
+      injections.push(COMPLEXITY_CLASSIFIER_PROMPT)
+    }
+
     // === Shared cache protocol: enforce read/write of .opencode/memory/ + trace.md across agents ===
     const sharedCacheProtocol = `[AION SHARED CACHE PROTOCOL — APPLIES TO ALL AGENTS EXCEPT c-critic]
 \`\`\`
@@ -280,7 +292,13 @@ If you have nothing left to do in this phase, call aion_todo_update(action="upda
     if (managers.state.governance.languageResolved === "unset") {
       if (round <= 1) {
         // Round 1: inject the MANDATORY ask directive. Do NOT resolve yet —
-        // wait for the LLM to actually call aion_set_language.
+        // wait for the LLM to actually call aion_set_language. The
+        // "if unavailable" clause guards against headless modes
+        // (`--dangerously-skip-permissions`, agent contexts where the question
+        // tool is filtered out) where the LLM would otherwise loop on the
+        // "unavailable tool" error. The graceful-degrade path was observed
+        // to work in the 2026-07-08 unit-test run; the prompt now codifies it
+        // so it doesn't depend on the LLM noticing and recovering by itself.
         injections.push(
           `[AION LANGUAGE — ASK THE USER NOW (MANDATORY)]
 You MUST use OpenCode's 'question' tool on your FIRST turn to ask the user which language they want for interaction and delivery. Offer these options:
@@ -289,7 +307,9 @@ You MUST use OpenCode's 'question' tool on your FIRST turn to ask the user which
   - "Chinese delivery throughout"  (mode: zh-deliver)
   - "Bilingual (Chinese + English)"  (mode: bilingual)
 After the user answers, call aion_set_language(mode=<choice>) to lock it in.
-Do NOT proceed with the task until you have asked this question.`,
+Do NOT proceed with the task until you have asked this question.
+
+GRACEFUL DEGRADE: if the 'question' tool is unavailable in this environment (e.g. when running headlessly with --dangerously-skip-permissions), skip the user prompt entirely and immediately call aion_set_language(mode="en") to use the English default. Do not retry the question tool — it will keep failing.`,
         )
       } else {
         // Round > 1 and still unset: LLM skipped the question. Fall back.
@@ -326,7 +346,9 @@ You MUST use OpenCode's 'question' tool on your FIRST turn to ask the user how t
   - "Round-checkpoint — pause after c-critic verdicts"  (granularity: round-checkpoint)
   - "Always-interactive — pause at every major decision"  (granularity: always-interactive)
 After the user answers, call aion_set_interactive_mode(granularity=<choice>) to lock it in.
-Do NOT proceed with the task until you have asked BOTH this question AND the language question.`,
+Do NOT proceed with the task until you have asked BOTH this question AND the language question.
+
+GRACEFUL DEGRADE: if the 'question' tool is unavailable (e.g. --dangerously-skip-permissions headless run), skip the user prompt entirely and immediately call aion_set_interactive_mode(enabled=false, granularity="autonomous") to use the autonomous default. Do not retry the question tool — it will keep failing.`,
         )
       } else {
         // Round > 1 and still unset: LLM skipped. Fall back to config default.

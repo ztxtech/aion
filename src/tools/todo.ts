@@ -12,9 +12,8 @@
  * own TODO list; the tool-guard after-hook tracks TUI todo-sync state.
  */
 import { tool } from "../plugin/tool"
-import type { ToolDefinition } from "../plugin/tool-adapter"
 import type { CreateToolsArgs } from "./_shared"
-import type { AionShimTools } from "./types"
+import type { AionToolMap } from "./types"
 import { ensureDir, writeFileEnsuringDir, readIfExists } from "../shared/logger"
 import { nowIso } from "../shared/utils"
 
@@ -115,7 +114,7 @@ ${blockersSection}
 `
 }
 
-export function createTodoTools(args: CreateToolsArgs): AionShimTools {
+export function createTodoTools(args: CreateToolsArgs): AionToolMap {
   const { managers } = args
   const m = managers
   const z = tool.schema

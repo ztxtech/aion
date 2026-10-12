@@ -11,11 +11,10 @@
  *   identifies.
  */
 import { tool } from "../plugin/tool"
-import type { ToolDefinition } from "../plugin/tool-adapter"
 import type { CreateToolsArgs } from "./_shared"
-import type { AionShimTools } from "./types"
+import type { AionToolMap } from "./types"
 
-export function createCriticTools(args: CreateToolsArgs): AionShimTools {
+export function createCriticTools(args: CreateToolsArgs): AionToolMap {
   const { managers } = args
   const m = managers
   const z = tool.schema
@@ -49,7 +48,7 @@ export function createCriticTools(args: CreateToolsArgs): AionShimTools {
         )
 
         // Build the instruction payload that the main agent MUST pass to the
-        // `subagent` tool. The subagent tool is the ONLY way to actually run a subagent
+        // `task` tool. The task tool is the ONLY way to actually run a subagent
         // in OpenCode — this tool just prepares the prompt.
         const instructions = [
           `READ-ONLY: review the listed evidence_artifacts: ${evidence.join(", ") || "(none)"}`,
@@ -70,7 +69,7 @@ export function createCriticTools(args: CreateToolsArgs): AionShimTools {
             critic: args.critic,
             status: "PAYLOAD_READY_NOT_DISPATCHED",
             warning: "The critic has NOT been dispatched yet. This tool only prepared the instruction payload.",
-            next_action_required: `Call subagent(agent="${args.critic}", description="${goal.slice(0, 120).replace(/"/g, "'")}", prompt=${JSON.stringify(instructions)}) NOW in this same turn. The subagent tool will block until the critic finishes. Do NOT end your turn without making this task call.`,
+            next_action_required: `Call task(subagent_type="${args.critic}", description="${goal.slice(0, 120).replace(/"/g, "'")}", prompt=${JSON.stringify(instructions)}) NOW in this same turn. The task tool will block until the critic finishes. Do NOT end your turn without making this task call.`,
             instructions,
           },
           null,
@@ -109,6 +108,44 @@ export function createCriticTools(args: CreateToolsArgs): AionShimTools {
         const blockers = args?.blockers ?? []
         const whyNotStop = args?.why_not_stop ?? ""
         const nextCall = args?.next_call ?? ""
+
+        // G4: enforce that c-critic approve-stop is only honored when the
+        // pre-stop-gate has actually returned allow-stop. Without this check
+        // the LLM can call aion_critic_verdict('approve-stop') any number of
+        // times in a row, bypassing the stop-signal hierarchy that
+        // aion_pre_stop_gate is supposed to gate. The pre-stop-gate records
+        // its verdict via m.governance.recordPreStopGate(); we read it back
+        // here. If the gate has never run, or last returned block, refuse
+        // the approve-stop and instruct the caller to run the gate first.
+        if (args.critic === "c-critic" && args.verdict === "approve-stop") {
+          const lastGate = m.governance.getLastPreStopGate()
+          if (!lastGate) {
+            return JSON.stringify(
+              {
+                recorded: false,
+                reason: "pre-stop-gate-not-run",
+                detail:
+                  "aion_critic_verdict('approve-stop') was rejected because aion_pre_stop_gate has not been called yet in this session. Call aion_pre_stop_gate first and ensure it returns allowStop=true (no blockers). Then call aion_critic_verdict('approve-stop').",
+              },
+              null,
+              2,
+            )
+          }
+          if (!lastGate.allowStop) {
+            return JSON.stringify(
+              {
+                recorded: false,
+                reason: "pre-stop-gate-blocked",
+                detail:
+                  `aion_critic_verdict('approve-stop') was rejected because the most recent aion_pre_stop_gate returned allowStop=false. Gate recorded at ${lastGate.recordedAt}. Blockers: ${lastGate.blockers.join("; ")}. Resolve the blockers, re-run aion_pre_stop_gate, then retry.`,
+                lastGate,
+              },
+              null,
+              2,
+            )
+          }
+        }
+
         const signal =
           args.critic === "c-critic"
             ? args.verdict === "approve-stop"
@@ -122,13 +159,42 @@ export function createCriticTools(args: CreateToolsArgs): AionShimTools {
         if (args.critic === "ts-critic") {
           if (args.verdict === "allow-stop" && m.phase.current() === "ts-pre-review") {
             m.phase.transition("implement", "ts-critic pre-review passed")
+            // Reset so the next ts-critic dispatch (post-implementation
+            // review in ts-post-review phase) is not blocked by the G1
+            // force-advance check.
+            m.state.governance.lastTsCriticSignal = "unset"
           } else if (args.verdict === "allow-stop" && m.phase.current() === "ts-post-review") {
             m.phase.transition("c-critic-final", "ts-critic post-review passed")
+            m.state.governance.lastTsCriticSignal = "unset"
+          } else if (args.verdict === "allow-stop" && m.phase.current() === "gather") {
+            // Contract review in gather phase passed. The contract is
+            // ready. Auto-advance to ts-pre-review so the LLM is forced
+            // to plan the implementation instead of re-dispatching
+            // requirements-analyst for revisions.
+            //
+            // 2026-07-09 112252 run: the LLM got allow-stop on contract
+            // Rev 2 but stalled in gather, re-dispatching ts-critic
+            // until the session timed out. The fix: auto-advance the
+            // phase on allow-stop. The LLM is still free to dispatch
+            // requirements-analyst for revisions (this transition is
+            // reversible; the LLM can call m.phase.transition back to
+            // gather via aion_todo_update).
+            //
+            // Reset lastTsCriticSignal to "unset" so the G1 force-advance
+            // check in tool-guard.ts does not block the NEXT ts-critic
+            // dispatch (which will be the pre-implementation review in
+            // ts-pre-review phase, a legitimate new review).
+            m.phase.transition("ts-pre-review", "ts-critic post-contract-review passed, advancing to plan implementation")
+            m.state.governance.lastTsCriticSignal = "unset"
           } else if (["absolutely-cannot-stop-now", "rebuttal-mode", "rollback"].includes(args.verdict)) {
             if (m.phase.current() === "ts-pre-review") {
               m.phase.transition("gather", `ts-critic ${args.verdict}, need more info/plan fix`)
             } else if (m.phase.current() === "ts-post-review") {
               m.phase.transition("implement", `ts-critic ${args.verdict}, need implementation fix`)
+            } else if (m.phase.current() === "gather") {
+              // Contract review in gather blocked. Stay in gather;
+              // the LLM dispatches requirements-analyst to revise.
+              // (No transition needed.)
             }
           }
         }

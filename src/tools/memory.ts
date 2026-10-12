@@ -10,13 +10,12 @@
  *   original prompt, creates the context-snapshot, and seeds the todo-map.
  */
 import { tool } from "../plugin/tool"
-import type { ToolDefinition } from "../plugin/tool-adapter"
 import type { CreateToolsArgs } from "./_shared"
-import type { AionShimTools } from "./types"
+import type { AionToolMap } from "./types"
 import { appendToFile, ensureDir, writeFileEnsuringDir, readIfExists } from "../shared/logger"
 import { nowIso } from "../shared/utils"
 
-export function createMemoryTools(args: CreateToolsArgs): AionShimTools {
+export function createMemoryTools(args: CreateToolsArgs): AionToolMap {
   const { managers } = args
   const m = managers
   const z = tool.schema
@@ -65,9 +64,8 @@ export function createMemoryTools(args: CreateToolsArgs): AionShimTools {
 
         // Determine the calling agent: prefer _context.agent if OpenCode SDK exposes it,
         // else fall back to the active subagent type from governance state, else "main-agent".
-        const ctxAny = _context as { agent?: string; agent?: string }
+        const ctxAny = _context as { agent?: string }
         const callingAgent =
-          ctxAny.agent ??
           ctxAny.agent ??
           m.state.governance.lastDispatchTarget ??
           "main-agent"

@@ -16,11 +16,11 @@ import { createGovernanceTools } from "./tools/governance"
 import { createTodoTools } from "./tools/todo"
 import { createInteractiveModeTool } from "./tools/user-check"
 import { createLanguageTool } from "./tools/language"
+import { createComplexityTool } from "./tools/complexity"
 import { createHfDatasetsTools } from "./tools/hf-datasets"
 import type { PluginContext, ToolsRecord } from "./plugin/types"
 import type { AionConfig } from "./config/types"
-import { v2Tool, type V2ToolDefinition } from "./plugin/tool-adapter"
-import type { AionToolName, AionShimTools } from "./tools/types"
+import type { AionToolName, AionToolMap } from "./tools/types"
 
 export type CreateToolsArgs = {
   ctx: PluginContext
@@ -33,7 +33,7 @@ export type CreatedTools = AionTools
 export function createAllAionTools(args: CreateToolsArgs): CreatedTools {
   const { ctx, config, managers } = args
 
-  const v1: AionShimTools = {
+  const bodies: AionToolMap = {
     ...createZtxexpTools({ ctx, config, managers }),
     ...createCriticTools({ ctx, config, managers }),
     ...createMemoryTools({ ctx, config, managers }),
@@ -43,13 +43,14 @@ export function createAllAionTools(args: CreateToolsArgs): CreatedTools {
     ...createTodoTools({ ctx, config, managers }),
     ...createInteractiveModeTool({ ctx, config, managers }),
     ...createLanguageTool({ ctx, config, managers }),
+    ...createComplexityTool({ ctx, config, managers }),
     ...createHfDatasetsTools({ ctx, config, managers }),
   }
 
-  const v2: Partial<Record<AionToolName, V2ToolDefinition>> = {}
-  for (const [name, shim] of Object.entries(v1)) {
-    if (!shim) continue
-    v2[name as AionToolName] = v2Tool(name, shim.input) as V2ToolDefinition
+  const tools: Partial<AionTools> = {}
+  for (const [name, body] of Object.entries(bodies)) {
+    if (!body) continue
+    tools[name as AionToolName] = { ...body, name } as AionTools[AionToolName]
   }
-  return v2 as AionTools
+  return tools as AionTools
 }

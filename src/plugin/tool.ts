@@ -1,27 +1,39 @@
 /**
- * V1-compatible `tool()` shim backed by the V2 adapter.
+ * V2-native AION tool definition helper.
  *
- * Existing AION tool modules import `tool` from here instead of
- * `@opencode/plugin`, keeping the V1 call signature:
- *   tool({ description, args: { zod }, execute })
- * The adapter converts the result to the V2 plugin shape at export time.
+ * AION tools are authored with Zod for input validation, but the object
+ * returned here is already an OpenCode V2 Tool.Info body. The aggregator
+ * supplies the registry key as `name` when calling editor.add().
  */
 import { z } from "zod"
-import { v2Tool } from "./tool-adapter"
+import type { Tool } from "@opencode/schema/tool"
 
-type V1ToolInput = {
+type ToolDefinitionInput<Args extends Record<string, z.ZodTypeAny> = Record<string, z.ZodTypeAny>> = {
   description: string
-  args?: Record<string, z.ZodTypeAny>
-  execute: (args: Record<string, unknown>, context?: unknown) => Promise<string> | string
+  args?: Args
+  execute: (args: z.output<z.ZodObject<Args>>, context: unknown) => Promise<string> | string
 }
 
-export type ShimTool = { __v1: true; input: V1ToolInput }
-export type ShimToolRecord = Record<string, ShimTool>
+export type AionToolBody = {
+  description: string
+  input: z.ZodTypeAny
+  options: Tool.Options
+  execute: (input: unknown, context: unknown) => Promise<Tool.Result<undefined>>
+}
+export type AionTool = AionToolBody & { name: string }
 
-export function tool(input: V1ToolInput) {
-  return { __v1: true, input }
+export function tool<Args extends Record<string, z.ZodTypeAny>>(
+  definition: ToolDefinitionInput<Args>,
+): AionToolBody {
+  return {
+    description: definition.description,
+    input: z.object(definition.args ?? {}),
+    options: { permission: "aion", codemode: false },
+    async execute(input, context) {
+      const result = await definition.execute(input as z.output<z.ZodObject<Args>>, context)
+      return { content: result }
+    },
+  }
 }
 
 tool.schema = z
-
-export { v2Tool }

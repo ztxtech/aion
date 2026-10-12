@@ -8,18 +8,17 @@ import { importBundle } from "../helpers/load-bundle.mjs";
 describe("plugin bundle shape", async () => {
   const bundle = await importBundle();
 
-  it("default export is a PluginModule (object with id + server)", () => {
+  it("default export is an OpenCode V2 plugin definition", () => {
     assert.equal(typeof bundle.default, "object");
     assert.equal(bundle.default.id, "aion-ts-plugin");
-    assert.equal(typeof bundle.default.server, "function", "server should be the plugin function");
+    assert.equal(typeof bundle.default.setup, "function", "setup should be the V2 lifecycle");
   });
 
-  it("AionPlugin named binding is a function", () => {
-    assert.equal(typeof bundle.AionPlugin, "function");
+  it("AionPlugin is no longer exported as a V1 factory", () => {
+    assert.equal(bundle.AionPlugin, undefined);
   });
 
-  it("exports pluginModule with AION_AGENT_NAMES", () => {
-    assert.equal(typeof bundle.pluginModule, "object");
+  it("exports native V2 agent metadata", () => {
     assert.ok(Array.isArray(bundle.AION_AGENT_NAMES));
     assert.ok(bundle.AION_AGENT_NAMES.length >= 6, "should have at least 6 agent names");
   });
@@ -80,11 +79,11 @@ describe("plugin loads without errors (minimal ctx)", async () => {
 
   it("plugin registers hook handlers (flat key shape)", () => {
     if (!result) assert.fail("result not loaded");
-    assert.ok(result["chat.message"], "should have chat.message hook");
-    assert.ok(result["experimental.compaction.autocontinue"], "should have session.idle wrapped under experimental.compaction.autocontinue");
+    assert.ok(result["chat.message"], "should expose the V2 prompt adapter's business hook");
+    assert.ok(result["experimental.chat.system.transform"], "should expose the V2 context adapter's business hook");
     assert.ok(result["tool.execute.before"], "should have tool.execute.before hook");
     assert.ok(result["tool.execute.after"], "should have tool.execute.after hook");
-    assert.ok(result["permission.ask"], "should have permission.ask hook");
+    assert.ok(result["permission.ask"], "should register V2 permission evaluation");
   });
 
   it("plugin registers aion tool definitions", () => {

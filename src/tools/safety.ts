@@ -10,12 +10,11 @@
  *   anti-leakage rules: credentials, hidden-set, internal prompts.
  */
 import { tool } from "../plugin/tool"
-import type { ToolDefinition } from "../plugin/tool-adapter"
 import type { CreateToolsArgs } from "./_shared"
-import type { AionShimTools } from "./types"
+import type { AionToolMap } from "./types"
 import { notifyFromCtx } from "../shared/notify-tui"
 
-export function createSafetyTools(args: CreateToolsArgs): AionShimTools {
+export function createSafetyTools(args: CreateToolsArgs): AionToolMap {
   const { managers } = args
   const m = managers
   const z = tool.schema

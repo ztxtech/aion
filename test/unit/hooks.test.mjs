@@ -33,34 +33,34 @@ describe("hooks: permission.ask auto-approves", async () => {
   });
   after(() => { try { rmSync(tmp, { recursive: true, force: true }); } catch {} });
 
-  it("auto-approves aion_* tools", async () => {
-    const output = { status: "pending" };
-    await hook({ tool_name: "aion_todo_update" }, output);
-    assert.equal(output.status, "allow");
+  it("auto-approves the aion action", async () => {
+    const event = { action: "aion", resources: ["aion_todo_update"], effect: "ask" };
+    await hook(event);
+    assert.equal(event.effect, "allow");
   });
 
   it("auto-approves webfetch", async () => {
-    const output = { status: "pending" };
-    await hook({ tool_name: "webfetch" }, output);
-    assert.equal(output.status, "allow");
+    const event = { action: "webfetch", resources: ["https://example.com"], effect: "ask" };
+    await hook(event);
+    assert.equal(event.effect, "allow");
   });
 
-  it("auto-approves bash", async () => {
-    const output = { status: "pending" };
-    await hook({ tool_name: "bash" }, output);
-    assert.equal(output.status, "allow");
+  it("auto-approves shell", async () => {
+    const event = { action: "shell", resources: ["git status"], effect: "ask" };
+    await hook(event);
+    assert.equal(event.effect, "allow");
   });
 
-  it("auto-approves unknown aion_ tool (prefix match)", async () => {
-    const output = { status: "pending" };
-    await hook({ tool_name: "aion_future_tool" }, output);
-    assert.equal(output.status, "allow");
+  it("auto-approves AION tool permission resources", async () => {
+    const event = { action: "execute", resources: ["aion_future_tool"], effect: "ask" };
+    await hook(event);
+    assert.equal(event.effect, "ask");
   });
 
   it("passes through unknown tools without overriding", async () => {
-    const output = { status: "pending" };
-    await hook({ tool_name: "unknown_tool" }, output);
-    assert.equal(output.status, "pending");
+    const event = { action: "unknown_tool", resources: ["*"], effect: "ask" };
+    await hook(event);
+    assert.equal(event.effect, "ask");
   });
 });
 
@@ -488,11 +488,14 @@ describe("hooks: G1 scheduling dispatch edge check", async () => {
   before(async () => {
     const result = await createPlugin(tmp);
     beforeHook = result["tool.execute.before"];
+    await result["tool.execute.after"](
+      { tool: "aion_workspace_init" },
+      { args: {}, output: JSON.stringify({ status: "ok" }) },
+    );
   });
   after(() => { try { rmSync(tmp, { recursive: true, force: true }); } catch {} });
 
-  it("does not throw on legal dispatch (requirements-analyst from gather)", async () => {
-    // Should not throw even though pre-review is missing — G1 is soft warn.
+  it("allows a legal dispatch with a pre-review warning", async () => {
     await beforeHook(
       { tool: "task" },
       { args: { subagent_type: "requirements-analyst" } },
@@ -513,11 +516,13 @@ describe("hooks: G1 scheduling dispatch edge check", async () => {
     assert.ok(afterCount >= beforeCount + 1, "expected a new scheduling.dispatch event");
   });
 
-  it("does not throw on illegal dispatch (coder from init) — soft warn only", async () => {
-    // coder from init is NOT a legal edge, but G1 must not throw (doom_loop avoidance).
-    await beforeHook(
+  it("hard-gates an illegal dispatch (coder from gather)", async () => {
+    await assert.rejects(
+      () => beforeHook(
       { tool: "task" },
       { args: { subagent_type: "coder" } },
+      ),
+      /G1 hard-gate/,
     );
     const trace = readFileSync(join(tmp, ".opencode", "trace.md"), "utf-8");
     assert.ok(trace.includes("scheduling.dispatch"));
@@ -548,20 +553,27 @@ describe("hooks: G1 scheduling dispatch edge check", async () => {
   });
 });
 
-describe("hooks: G2 main-agent work-guard soft warn", async () => {
+describe("hooks: G2 main-agent work-guard hard gate", async () => {
   const tmp = createTmp("aion-g2-");
   let beforeHook;
 
   before(async () => {
     const result = await createPlugin(tmp);
     beforeHook = result["tool.execute.before"];
+    await result.tool.aion_set_complexity.execute(
+      { tier: "FULL", reason: "verify source-write governance" },
+      {},
+    );
   });
   after(() => { try { rmSync(tmp, { recursive: true, force: true }); } catch {} });
 
   it("traces a role.work_violation event when main agent edits project source", async () => {
-    await beforeHook(
+    await assert.rejects(
+      () => beforeHook(
       { tool: "write" },
       { args: { filePath: "src/index.ts", content: "modified" } },
+      ),
+      /G2|WRITE IS PERMANENTLY DENIED/,
     );
     const trace = readFileSync(join(tmp, ".opencode", "trace.md"), "utf-8");
     assert.ok(trace.includes("role.work_violation"), "expected role.work_violation trace event");
@@ -579,14 +591,14 @@ describe("hooks: G2 main-agent work-guard soft warn", async () => {
     assert.equal(after, before, "writing to memory/ must NOT trigger G2");
   });
 
-  it("does NOT throw on violation — soft warn only", async () => {
-    // The call should resolve, not reject. If G2 threw, this would throw.
-    await beforeHook(
+  it("rejects repeated violations without allowing the write", async () => {
+    await assert.rejects(
+      () => beforeHook(
       { tool: "edit" },
       { args: { filePath: "src/foo.ts", oldString: "a", newString: "b" } },
+      ),
+      /G2|WRITE IS PERMANENTLY DENIED/,
     );
-    // If we reach this assertion, no throw happened.
-    assert.ok(true);
   });
 });
 
@@ -598,6 +610,10 @@ describe("hooks: G3 reportback parsing on task completion", async () => {
     const result = await createPlugin(tmp);
     beforeHook = result["tool.execute.before"];
     afterHook = result["tool.execute.after"];
+    await afterHook(
+      { tool: "aion_workspace_init" },
+      { args: {}, output: JSON.stringify({ status: "ok" }) },
+    );
   });
   after(() => { try { rmSync(tmp, { recursive: true, force: true }); } catch {} });
 

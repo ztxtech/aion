@@ -17,7 +17,6 @@ import { createChatMessageHook } from "./hooks/chat-message"
 import { createChatParamsHook } from "./hooks/chat-params"
 import { createSystemTransformHook } from "./hooks/system-transform"
 import { createMessagesTransformHook } from "./hooks/messages-transform"
-import { createPermissionAskHook } from "./hooks/permission-ask"
 import { createToolDefinitionHook } from "./hooks/tool-definition"
 import type { PersonalityHandle } from "./hooks/personality"
 
@@ -40,7 +39,6 @@ export function createAionHooks(args: CreateHooksArgs): AionHooks {
     "chat.params": createChatParamsHook({ ctx, config, managers }),
     "experimental.chat.system.transform": createSystemTransformHook({ ctx, config, managers, personality }),
     "experimental.chat.messages.transform": createMessagesTransformHook({ ctx, config, managers }),
-    "permission.ask": createPermissionAskHook({ ctx, config, managers }),
     "tool.definition": createToolDefinitionHook({ ctx, config, managers }),
     event: createEventHook({ ctx, config, managers, personality }),
   }

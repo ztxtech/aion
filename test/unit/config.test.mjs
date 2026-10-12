@@ -119,7 +119,7 @@ describe("config: aion.jsonc overrides", async () => {
 describe("config: model override", async () => {
   const bundle = await importBundle();
 
-  it("model from aion.jsonc is used in config hook", async () => {
+  it("registers the configured default agent through agent.transform", async () => {
     const tmp = createTmp();
     writeFileSync(join(tmp, ".opencode", "aion.jsonc"), JSON.stringify({
       model: "local-auto/minimax",
@@ -133,10 +133,7 @@ describe("config: model override", async () => {
       $: undefined,
     }, {});
 
-    const configInput = {};
-    await result.config(configInput);
-    assert.equal(configInput.model, "local-auto/minimax");
-    assert.equal(configInput.default_agent, "aion");
+    assert.equal(result.defaultAgent, "aion");
     try { rmSync(tmp, { recursive: true, force: true }); } catch {}
   });
 });

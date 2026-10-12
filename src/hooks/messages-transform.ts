@@ -29,20 +29,24 @@ export function createMessagesTransformHook(args: CreateHooksArgs): AionMessages
     const messages = output.messages
     if (!messages || messages.length === 0) return
 
+    const isRole = (role: string) => {
+      return (message: (typeof messages)[number]): message is (typeof messages)[number] & {
+        info: { role: string }
+      } => message.info.role === role
+    }
+
     // === B. Context mode enforcement ===
 
     // minimal_context: c-critic only sees system messages + last user + last assistant
     if (phase === "c-critic-final" || dispatchTarget === "c-critic") {
       if (messages.length <= 4) return
 
-      const systemMessages = messages.filter(
-        (m: { info: { role: string } }) => m.info.role === SYSTEM_ROLE,
-      )
+      const systemMessages = messages.filter(isRole(SYSTEM_ROLE))
       const lastUser = messages
-        .filter((m: { info: { role: string } }) => m.info.role === "user")
+        .filter(isRole("user"))
         .slice(-1)
       const lastAssistant = messages
-        .filter((m: { info: { role: string } }) => m.info.role === "assistant")
+        .filter(isRole("assistant"))
         .slice(-1)
 
       const compressed = [...systemMessages, ...lastUser, ...lastAssistant]
@@ -59,9 +63,7 @@ export function createMessagesTransformHook(args: CreateHooksArgs): AionMessages
 
     // rebuttal_context: keep system + last user (blocker list) + last few assistant messages
     if (rebuttalMode) {
-      const systemMessages = messages.filter(
-        (m: { info: { role: string } }) => m.info.role === SYSTEM_ROLE,
-      )
+      const systemMessages = messages.filter(isRole(SYSTEM_ROLE))
       const recentMessages = messages.slice(-6)
       const compressed = [...systemMessages, ...recentMessages]
       if (compressed.length < messages.length) {
@@ -80,9 +82,7 @@ export function createMessagesTransformHook(args: CreateHooksArgs): AionMessages
       const maxHistory = 8
       if (messages.length <= maxHistory) return
 
-      const systemMessages = messages.filter(
-        (m: { info: { role: string } }) => m.info.role === SYSTEM_ROLE,
-      )
+      const systemMessages = messages.filter(isRole(SYSTEM_ROLE))
       const recentMessages = messages.slice(-maxHistory)
       const compressed = [...systemMessages, ...recentMessages]
 

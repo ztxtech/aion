@@ -10,9 +10,9 @@
  */
 import { tool } from "../plugin/tool"
 import type { CreateToolsArgs } from "./_shared"
-import type { AionShimTools } from "./types"
+import type { AionToolMap } from "./types"
 
-export function createInteractiveModeTool(args: CreateToolsArgs): AionShimTools {
+export function createInteractiveModeTool(args: CreateToolsArgs): AionToolMap {
   const { managers } = args
   const m = managers
   const z = tool.schema

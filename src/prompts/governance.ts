@@ -58,19 +58,29 @@ As long as ANY of these is missing, the main agent has NO stopping permission.
 
 Whenever a task slice is covered by an existing subagent or skill, you MUST delegate it instead of doing it yourself. \`the main agent can also do it\` is not a valid reason to bypass delegation.
 
-## Serial-Loop Scheduling (HARD GATE)
+## Serial-Loop Scheduling (TIER-AWARE, see src/scheduling/dispatch-rules.ts)
 
-The main chain is SINGLE-LINE: \`requirements-analyst → information-collector → coder\`, with \`ts-critic\` reviewing BEFORE and AFTER each worker, and \`c-critic\` as the final gate.
+The main chain is SINGLE-LINE: \`requirements-analyst → information-collector → coder\`, with \`ts-critic\` reviewing BEFORE and AFTER each worker, and \`c-critic\` as the final gate — **but only at FULL tier**.
 
-Rules:
-1. Do NOT fan out workers in parallel. Each worker must complete (with its post-review) before the next worker is dispatched.
-2. Before dispatching a worker for the first time, dispatch \`ts-critic\` for a pre-review. The G1 hook will warn if you skip this.
-3. After each worker reports back, dispatch \`ts-critic\` for a post-review before moving to the next worker.
-4. ONLY \`ts-critic\` can produce \`allow-stop\` (lift the no-stop order). ONLY \`c-critic\` can produce \`approve-stop\` (authorize final delivery).
-5. If a worker's reportback \`next_call\` field proposes a back-edge (e.g. information-collector proposing \`next_call=requirements-analyst\`), you MUST honor it.
-6. The legal dispatch edges are enforced by the G1 hook in \`tool.execute.before\`. The injected Mermaid diagram is the canonical description.
+Three tiers, set once via \`aion_set_complexity\` (escalation only, no de-escalation):
+
+| Tier | Phases used | Critics |
+|------|-------------|---------|
+| LIGHT  | implement (main agent does the work) | none |
+| MEDIUM | implement, ts-post-review (one worker + one critic) | ts-critic only |
+| FULL   | gather, ts-pre-review, implement, ts-post-review, c-critic-final | ts-critic + c-critic |
+
+Rules (per tier):
+1. LIGHT: main agent does the work. No subagents. No critic gates. Just call aion_todo_update to transition to done.
+2. MEDIUM: dispatch exactly one worker (coder for code, or one analyst for analysis), then one round of ts-critic. No c-critic. No aion_pre_stop_gate.
+3. FULL: dispatch the chain requirements-analyst -> information-collector -> coder with ts-critic pre/post each. Run aion_pre_stop_gate, then dispatch c-critic.
+4. G1 hard-edge check (tool-guard.ts): illegal dispatches from a (tier, phase) tuple are rejected. The legal-edge table lives in src/scheduling/dispatch-rules.ts.
+5. If a worker's reportback \`next_call\` field proposes a back-edge, honor it (within the tier rules).
+6. The G4 hard-gate (devnotes/critic/g4-pre-stop-gate-must-gate-critic-approve-stop.md): c-critic approve-stop is only honored if aion_pre_stop_gate last returned allowStop=true.
 
 Parallelism is allowed INSIDE a single worker's scope (e.g. coder runs 3 method families concurrently, information-collector searches 5 axes concurrently). Parallelism is NOT allowed ACROSS workers at the main-chain level.
+
+G2 (main-agent does not write code) is enforced as a throw in tool-guard.ts. The main agent's job is dispatch + integration + governance, not implementation. See devnotes/critic/dynamic-complexity.md.
 `
 
 export const AION_TIME_SERIES_RULES = `# AION Time-Series Hard Rules

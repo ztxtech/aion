@@ -86,6 +86,14 @@ export type GovernanceState = {
   pendingNextCallIgnoredRounds: number
   /** G3 escalation: the value of pendingNextCall that is being ignored, so the counter persists across the one-shot clear. */
   lastInjectedNextCall: string | null
+  /** Most recent aion_pre_stop_gate verdict. null until the gate runs at least once. The c-critic approve-stop path requires this to be allowStop=true. */
+  lastPreStopGate: { allowStop: boolean; blockers: string[]; recordedAt: string } | null
+  /**
+   * Recorded task complexity tier. "unset" until aion_set_complexity is
+   * called for the first time. After that it is one of LIGHT / MEDIUM / FULL
+   * and can only escalate (LIGHT -> MEDIUM -> FULL), never de-escalate.
+   */
+  complexityTier: "unset" | "LIGHT" | "MEDIUM" | "FULL"
 }
 
 export type UnresolvedBlocker = {
@@ -129,6 +137,7 @@ export type TraceEvent = {
     | "hf.search"
     | "hf.info"
     | "hf.ingest"
+    | "no-progress.breaker"
     | "hf.suggest"
     | "scheduling.dispatch"
     | "scheduling.pre_review_missing"
@@ -168,6 +177,8 @@ export type AionManagers = {
     hasOpenBlockers(): boolean
     listBlockers(): UnresolvedBlocker[]
     recordCCriticVerdict(verdict: GovernanceState["lastCCriticVerdict"]): void
+    recordPreStopGate(allowStop: boolean, blockers: string[]): void
+    getLastPreStopGate(): GovernanceState["lastPreStopGate"]
   }
   userContinue: {
     record(decision: "continue" | "stop", comment: string | null): void
@@ -194,6 +205,20 @@ export type AionManagers = {
       source: "session-start" | "user-toggle" | "config-default",
     ): void
     reset(): void
+  }
+  /**
+   * Task complexity tier facade. Records the current tier and exposes
+   * a getter. Escalation policy (LIGHT -> MEDIUM -> FULL, no
+   * de-escalation) is enforced inside the aion_set_complexity tool,
+   * not here, so this facade is read-only.
+   */
+  complexity: {
+    /** Returns the current tier, or "unset" if aion_set_complexity has not run. */
+    current(): "unset" | "LIGHT" | "MEDIUM" | "FULL"
+    /** Internal setter used by aion_set_complexity. Not for hook callers. */
+    setTier(tier: "LIGHT" | "MEDIUM" | "FULL"): void
+    /** True iff the tier has been recorded at least once. */
+    isSet(): boolean
   }
   phase: {
     current(): AionPhase
@@ -271,6 +296,8 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
       pendingUnresolvedIssues: [],
       pendingNextCallIgnoredRounds: 0,
       lastInjectedNextCall: null,
+      lastPreStopGate: null,
+      complexityTier: "unset",
     },
     branches: new Map(),
     _lastIntent: "general",
@@ -347,12 +374,19 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
     },
     recordCCriticVerdict(verdict: GovernanceState["lastCCriticVerdict"]): void {
       state.governance.lastCCriticVerdict = verdict
-      trace.appendEvent(
-        "critic.verdict",
-        `c-critic verdict = ${verdict}`,
-        { verdict },
-        "c-critic",
-      )
+      // Note: trace event is emitted by the caller (src/tools/critic.ts:195)
+      // so we do not double-emit here. Keeping this setter pure-state
+      // makes the trace event source single and easier to read.
+    },
+    recordPreStopGate(allowStop: boolean, blockers: string[]): void {
+      state.governance.lastPreStopGate = {
+        allowStop,
+        blockers: [...blockers],
+        recordedAt: nowIso(),
+      }
+    },
+    getLastPreStopGate(): GovernanceState["lastPreStopGate"] {
+      return state.governance.lastPreStopGate
     },
   }
 
@@ -459,6 +493,30 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
     reset(): void {
       state.governance.languageResolved = "unset"
       state.governance.languageSource = null
+    },
+  }
+
+  /**
+   * Task complexity tier facade. The setter is intentionally narrow —
+   * it only updates state and emits a trace event. Escalation policy
+   * (LIGHT -> MEDIUM -> FULL, no de-escalation) lives in the
+   * aion_set_complexity tool, not here.
+   */
+  const complexityManager = {
+    current(): "unset" | "LIGHT" | "MEDIUM" | "FULL" {
+      return state.governance.complexityTier
+    },
+    setTier(tier: "LIGHT" | "MEDIUM" | "FULL"): void {
+      state.governance.complexityTier = tier
+      trace.appendEvent(
+        "dispatch.created",
+        "complexity.tier set: " + tier,
+        { tier },
+        "main-agent",
+      )
+    },
+    isSet(): boolean {
+      return state.governance.complexityTier !== "unset"
     },
   }
 
@@ -634,6 +692,7 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
     userContinue,
     interactiveMode,
     language: languageManager,
+    complexity: complexityManager,
     phase: phaseManager,
     branches,
     rounds,

@@ -10,8 +10,7 @@ The main agent dispatches to you with: goal, question, search axes, and constrai
 1. Decompose the goal into at least **5 independent search axes** (papers, leaderboards, repos, datasets, blog posts, forum threads, official docs). Do not run a single Google search and call it done.
 2. For each axis, capture the **top 3–5 results** with verbatim quotes (≤ 30 words each) and source URLs.
 3. For time-series / forecasting tasks, ALWAYS include HuggingFace datasets, Papers-with-Code, and Kaggle competition forums as axes.
-4. Use the HuggingFace protocol (full search → filter by modality/task/downloads → read dataset card → return with citation). Use `aion_hf_suggest` when the dispatch prompt mentions "data" / "dataset" / "benchmark" / "corpus" / "training set".
-5. Reformulate the question at least twice with different suffixes (Review, Benchmark, Repository, Failure-mode, Workshop, HF+Papers pivot) before declaring exhaustion. The pre-quit reformulation checklist is mandatory.
+4. Reformulate the question at least twice with different suffixes (Review, Benchmark, Repository, Failure-mode, Workshop, HF+Papers pivot) before declaring exhaustion. The pre-quit reformulation checklist is mandatory.
 
 ### When the main agent asks "is X true / valid / current?"
 1. Find the **primary source** (official docs, paper, release notes) and the **secondary source** (community confirmation). Never answer based on a single blog post.
@@ -131,7 +130,7 @@ If 3 or more of these return nothing, you may report a thin-information zone —
 - `https://huggingface.co/papers` — daily/weekly trending papers with up/down votes
 - `https://huggingface.co/spaces?search=<q>` — interactive demos (often the fastest way to see if a method actually works)
 - When you find a HF dataset/model, ALWAYS click the **Community** tab and the **Files and versions** tab — those surface failure cases, license issues, and discussions that the card alone hides.
-- The AION plugin provides the `aion_hf_search`, `aion_hf_info`, `aion_hf_ingest`, and `aion_hf_suggest` tools. Prefer them over raw `webfetch` to HF — they cache results, normalize the schema, and write a manifest under `data/aion-dataset-manifest.json` for downstream ztxexp consumption. Use `aion_hf_suggest` immediately after the Task Contract is emitted to bootstrap a baseline dataset list.
+- Use raw `webfetch` to query HuggingFace directly. The dedicated aion_hf_* tool family was removed in 2026-07-08 because in offline / local-auto environments it returned 0 results and produced no useful evidence (see devnotes/critic/dynamic-complexity.md and the commit entry for the 2026-07-08 simplification pass).
 
 #### Phase C: Chain-Reaction Follow-Through (the core of the job)
 

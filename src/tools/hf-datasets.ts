@@ -37,7 +37,7 @@
  */
 import { tool } from "../plugin/tool"
 import type { CreateToolsArgs } from "./_shared"
-import type { AionShimTools } from "./types"
+import type { AionToolMap } from "./types"
 import { ensureDir, writeFileEnsuringDir, readIfExists } from "../shared/logger"
 import { nowIso } from "../shared/utils"
 import { join, dirname } from "node:path"
@@ -262,7 +262,7 @@ function rawToSummary(raw: Record<string, unknown>): HfDatasetSummary {
 // Tool factory
 // ---------------------------------------------------------------------------
 
-export function createHfDatasetsTools(args: CreateToolsArgs): AionShimTools {
+export function createHfDatasetsTools(args: CreateToolsArgs): AionToolMap {
   const { managers, config, ctx } = args
   const m = managers
   const z = tool.schema

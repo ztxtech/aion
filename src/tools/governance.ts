@@ -8,11 +8,10 @@
  *   evidence is traced for ts-critic audit.
  */
 import { tool } from "../plugin/tool"
-import type { ToolDefinition } from "../plugin/tool-adapter"
 import type { CreateToolsArgs } from "./_shared"
-import type { AionShimTools } from "./types"
+import type { AionToolMap } from "./types"
 
-export function createGovernanceTools(args: CreateToolsArgs): AionShimTools {
+export function createGovernanceTools(args: CreateToolsArgs): AionToolMap {
   const { managers } = args
   const m = managers
   const z = tool.schema

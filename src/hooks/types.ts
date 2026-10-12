@@ -9,7 +9,6 @@
  * Also defines {@link AionIntent} — the coarse intent categories the
  * chat-message hook classifies user messages into.
  */
-/* V2 dropped the V1 SDK type re-exports; AION only uses these structurally. */
 type Model = { id: string; providerID?: string; [key: string]: unknown }
 type Provider = { id: string; [key: string]: unknown }
 type ProviderContext = Provider
@@ -26,7 +25,6 @@ export type AionHookName =
   | "chat.params"
   | "experimental.chat.system.transform"
   | "experimental.chat.messages.transform"
-  | "permission.ask"
   | "tool.definition"
   | "event"
 
@@ -39,7 +37,6 @@ export type AionHooks = {
   "chat.params"?: AionChatParamsHook
   "experimental.chat.system.transform"?: AionSystemTransformHook
   "experimental.chat.messages.transform"?: AionMessagesTransformHook
-  "permission.ask"?: AionPermissionAskHook
   "tool.definition"?: AionToolDefinitionHook
   "event"?: AionEventHook
 }
@@ -51,7 +48,7 @@ export type AionToolExecuteBeforeHook = (
 
 export type AionToolExecuteAfterHook = (
   input: { tool: string; sessionID?: string; callID?: string },
-  output: { title?: string; output?: string; metadata?: Record<string, unknown> },
+  output: { args?: Record<string, unknown>; title?: string; output?: string; metadata?: Record<string, unknown> },
 ) => Promise<void> | void
 
 export type AionSessionIdleHook = (
@@ -118,11 +115,6 @@ export type AionMessagesTransformHook = (
       parts: Part[]
     }>
   },
-) => Promise<void> | void
-
-export type AionPermissionAskHook = (
-  input: Permission,
-  output: { status: "ask" | "deny" | "allow" },
 ) => Promise<void> | void
 
 export type AionToolDefinitionHook = (

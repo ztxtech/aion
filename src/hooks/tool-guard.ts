@@ -34,6 +34,8 @@ import {
   type DispatchableAgent,
   type WorkerAgent,
 } from "../scheduling/state-machine"
+import { isLegalDispatchAt } from "../scheduling/dispatch-rules"
+import { coerceTier } from "../scheduling/complexity"
 
 // All leakage pattern checks (path + content) are centralized in
 // `managers.enforce.leakageCheck()` (see create-managers.ts). The hook here
@@ -101,6 +103,8 @@ function normalizeToolName(name: string): string {
   let n = name
   if (n.startsWith("mcp_")) n = n.slice(4).replace(/_/g, "-")
   n = n.replace(/\0/g, "")
+  if (n === "shell") n = "bash"
+  if (n === "subagent") n = "task"
   return n
 }
 
@@ -200,7 +204,7 @@ export function createToolGuardBeforeHook(args: CreateHooksArgs): AionToolExecut
 
     // === A. Visual semantic: image read tracking ===
     if (toolName === "read" || toolName === "Read" || toolName === "view") {
-      const filePath = String((output as { args?: Record<string, unknown> }).args?.filePath ?? "")
+      const filePath = String((output as { args?: Record<string, unknown> }).args?.filePath ?? (output as { args?: Record<string, unknown> }).args?.path ?? "")
       if (filePath) {
         const verdict = m.enforce.leakageCheck(filePath)
         if (!verdict.safe) {
@@ -413,9 +417,9 @@ export function createToolGuardBeforeHook(args: CreateHooksArgs): AionToolExecut
     }
 
     // === K. Context mode enforcement for task dispatch ===
-    if (toolName === "subagent") {
+    if (toolName === "task") {
       const taskArgs = (output as { args?: Record<string, unknown> }).args ?? {}
-      const subagentType = String(taskArgs.agent ?? taskArgs.description ?? "")
+      const subagentType = String(taskArgs.agent ?? taskArgs.subagent_type ?? taskArgs.description ?? "")
       m.state.governance.lastDispatchTarget = subagentType || null
       const round = m.state.rounds.current
       if (round > 0 && subagentType && subagentType !== "c-critic") {
@@ -435,13 +439,9 @@ export function createToolGuardBeforeHook(args: CreateHooksArgs): AionToolExecut
       }
 
       // === G1. Scheduling state-machine edge check (HARD GATE) ===
-      // The serial-loop model requires dispatches to follow the state graph
-      // in src/scheduling/state-machine.ts. Dispatching an agent that is not
-      // on a legal edge from the current phase is a violation. We trace, warn,
-      // and toast — but do NOT throw, because throwing triggers OpenCode's
-      // doom_loop protection and the main agent would lose the diagnostic.
-      // The combination of trace + toast + persistent system-prompt injection
-      // gives the main agent enough signal to self-correct on the next round.
+      // The serial-loop model requires dispatches to follow the tier-aware
+      // state graph in src/scheduling/dispatch-rules.ts. Illegal edges throw
+      // immediately; soft warnings were ignored in real runs.
       //
       // ESCALATION (R5 enforce): if a pending next_call has been ignored for
       // >= NEXT_CALL_IGNORE_THRESHOLD rounds (set in system-transform.ts),
@@ -466,14 +466,48 @@ export function createToolGuardBeforeHook(args: CreateHooksArgs): AionToolExecut
       if (subagentType) {
         const phase = m.phase.current()
         const agent = subagentType as DispatchableAgent
-        const legal = isLegalDispatch(phase, agent)
+        // Tier-aware dispatch edge check. If the tier has not been set
+        // yet (aion_set_complexity not yet called), fall back to FULL
+        // for backward compatibility. This is the "safe" default —
+        // refusing all dispatches would deadlock the session before the
+        // main agent has a chance to classify.
+        const tier = m.complexity.current()
+        const effectiveTier = tier === "unset" ? "FULL" : tier
+        const legal = isLegalDispatchAt(effectiveTier as "LIGHT" | "MEDIUM" | "FULL", phase, agent)
+
+        // FORCE-ADVANCE: when ts-critic has returned allow-stop on a
+        // contract review (gather/ts-pre-review/ts-post-review) and
+        // the LLM tries to dispatch ts-critic again on the same
+        // contract, reject the dispatch. The 2026-07-09 112252 run
+        // got `allow-stop` 3 times in a row and stalled — the LLM
+        // kept re-dispatching ts-critic because it was legal.
+        //
+        // This is a SOFT reject: the LLM gets an error message, not a
+        // throw. The error says "the contract is approved, dispatch
+        // coder or information-collector instead." The LLM can still
+        // dispatch requirements-analyst for revisions if it has a
+        // genuine reason (e.g. c-critic found a contract gap later).
+        let forceAdvanceBlocked = false
+        if (
+          agent === "ts-critic" &&
+          m.state.governance.lastTsCriticSignal === "allow-stop" &&
+          (phase === "gather" || phase === "ts-pre-review" || phase === "ts-post-review")
+        ) {
+          forceAdvanceBlocked = true
+        }
+
         const progressNote = recordDispatch(agent, phase)
         m.trace.appendEvent(
           "scheduling.dispatch",
-          `G1 dispatch: phase=${phase} agent=${agent} legal=${legal} (${progressNote})`,
-          { phase, agent, legal, progress: progressNote, round: m.state.rounds.current },
+          `G1 dispatch: tier=${effectiveTier} phase=${phase} agent=${agent} legal=${legal} forceAdvanceBlocked=${forceAdvanceBlocked} (${progressNote})`,
+          { tier: effectiveTier, phase, agent, legal, forceAdvanceBlocked, progress: progressNote, round: m.state.rounds.current },
           "main-agent",
         )
+
+        if (forceAdvanceBlocked) {
+          const msg = `[aion] G1 force-advance: ts-critic already returned allow-stop on this contract (phase=${phase}). Re-dispatching ts-critic is rejected. Dispatch one of: coder (if contract is implementation-ready), information-collector (if you still need SOTA evidence), or requirements-analyst (if you have a genuine contract gap to fix). The contract-revision loop must end.`
+          throw new Error(msg)
+        }
 
         // If the main agent IS honoring the pending next_call, clear it.
         if (pendingNextCall && subagentType === pendingNextCall) {
@@ -516,13 +550,20 @@ export function createToolGuardBeforeHook(args: CreateHooksArgs): AionToolExecut
           const reason = preReviewMissing
             ? `${agent} requires a ts-critic pre-review before its first dispatch. Dispatch ts-critic first.`
             : `${agent} is not on a legal edge from phase=${phase}. Legal: ${legalDispatchesFrom(phase)}`
-          warn(`[aion] G1 scheduling violation: ${reason}`)
-          notifyFromCtx(m.ctx, {
-            variant: "warning",
-            title: "Scheduling violation",
-            message: reason,
-            duration: 8000,
-          })
+          // G1 is a HARD GATE. A dispatch outside the legal-edge table is
+          // always rejected — the table is the source of truth for what the
+          // main agent may dispatch at each phase. Soft-warn-only was the
+          // pre-refactor behavior; it was removed because the LLM ignored
+          // warnings and dispatched illegally (see 2026-07-09 140933 run
+          // where the main agent dispatched coder from gather phase 16 times
+          // despite G1 warnings).
+          m.trace.appendEvent(
+            "scheduling.dispatch",
+            `G1 HARD throw: illegal dispatch agent=${agent} phase=${phase}`,
+            { phase, agent, reason },
+            "main-agent",
+          )
+          throw new Error(`[aion] G1 hard-gate: ${reason}`)
         } else {
           // Edge is legal — but still check pre-review requirement for workers.
           if (agent === "requirements-analyst" || agent === "information-collector" || agent === "coder") {
@@ -545,64 +586,120 @@ export function createToolGuardBeforeHook(args: CreateHooksArgs): AionToolExecut
       }
     }
 
-    // === G2. Main-agent work-guard (SOFT WARN per user decision) ===
+      // === G2. Main-agent work-guard (TIER-AWARE) ===
     // The main agent's role is dispatch + integration + governance, NOT
-    // implementation. When the main agent calls write/edit/bash on project
-    // source files (anything outside .opencode/memory/, todo, trace), warn.
-    // This is SOFT (not throw) because: (a) emergency self-fix is a legitimate
-    // escape hatch (see aion/default.md:106); (b) throwing triggers doom_loop.
-    // The signal is: trace event + TUI toast + console.warn. The main agent's
-    // own role-boundary prompt section reinforces this every turn.
+    // implementation. Tier-aware rules:
+    //
+    //   LIGHT  - main agent may write to outputs/, docs/, *.md, *.txt,
+    //            .opencode/memory/. Anything else (.py, .ts, .js, .csv,
+    //            data files) -> throw [aion] main-agent-doing-coders-job.
+    //            This is the "answer the question" tier; main agent
+    //            is allowed to produce prose output but not code.
+    //
+    //   MEDIUM - main agent may dispatch task(coder) and write only
+    //            .opencode/memory/. Project source files -> throw.
+    //
+    //   FULL   - same as MEDIUM. Worker agents (coder) write code;
+    //            critic agents (ts-critic, c-critic) review.
+    //
+    // Why tier-aware: Karpathy's "Simplicity First" rule says "minimum
+    // code that solves the problem". LIGHT tasks do not need coder
+    // at all. MEDIUM/FULL tasks must not let the main agent
+    // short-circuit coder via direct edits.
+    //
+    // Why throw (not soft warn): the previous soft-warn behaviour was
+    // ignored in practice (see the 2026-07-08 unit-test run, where
+    // the main agent edited 12 project files with only soft warns).
+    // A throw is the only thing that makes the rule load-bearing.
     if (toolName === "write" || toolName === "Write" || toolName === "edit" || toolName === "Edit" || toolName === "apply_patch") {
       const toolArgs = (output as { args?: Record<string, unknown> }).args ?? {}
       const filePath = String(toolArgs.filePath ?? toolArgs.path ?? toolArgs.target ?? "")
-      // Allow writes to: .opencode/memory/, trace.md, todo-map, aion tooling.
-      // These are orchestration files, not project source.
+      const tier = m.complexity.current()
+      // Always allowed: orchestration files (.opencode/memory/, trace, todo-map).
       const isOrchestrationFile =
         filePath.includes(".opencode/memory/") ||
         filePath.endsWith("trace.md") ||
         filePath.endsWith("todo-map.md") ||
         filePath.endsWith("completion-gate.md")
-      if (!isOrchestrationFile) {
+      // Tier-conditional allowed:
+      //   - LIGHT may also write prose outputs (*.md, *.txt, /outputs/, /docs/).
+      //   - "unset" (tier not yet set) is permissive: we do not throw, just
+      //     trace the event. Reason: the LLM has not had a chance to call
+      //     aion_set_complexity yet. Throwing on round 1 would deadlock.
+      //     Once the LLM classifies, the rule becomes load-bearing.
+      const isLightProseOutput =
+        tier === "LIGHT" &&
+        (/\.(md|txt)$/i.test(filePath) ||
+          filePath.includes("/outputs/") ||
+          filePath.includes("/docs/") ||
+          filePath.endsWith(".md"))
+      const tierIsUnset = tier === "unset"
+      if (!isOrchestrationFile && !isLightProseOutput && !tierIsUnset) {
         m.trace.appendEvent(
           "role.work_violation",
-          `G2 soft warn: main agent editing project file ${filePath} — should dispatch coder`,
-          { tool: toolName, filePath },
+          `G2 throw: main agent editing project file ${filePath} - should dispatch coder (tier=${tier})`,
+          { tool: toolName, filePath, tier },
           "main-agent",
         )
-        // Soft signal only — no throw, no block. The role-boundary prompt
-        // section in aion/default.md is the primary enforcement; this toast
-        // is a real-time nudge so the user can see the violation happening.
         notifyFromCtx(m.ctx, {
-          variant: "warning",
-          title: "Main agent doing worker's job",
-          message: `Editing ${filePath} — this is coder's responsibility. If this is an emergency self-fix, dispatch coder to verify immediately after. Otherwise, cancel and dispatch.`,
-          duration: 7000,
+          variant: "error",
+          title: "[BLOCKED] WRITE DENIED",
+          message: `Editing ${filePath} at tier=${tier} is BLOCKED. Use task(subagent_type="coder", ...) instead. This is not a retryable failure.`,
+          duration: 10000,
         })
+        // G2 throw: main agent must not write project source files.
+        // The [aion] prefix lets the G1 hook classify this as a tagged
+        // governance error (re-thrown verbatim from tool-guard.ts).
+        // G2 is a HARD GATE. The main agent must not write project
+        // source files directly — that is coder's job. The error
+        // message is designed to be clear even for lower-capability
+        // models (see 2026-07-09 140933 run where qwen3.6-35b
+        // retried 16 times despite a soft-sounding G2 error). The
+        // [BLOCKED] prefix and the explicit "you cannot retry" are
+        // there to prevent the retry loop.
+        throw new Error(
+          "[BLOCKED] WRITE IS PERMANENTLY DENIED at tier=" + tier +
+          ". You CANNOT write to " + filePath + ". You CANNOT retry this. " +
+          "Use task(subagent_type=\"coder\", description=\"...\", prompt=\"...\") " +
+          "instead. The coder subagent has write access. The main agent does not. " +
+          "If you cannot dispatch coder, do the work verbally (explain what to build) " +
+          "in your text response and let the user take over."
+        )
       }
     }
     if (toolName === "bash" || toolName === "Bash") {
       const bashArgs = (output as { args?: Record<string, unknown> }).args ?? {}
       const command = String(bashArgs.command ?? bashArgs.cmd ?? "")
+      const tier = m.complexity.current()
       // Code-modifying bash patterns (sed/awk/cat<<EOF/redirect to source file).
       // Read-only commands (ls, cat for reading, grep, git status) are fine.
       const codeModifying =
         /\b(sed|awk|perl|python3?\s+-c)\b.*\s(-i|--in-place)\b/i.test(command) ||
         /cat\s+<<\s*(EOF|END|AION)/i.test(command) ||
         /\btee\b\s+/i.test(command) && /\.(ts|js|mjs|py|json|jsonc|md)$/i.test(command)
-      if (codeModifying) {
+      if (codeModifying && tier !== "unset") {
         m.trace.appendEvent(
           "role.work_violation",
-          `G2 soft warn: main agent running code-modifying bash — should dispatch coder`,
-          { tool: toolName, command: command.slice(0, 200) },
+          `G2 output-block: main agent running code-modifying bash at tier=${tier} - output replaced`,
+          { tool: toolName, command: command.slice(0, 200), tier },
           "main-agent",
         )
-        notifyFromCtx(m.ctx, {
-          variant: "warning",
-          title: "Main agent doing worker's job",
-          message: `Code-modifying bash detected. This is coder's responsibility. Dispatch coder instead.`,
-          duration: 7000,
-        })
+        // Replace the output with a BLOCKED message. The key insight:
+        // tool.execute.before throw causes OpenCode to return "tool call
+        // failed" which the LLM retries. Instead, we let the tool succeed
+        // but replace the output with a BLOCKED message. The LLM sees a
+        // successful tool call with blocked output — very different from
+        // "tool call failed" — and is far less likely to retry.
+        //
+        // For weak models (qwen3.6-35b): "BLOCKED" is a clearer signal
+        // than an exception, which it interprets as "try a different
+        // command".
+        // For strong models: the message already says to use task().
+        ;(output as { output?: string }).output =
+          "[BLOCKED] Code-modifying bash is not allowed at tier=" + tier + ". " +
+          "The command was NOT executed. Use task(subagent_type=\"coder\", ...) for code work. " +
+          "Do NOT retry with a different bash command."
+        return
       }
     }
 
@@ -700,9 +797,9 @@ export function createToolGuardAfterHook(args: CreateHooksArgs): AionToolExecute
 
     // === H. Personality: fire toasts on dispatch and critic events ===
     if (personality) {
-      if (toolName === "subagent") {
+      if (toolName === "task") {
         const taskArgs = (output as { args?: Record<string, unknown> }).args ?? {}
-        const subagentType = String(taskArgs.agent ?? "")
+        const subagentType = String(taskArgs.agent ?? taskArgs.subagent_type ?? "")
         if (subagentType) {
           personality.onDispatch(subagentType)
         }
@@ -716,17 +813,11 @@ export function createToolGuardAfterHook(args: CreateHooksArgs): AionToolExecute
     }
 
     // === G3. Reportback protocol enforcement ===
-    // Every worker dispatch returns free text. We parse it for:
-    //   - status (done | blocker | need-info | rejected)
-    //   - next_call (worker-proposed next agent; main agent MUST honor)
-    //   - unresolved issues (carried into next round's prompt per R4)
-    // If a worker reports back done, mark it done in the state machine.
-    // If next_call is non-null, store it for the system-transform hook to
-    // inject into the next round's prompt (main agent reads it and dispatches
-    // accordingly).
-    if (toolName === "subagent" && outputText) {
+    // Parse worker status, requested next_call, and unresolved issues into
+    // persistent governance state for prompt injection and dispatch gating.
+    if (toolName === "task" && outputText) {
       const taskArgs = (output as { args?: Record<string, unknown> }).args ?? {}
-      const subagentType = String(taskArgs.agent ?? "")
+      const subagentType = String(taskArgs.agent ?? taskArgs.subagent_type ?? "")
       const isWorker =
         subagentType === "requirements-analyst" ||
         subagentType === "information-collector" ||
@@ -787,7 +878,7 @@ export function createToolGuardAfterHook(args: CreateHooksArgs): AionToolExecute
     }
 
     // === G. Reportback detection (task returns) ===
-    if (toolName === "subagent" && outputText) {
+    if (toolName === "task" && outputText) {
       m.trace.appendEvent(
         "reportback.received",
         `task returned (${(outputText || "").length} chars)`,

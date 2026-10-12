@@ -12,9 +12,9 @@
  */
 import { tool } from "../plugin/tool"
 import type { CreateToolsArgs } from "./_shared"
-import type { AionShimTools } from "./types"
+import type { AionToolMap } from "./types"
 
-export function createLanguageTool(args: CreateToolsArgs): AionShimTools {
+export function createLanguageTool(args: CreateToolsArgs): AionToolMap {
   const { managers } = args
   const m = managers
   const z = tool.schema

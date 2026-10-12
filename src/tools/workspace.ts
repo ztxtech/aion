@@ -10,14 +10,13 @@
  *   Writes its verdict to completion-gate.md.
  */
 import { tool } from "../plugin/tool"
-import type { ToolDefinition } from "../plugin/tool-adapter"
 import type { CreateToolsArgs } from "./_shared"
-import type { AionShimTools } from "./types"
+import type { AionToolMap } from "./types"
 import { ensureDir, readIfExists, writeFileEnsuringDir } from "../shared/logger"
 import { nowIso } from "../shared/utils"
 import { notifyFromCtx } from "../shared/notify-tui"
 
-export function createWorkspaceTools(args: CreateToolsArgs): AionShimTools {
+export function createWorkspaceTools(args: CreateToolsArgs): AionToolMap {
   const { managers } = args
   const m = managers
   const z = tool.schema
@@ -142,7 +141,6 @@ export function createWorkspaceTools(args: CreateToolsArgs): AionShimTools {
         if (!deepReasoningDone) blockers.push("deep-reasoning pre-stop not done")
         if (!tsCriticAllowStop) blockers.push("ts-critic has not output allow-stop")
         if (cCriticVerdict === "reject-stop") blockers.push("c-critic has rejected stop")
-        if (cCriticVerdict === "unset") blockers.push("c-critic verdict missing")
         if (missingPaths.length > 0) blockers.push(`file paths missing on disk: ${missingPaths.join(", ")}`)
         if (!completionGateFresh) blockers.push("completion-gate not refreshed against latest state")
         if (!workspaceCleaned) blockers.push("workspace cleanup not done")
@@ -158,6 +156,7 @@ export function createWorkspaceTools(args: CreateToolsArgs): AionShimTools {
         }
 
         const allowStop = blockers.length === 0
+        m.governance.recordPreStopGate(allowStop, blockers)
 
         if (allowStop) {
           m.governance.recordStopSignal("allow-stop", "pre-stop-gate")
