@@ -60,11 +60,17 @@ function createContext(root, registrations = { routes: [], slots: [] }) {
     ui: {
       router: {
         current: () => ({ type: "session", sessionID: "session-live" }),
-        register: (page) => registrations.routes.push(page),
+        register: (page) => {
+          registrations.routes.push(page);
+          return () => {};
+        },
         navigate: () => {},
       },
       panel: { open: () => true, close: () => {}, current: () => undefined },
-      slot: (claim) => registrations.slots.push(claim),
+      slot: (claim) => {
+        registrations.slots.push(claim);
+        return () => {};
+      },
       toast: { show: () => {} },
     },
     keymap: { layer: (factory) => factory() },

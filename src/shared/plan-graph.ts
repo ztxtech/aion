@@ -37,7 +37,10 @@ export function parsePlanMap(content: string): PlanItem[] {
     if (!idMatch) continue
     const cleanedBlock = block.replace(/\*\*([^*]+)\*\*/g, "$1")
     const getField = (name: string) => {
-      const match = cleanedBlock.match(new RegExp(`-\\s*${name}:\\s*(.+)`))
+      // Anchored per line with [ \t] only: an empty value such as
+      // "Depends on: " must never let \s* swallow the newline and capture the
+      // following "added:" line as the value.
+      const match = cleanedBlock.match(new RegExp(`^-[ \\t]*${name}:[ \\t]*(.*)$`, "m"))
       return match?.[1]?.trim().replace(/\*\*/g, "") ?? ""
     }
     items.push({

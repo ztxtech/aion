@@ -541,7 +541,7 @@ export default Plugin.define({
       ],
     }))
 
-    context.ui.router.register({
+    const disposeRoute = context.ui.router.register({
       name: "aion-dag",
       render: () => (
         <Board
@@ -554,7 +554,7 @@ export default Plugin.define({
       ),
     })
 
-    context.ui.slot({
+    const disposeSlot = context.ui.slot({
       append: "session.panel",
       render: (input) =>
         input.name === "aion-dag" ? (
@@ -570,6 +570,8 @@ export default Plugin.define({
     })
 
     return () => {
+      disposeSlot()
+      disposeRoute()
       board.dispose()
       runtimeBoard.dispose()
     }

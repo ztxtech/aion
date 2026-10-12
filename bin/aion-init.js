@@ -363,7 +363,10 @@ async function ensureTuiJson(target) {
       console.log(`  [skip] ${path} already selects "${selected}"`);
       return;
     }
-    if (selected === "aion") return;
+    if (selected === "aion") {
+      console.log(`  [skip] ${path} already selects "aion"`);
+      return;
+    }
 
     writeJsonPreserveIndent(path, {
       ...parsed,
