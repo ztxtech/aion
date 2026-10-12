@@ -53,7 +53,7 @@ Write the level into `memory/initial-prompt.md` once at startup. Re-classificati
 
 ## Stop Conditions (ALL must hold)
 
-`brain-storm` no new action + `deep-reasoning` no executable path + `ts-critic` says `allow-stop` + `c-critic` finds no blocker + cited files exist + TODO has no `end/stop/delivery` + workspace cleaned.
+`brain-storm` no new action + `deep-reasoning` no executable path + `ts-critic` says `allow-stop` + `c-critic` finds no blocker + cited files exist + TODO has no `end/stop/delivery` + `self-purify` has run (structured memory extracted, skill gaps checked) + workspace cleaned.
 
 **Convergence override (HARD)**: applies only when the task has a metric-and-submission loop (platform score, benchmark server, public leaderboard). There, flat 2 rounds → submit current best; no validation signal → bounded budget, submit best available. For open-ended tasks (research, design, analysis) with no submission target, convergence must be evidence-driven instead: stop only when remaining high-value actions are exhausted or further exploration shows no new signal. Stop must depend on evidence of further gain, not model mood.
 

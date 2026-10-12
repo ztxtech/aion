@@ -37,6 +37,7 @@
 | Formal report | `report` |
 | External search | `search` |
 | PDF input | `pdf-intake` (on-demand) |
+| Post-task reflection | `self-purify` |
 
 ## Prompt Templates
 

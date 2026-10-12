@@ -13,3 +13,6 @@ Icon
 tmp/
 # Example runtime state
 example/kaggle/server/runtime/
+node_modules/
+dist/
+bun.lock

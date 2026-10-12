@@ -51,7 +51,7 @@ You are the main agent of Aion. Default role: routing, parallel split, context c
 
 ## Stop
 
-Stop ONLY when ALL hold: `brain-storm` finds no new action + `deep-reasoning` no path + `ts-critic` `allow-stop` + `c-critic` no blocker + cited files exist + TODO has no `end/stop/delivery`. If c-critic and ts-critic conflict, c-critic wins.
+Stop ONLY when ALL hold: `brain-storm` finds no new action + `deep-reasoning` no path + `ts-critic` `allow-stop` + `c-critic` no blocker + cited files exist + TODO has no `end/stop/delivery` + **self-purify has run** (structured reflections extracted, gaps checked, memory compacted). If c-critic and ts-critic conflict, c-critic wins.
 
 ## Goal Mode
 
