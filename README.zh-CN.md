@@ -29,13 +29,13 @@
 <p align="center">
   <img src="https://img.shields.io/badge/OpenCode-V2-blue?logo=terminal&logoColor=white" alt="OpenCode">
   <img src="https://img.shields.io/badge/Python-≥3.10-3776AB?logo=python&logoColor=white" alt="Python">
-  <img src="https://img.shields.io/badge/多Agent-6个角色-F59E0B?style=flat" alt="Multi-Agent">
+  <img src="https://img.shields.io/badge/多Agent-8个角色-F59E0B?style=flat" alt="Multi-Agent">
   <img src="https://img.shields.io/badge/协议-8个-06B6D4?style=flat" alt="Protocols">
   <img src="https://img.shields.io/badge/评测-5道门禁-EC4899?style=flat" alt="Evals">
   <img src="https://img.shields.io/badge/时间序列-Harness-7C3AED?style=flat" alt="Time Series">
   <img src="https://img.shields.io/badge/任务分级-L0--L3-FF6B6B?style=flat" alt="Task Levels">
   <img src="https://img.shields.io/badge/上下文-20K启动预算-06B6D4?style=flat" alt="Context Budget">
-  <img src="https://img.shields.io/badge/版本-1.0.0-111827?style=flat" alt="Version 1.0.0">
+  <img src="https://img.shields.io/badge/版本-0.7.3-111827?style=flat" alt="Version 0.7.3">
   <a href="https://github.com/ztxtech/aion"><img src="https://img.shields.io/github/stars/ztxtech/aion?style=social" alt="GitHub stars"></a>
   <img src="https://img.shields.io/github/last-commit/ztxtech/aion?color=orange" alt="Last Commit">
   <a href="https://deepwiki.com/ztxtech/aion"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
@@ -66,63 +66,33 @@ AION 作为基于 [OpenCode](https://github.com/anomalyco/opencode) 的**时间�
 
 ## 🏗️ 架构
 
-AION 通过专业化 agent、OpenCode 原生 skill、运行时协议、记忆文件、评测契约和 fail-closed CLI runner 来组织工作。主 agent 根据任务等级和模型能力自适应安排路径；`ts-critic` 和 `c-critic` 保留为审查骨干。
+AION 是 OpenCode V2 的编译型 TypeScript 插件。仓库保存源码和发布工具；`aion-ts init` 会把自包含的 server 与 TUI bundle 安装到项目里。专业化 agent、原生 skill、运行时协议、记忆文件和评测契约都通过插件加载。
 
 ### 目录结构
 
 ```
-.opencode/
-├── agents/           # 6 个专业化 agent
-│   ├── agent.md              # 主控 agent（mode: primary）
-│   ├── requirements-analyst  # 任务 intake 与需求抽取
-│   ├── information-collector # 外部证据与 SOTA 搜索
-│   ├── coder.md              # 实现、实验与交付
-│   ├── ts-critic.md          # 时间序列专家 + Pareto 治理
-│   └── c-critic.md           # 最终最小上下文冷启动批判
-├── skills/            # OpenCode 原生 skill，按需加载
-│   ├── workspace-init/       # 运行时、记忆与 trace 初始化
-│   ├── safety/               # 输入与动作安全检查
-│   ├── search/               # 多轴外部证据收集
-│   ├── planning/             # 计划与分支管理
-│   ├── ts-core/              # 时间序列任务与验证规则
-│   ├── experiment/           # benchmark-first 实验执行
-│   ├── report/               # 证据约束的报告交付
-│   └── pdf-intake/           # 只读 PDF 提取
-├── rules/            # 核心规则
-│   ├── core.md               # 内核：治理、任务分级、模型适配、记忆
-│   └── opencode.md           # OpenCode 文档与仓库参考
-├── protocols/        # 8 个运行时协议
-│   ├── dispatch.md           # 子 agent 派单契约
-│   ├── reportback.md         # 回传契约
-│   ├── rebuttal.md           # Rebuttal 协议
-│   ├── stop-go.md            # 停止/继续治理
-│   ├── lifecycle.md          # Agent 生命周期管理
-│   ├── memory-sync.md        # 记忆同步
-│   ├── runtime-events.md     # 运行时事件追踪
-│   └── compaction.md         # 上下文压缩协议
-├── evals/            # 5 个评测契约
-│   ├── suites.md             # 测试套件定义
-│   ├── graders.md            # 评分器规格
-│   ├── scorecards.md         # 计分卡模板
-│   ├── regression-matrix.md  # 回归测试矩阵
-│   └── release-gates.md      # 发布门禁
-├── memory/
-│   └── template/     # 13 个记忆模板
-│       ├── initial-prompt.md  # 反漂移任务基线
-│       ├── context-snapshot.md # 规范化压缩 artifact
-│       ├── progress.md        # 任务进度追踪
-│       ├── decisions.md       # 关键决策日志
-│       ├── features.md        # 特征清单
-│       ├── todo-map.md        # 前沿与 TODO 追踪
-│       ├── completion-gate.md # 完成度检查表
-│       ├── positive.md        # 正面发现池
-│       ├── negative.md        # 负面发现池
-│       ├── relation.md        # Agent 关系图
-│       ├── memory.md          # 持久记忆
-│       ├── dir.md             # 目录结构
-│       └── evolution-log.md   # Skill gap 流水线
-└── .gitignore
+aion/
+├── src/
+│   ├── index.ts              # 插件定义与 V2 hooks
+│   ├── create-managers.ts    # 治理、trace 与阶段状态
+│   ├── create-tools.ts       # AION 工具注册表
+│   ├── create-hooks.ts       # OpenCode 生命周期 hooks
+│   ├── workspace-bootstrap.ts # 运行时工作区初始化
+│   ├── agents/               # 8 个专业 agent 工厂
+│   ├── tools/                # 20 个运行时工具
+│   ├── prompts/              # 治理、协议和 agent prompt
+│   ├── scheduling/           # 自适应派单与无进展处理
+│   ├── shared/               # 计划图、日志、toast 与工具函数
+│   └── tui/index.tsx         # 原生 V2 AION 看板
+├── bin/aion-init.js          # aion-ts 安装器
+├── scripts/                  # 构建、安装与发布工具
+├── test/                     # 单元、CLI 与集成测试
+└── .opencode/
+    ├── skills/               # 17 个 OpenCode 原生 skill
+    └── themes/aion.json      # AION TUI 主题
 ```
+
+在项目里执行 `aion-ts init .` 后，OpenCode 会直接发现 `.opencode/plugins/aion/server.js` 和 `tui.js`。运行时会在 `.opencode/memory/` 和 `.opencode/trace.md` 创建记忆与追踪文件。
 
 ---
 
@@ -134,20 +104,21 @@ AION 需要标准的 Linux/macOS 环境，并确保以下系统命令可用：
 
 | 命令            | 用途                                 | 备注        |
 | --------------- | ------------------------------------ | ----------- |
-| `git`           | 克隆 .opencode、本地 checkpoint 历史 | 通常已预装  |
+| `node`          | 运行 aion-ts 安装器                  | 建议 ≥ 18  |
+| `git`           | 本地 checkpoint 历史                 | 通常已预装  |
 | `curl`          | 下载 AION、网页搜索回退              | 通常已预装  |
-| `tar` / `unzip` | 解压归档文件                         | 通常已预装  |
+| `tar`           | 解压发布归档                         | 通常已预装  |
 | `python3`       | Python 工具链、校验器                | 建议 ≥ 3.10 |
 | `bash`          | cli.sh 与技能脚本                    | ≥ 4.0       |
 
-部分命令（如通过包管理器安装 `git`、`curl` 或 `unzip`）可能需要 **root/sudo** 权限。在最小化容器或 CI 镜像中，请先安装这些依赖：
+部分命令（如通过包管理器安装 `git` 或 `curl`）可能需要 **root/sudo** 权限。在最小化容器或 CI 镜像中，请先安装这些依赖：
 
 ```bash
 # Debian / Ubuntu
-sudo apt-get update && sudo apt-get install -y git curl unzip tar python3
+sudo apt-get update && sudo apt-get install -y git curl tar python3
 
 # RHEL / CentOS / Fedora
-sudo dnf install -y git curl unzip tar python3
+sudo dnf install -y git curl tar python3
 
 # macOS（通常已预装；如未安装）
 brew install git curl python3
@@ -173,35 +144,43 @@ opencode    # 启动 TUI，然后按提示选择 provider 并认证
 
 支持 **Claude / OpenAI / Codex / Copilot / Gemini** 及任何兼容端点。
 
-### 3. 将 AION 添加到你的项目
+### 3. 安装 AION CLI
 
 ```bash
-# 方式一：clone 到项目根目录
-cd your-project
-git clone https://github.com/ztxtech/aion.git .opencode
-
-# 方式二：下载并解压
-curl -fsSL https://github.com/ztxtech/aion/archive/refs/heads/main.tar.gz | tar xz --strip-components=1
-mv aion-main/.opencode .opencode
-rm -rf aion-main
+curl -fsSL https://raw.githubusercontent.com/ztxtech/aion/master/scripts/install.sh | bash
 ```
 
-### 4. 运行
+如果 `~/.local/bin` 不在 `PATH` 中，先把它加入 shell profile：
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+### 4. 将 AION 添加到你的项目
+
+```bash
+cd your-project
+aion-ts init .
+```
+
+安装器只写入目标项目，不会修改全局 OpenCode 配置。
+
+### 5. 运行
 
 ```bash
 # 交互式 TUI 模式
 opencode
 
 # 非交互式 run 模式
-opencode run --agent agent "你的任务描述"
+opencode run --agent aion "你的任务描述"
 
 # 指定模型
-opencode run --agent agent -m anthropic/claude-sonnet-4 "分析这个时间序列数据集"
+opencode run --agent aion -m anthropic/claude-sonnet-4 "分析这个时间序列数据集"
 ```
 
-### 5. Goal 模式（可选）
+### 6. Goal 模式（可选）
 
-AION 在 `.opencode/opencode.json` 里预配了 [`@prevalentware/opencode-goal-plugin`](https://github.com/prevalentWare/opencode-goal-plugin)。插件提供 `/goal` 斜杠命令、持久化目标状态、空闲自动续跑和 goal 侧边栏指示器。
+AION 会在项目级 `opencode.json` 里配置 [`@prevalentware/opencode-goal-plugin`](https://github.com/prevalentWare/opencode-goal-plugin)。插件提供 `/goal` 斜杠命令、持久化目标状态、空闲自动续跑和 goal 侧边栏指示器。
 
 ```
 # 在 TUI 里启动一个 goal，让 AION 迭代 task.md
@@ -234,7 +213,7 @@ OpenCode 的 `run` 和 `tui` 描述的是界面形态，不等于 agent 是否�
 
 在 `autonomous` 下，只要这条决策树没有出现真实冲突，就直接按默认优先级执行，不先问用户解释器偏好。在 `interactive` 下，也必须先做同样的本地探测；只有当探测后仍存在多个同样合理、且会显著影响依赖或实现路径的候选环境时，才向用户发起一次简洁确认。
 
-### 6. CLI 运行模式（进阶）
+### 7. CLI 运行模式（进阶）
 
 使用 `cli.sh` 进行自动化、自动续跑的实验运行：
 
@@ -257,9 +236,9 @@ bash cli.sh --max-continues 10
 
 ### 自动 / 交互场景下怎么写 Prompt
 
-`cli.sh` 已经内置公开的 OpenCode run/TUI 入口。运行 `bash cli.sh` 即可启动当前 harness。
+OpenCode 的原生主 agent 是 `aion`。它由本地插件注册，负责把工作派发给边界明确的专业 agent。
 
-如果自己写提示词，应明确执行策略，并先读取原生 `.opencode/agents/agent.md` 入口，避免 agent 自己猜测。
+如果自己写提示词而不是使用默认 `cli.sh` prompt，应明确执行策略，并指定 `aion` agent。
 
 - 对非交互、自动执行，先读取根目录任务文件和 `.opencode` 合约，并注明模式：
 
@@ -315,10 +294,12 @@ opencode
 
 | Agent | 职责 |
 |-------|------|
-| **agent** | 主控 — 调度子 agent、执行审查门禁、驱动收口 |
+| **aion** | 主控 — 调度子 agent、执行审查门禁、驱动收口 |
 | **requirements-analyst** | 读取任务与工作区材料，抽取目标、输入与约束 |
 | **information-collector** | 补齐 SOTA、顶会顶刊、官方实现与领域知识 |
+| **search-scout** | 单轴检索助手，用于聚焦式证据收集 |
 | **coder** | 实现、实验、交付与可视化 |
+| **experiment-runner** | 执行固定实验包并保留完整 artifacts |
 | **ts-critic** | 时间序列方法审查 + Pareto 继续/停止治理 — `c-critic` 之前的最高治理门 |
 | **c-critic** | 最终最小上下文冷启动批判 — 系统最高治理权 |
 
@@ -342,13 +323,13 @@ c-critic > ts-critic > 主 agent > 其他子 agent
 
 | 组件 | 路径 | 职责 |
 |------|------|------|
-| **主 agent** | `agents/agent.md` | 任务分级、路径调度、上下文压缩与门禁执行 |
-| **专业 agent** | `agents/*.md` | 需求分析、证据收集、编码、时间序列评审与最终批判 |
-| **原生 skill** | `skills/<name>/SKILL.md` | 由 OpenCode `skill` 工具按需发现和加载的能力 |
-| **运行时协议** | `protocols/*.md` | 调度、回传、rebuttal、压缩、记忆同步与停止/继续规则 |
-| **记忆与 trace** | `memory/template/`、`trace.md` | 单次运行证据、快照、决策与可复用发现 |
-| **评测契约** | `evals/*.md` | 测试套件、评分器、计分卡、回归和发布门禁 |
-| **CLI 入口** | `cli.sh` | 以 run 或 TUI 模式启动 OpenCode，支持显式提示词和 session 导出 |
+| **插件定义** | `src/index.ts` | 注册 V2 hooks、工具、agent、权限和看板状态 |
+| **专业 agent** | `src/agents/` | 需求分析、证据收集、编码、聚焦检索、实验与审查 |
+| **原生 skill** | `.opencode/skills/<name>/SKILL.md` | 由 OpenCode `skill` 工具按需发现和加载的能力 |
+| **运行时协议** | `src/prompts/` | 调度、回传、rebuttal、压缩、记忆同步与停止/继续规则 |
+| **记忆与 trace** | `.opencode/memory/`、`.opencode/trace.md` | 单次运行证据、快照、决策与可复用发现 |
+| **原生看板** | `.opencode/plugins/aion/tui.js` | V2 session panel 中的计划 DAG、调用图、阶段与 toast |
+| **CLI 入口** | `bin/aion-init.js` | 把自包含插件安装到目标项目 |
 
 ### 任务分级
 
@@ -399,7 +380,23 @@ AION 维护两套互补的追踪系统：
 
 ## 📡 CLI 参考
 
-`cli.sh` 提供公开 CLI 入口，用于 OpenCode 的 run 或 TUI 执行，并支持可选的自动续跑：
+### `aion-ts` — 插件安装器
+
+`aion-ts` 是主要的项目安装入口：
+
+```bash
+aion-ts init [target-dir] [--force]
+```
+
+| 参数 | 默认值 | 描述 |
+| ---- | ------ | ---- |
+| `target-dir` | `.` | 要初始化的项目目录 |
+| `--force`, `-f` | 关闭 | 覆盖已安装的 AION bundle |
+| `--help`, `-h` | — | 显示帮助 |
+
+### `cli.sh` — OpenCode 启动器（旧版）
+
+`cli.sh` 仍是可选的便捷入口，用于 OpenCode 的 run 或 TUI 执行，并支持可选的自动续跑：
 
 ```bash
 bash cli.sh [OPTIONS]

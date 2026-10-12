@@ -52,7 +52,7 @@ Examples:
   bash __SCRIPT_NAME__ -m openai/gpt-4.1 --max-continues 10 --debug
 
 Prerequisites:
-  1. Install OpenCode V2:  curl -fsSL https://opencode.ai/v2/install | bash
+  1. Install OpenCode:     curl -fsSL https://opencode.ai/install | bash
   2. Add AION to project:  git clone https://github.com/ztxtech/aion.git .opencode
   3. Configure:            create opencode.json (see README.md)
 HELP
@@ -70,8 +70,8 @@ ENABLE_EXPORT=0
 CUSTOM_DEBUG_DIR=""
 CUSTOM_PROMPT=""
 
-DEFAULT_INITIAL_PROMPT="Read the root task files and the .opencode contract first. Classify the task, load only the native skills required for the current task, delegate work to the matching agents, and complete the task end-to-end. Treat this run as autonomous unless a material user decision is required. Stop only after the configured critic gates approve."
-DEFAULT_CONTINUE_PROMPT="Continue the current run from the latest context snapshot. Preserve the evidence chain, use the matching agent or skill for the next slice, and stop only after the configured critic gates approve."
+DEFAULT_INITIAL_PROMPT="Start the project with the context-init skill. Read the root task files and the .opencode contract first. Treat this run as run plus autonomous: keep the workflow human-free, prefer local detection over upfront questions, and only stop when no skill and no agent can propose any further action, defect, or rollback point. Cinematic demo mode is active: open any reference PNG plots under demo/workspace/docs/reference/ with the macOS 'open' command when you need to inspect them, and use the playwright MCP server for any browser-based visual verification. Begin with a one-line Jarvis-style greeting before context-init runs, so the recording has a clear cold-open."
+DEFAULT_CONTINUE_PROMPT="Continue the current session in run plus autonomous mode. Keep following the existing TODOs and evidence chain, stay human-free unless truly blocked on user-only information, and only stop when no skill and no agent can propose any further action, defect, or rollback point."
 
 # ---- Parse arguments ----
 while [[ $# -gt 0 ]]; do

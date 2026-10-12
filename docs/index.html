@@ -229,16 +229,19 @@
               <div class="content">
                 <h4 class="subtitle">1. Install OpenCode</h4>
                 <pre><code>curl -fsSL https://opencode.ai/install | bash</code></pre>
+
+                <h4 class="subtitle">2. Install the AION CLI</h4>
+                <pre><code>curl -fsSL https://raw.githubusercontent.com/ztxtech/aion/master/scripts/install.sh | bash</code></pre>
                 
-                <h4 class="subtitle">2. Add AION to Your Project</h4>
+                <h4 class="subtitle">3. Add AION to Your Project</h4>
                 <pre><code>cd your-project
-git clone https://github.com/ztxtech/aion.git .opencode</code></pre>
+aion-ts init .</code></pre>
                 
-                <h4 class="subtitle">3. Run</h4>
-                <pre><code>bash cli.sh</code></pre>
+                <h4 class="subtitle">4. Run</h4>
+                <pre><code>opencode</code></pre>
                 
                 <p class="is-size-6 has-text-grey-dark mt-3 mb-2">Or run manually:</p>
-                <pre><code>opencode run --agent agent "Read the root task files and the .opencode contract first, then complete the task end-to-end."</code></pre>
+                <pre><code>opencode run --agent aion "Complete the task defined in task.md end-to-end."</code></pre>
                 
               </div>
             </div>

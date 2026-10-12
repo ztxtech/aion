@@ -1,6 +1,6 @@
 ---
 name: workspace-init
-description: Initialize workspace: git repo, trace, memory files. Loads on session start.
+description: Align project background, initialize runtime trace / memory files, and output the minimum startup summary for the current task.
 ---
 
 ## Debug Prefix Protocol

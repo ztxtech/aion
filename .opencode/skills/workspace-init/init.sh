@@ -45,13 +45,7 @@ else
         cp "$TEMPLATE_DIR/trace.md" "$TRACE_FILE"
         log_created "$TRACE_FILE"
     else
-        cat > "$TRACE_FILE" <<'EOF'
-# AION Pipeline Trace
-
-| Time | Phase | Actor | Evidence | Next gate |
-|------|-------|-------|----------|-----------|
-EOF
-        log_created "$TRACE_FILE (fallback skeleton)"
+        echo "  [!] template not found: $TEMPLATE_DIR/trace.md"
     fi
 fi
 

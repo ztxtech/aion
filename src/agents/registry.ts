@@ -1,0 +1,45 @@
+/**
+ * Agent registry.
+ *
+ * Builds the complete `Record<agentName, AgentConfig>` map that the plugin
+ * interface merges into OpenCode's `agent` config. Also exports
+ * {@link AION_AGENT_DESCRIPTIONS} — the one-line summaries used in TUI /
+ * dispatch hints. The `_modelMap` parameter is reserved for per-agent model
+ * overrides (currently unused; all agents inherit the session model).
+ */
+import type { AgentConfig } from "./agent-config"
+import type { AionAgentName } from "./names"
+import { createAionMainAgent } from "./aion"
+import { createRequirementsAnalystAgent } from "./requirements-analyst"
+import { createInformationCollectorAgent } from "./information-collector"
+import { createCoderAgent } from "./coder"
+import { createTsCriticAgent } from "./ts-critic"
+import { createCCriticAgent } from "./c-critic"
+import { createSearchScoutAgent } from "./search-scout"
+import { createExperimentRunnerAgent } from "./experiment-runner"
+
+export type AionAgentModelMap = Partial<Record<AionAgentName, string>>
+
+export const AION_AGENT_DESCRIPTIONS: Record<AionAgentName, string> = {
+  "aion": "AION main agent: read the task, dispatch the right subagents, enforce review gates, and drive the flow to close.",
+  "requirements-analyst": "Task intake and requirements extraction. Searches denied. Translates user intent into a structured task contract with hidden-goal detection and dual-branch planning.",
+  "information-collector": "External evidence and SOTA search. Websearch + webfetch + bash allowed; edit denied. Multi-axis saturation, GitHub source-level search, dual-branch reverse-absorption.",
+  "coder": "Finish the needed interfaces, analysis, experiments, and deliverables with real evidence. Visual + statistical + SHAP/feature attribution + drift analysis. ztxexp-mandated.",
+  "ts-critic": "Time-series expert + Pareto stop-go governor. Leakage detection, metric validity, method-family coverage, stop-go verdicts. Edit denied.",
+  "c-critic": "Final gate under minimal context. Highest authority. Stranger-view cold-start review of real artifacts. Visual analysis mandatory. Approve-stop or reject-stop verdict.",
+  "search-scout": "One-axis retrieval helper. Returns sourced evidence, gaps, and freshness without synthesis or dispatch.",
+  "experiment-runner": "One-experiment helper. Runs a fixed package, preserves logs and artifacts, and does not redesign the work.",
+}
+
+export function buildAionAgents(_modelMap: AionAgentModelMap): Record<string, AgentConfig> {
+  return {
+    aion: createAionMainAgent(),
+    "requirements-analyst": createRequirementsAnalystAgent(),
+    "information-collector": createInformationCollectorAgent(),
+    coder: createCoderAgent(),
+    "ts-critic": createTsCriticAgent(),
+    "c-critic": createCCriticAgent(),
+    "search-scout": createSearchScoutAgent(),
+    "experiment-runner": createExperimentRunnerAgent(),
+  }
+}

@@ -29,13 +29,13 @@ Time-series research is moving beyond fixed forecasting benchmarks toward tasks 
 <p align="center">
   <img src="https://img.shields.io/badge/OpenCode-V2-blue?logo=terminal&logoColor=white" alt="OpenCode">
   <img src="https://img.shields.io/badge/Python-≥3.10-3776AB?logo=python&logoColor=white" alt="Python">
-  <img src="https://img.shields.io/badge/Multi_Agent-6_Roles-F59E0B?style=flat" alt="Multi-Agent">
+  <img src="https://img.shields.io/badge/Multi_Agent-8_Roles-F59E0B?style=flat" alt="Multi-Agent">
   <img src="https://img.shields.io/badge/Protocols-8-06B6D4?style=flat" alt="Protocols">
   <img src="https://img.shields.io/badge/Evals-5_Gates-EC4899?style=flat" alt="Evals">
   <img src="https://img.shields.io/badge/Time_Series-Harness-7C3AED?style=flat" alt="Time Series">
   <img src="https://img.shields.io/badge/Task_Levels-L0--L3-FF6B6B?style=flat" alt="Task Levels">
   <img src="https://img.shields.io/badge/Context-20K_Startup_Budget-06B6D4?style=flat" alt="Context Budget">
-  <img src="https://img.shields.io/badge/Version-1.0.0-111827?style=flat" alt="Version 1.0.0">
+  <img src="https://img.shields.io/badge/Version-0.7.3-111827?style=flat" alt="Version 0.7.3">
   <a href="https://github.com/ztxtech/aion"><img src="https://img.shields.io/github/stars/ztxtech/aion?style=social" alt="GitHub stars"></a>
   <img src="https://img.shields.io/github/last-commit/ztxtech/aion?color=orange" alt="Last Commit">
   <a href="https://deepwiki.com/ztxtech/aion"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
@@ -66,63 +66,33 @@ Together these let AION work with open-ended time-series evidence while preservi
 
 ## 🏗️ Architecture
 
-AION organizes work through named agents, native OpenCode skills, runtime protocols, memory files, evaluation contracts, and a fail-closed CLI runner. The main agent adapts the route to task level and model capability; `ts-critic` and `c-critic` remain the review backbone.
+AION is a compiled TypeScript plugin for OpenCode V2. The repository contains the source and release tooling; `aion-ts init` installs a self-contained server and TUI bundle into a project. Named agents, native skills, runtime protocols, memory files, and evaluation contracts are loaded through the plugin.
 
 ### Directory Structure
 
 ```
-.opencode/
-├── agents/           # 6 specialized agents
-│   ├── agent.md              # Main orchestrator (mode: primary)
-│   ├── requirements-analyst  # Task intake & requirement extraction
-│   ├── information-collector # External evidence & SOTA search
-│   ├── coder.md              # Implementation, experiments & delivery
-│   ├── ts-critic.md          # Time-series expert + Pareto governance
-│   └── c-critic.md           # Final minimal-context cold-start critic
-├── skills/            # Native OpenCode skills, loaded on demand
-│   ├── workspace-init/       # Runtime bootstrap, memory, and trace
-│   ├── safety/               # Input and action safety checks
-│   ├── search/               # Multi-axis external evidence collection
-│   ├── planning/             # Planning and branch management
-│   ├── ts-core/              # Time-series task and validation rules
-│   ├── experiment/           # Benchmark-first experiment execution
-│   ├── report/               # Evidence-bound report delivery
-│   └── pdf-intake/           # Read-only PDF extraction
-├── rules/            # Kernel rules
-│   ├── core.md               # Kernel: governance, task levels, model profile, memory
-│   └── opencode.md           # OpenCode docs & repo reference
-├── protocols/        # 8 runtime protocols
-│   ├── dispatch.md           # Subagent dispatch contract
-│   ├── reportback.md         # Report-back contract
-│   ├── rebuttal.md           # Rebuttal protocol
-│   ├── stop-go.md            # Stop/go governance
-│   ├── lifecycle.md          # Agent lifecycle management
-│   ├── memory-sync.md        # Memory synchronization
-│   ├── runtime-events.md     # Runtime event tracking
-│   └── compaction.md         # Context compaction protocol
-├── evals/            # 5 evaluation contracts
-│   ├── suites.md             # Test suite definitions
-│   ├── graders.md            # Grader specifications
-│   ├── scorecards.md         # Scorecard templates
-│   ├── regression-matrix.md  # Regression test matrix
-│   └── release-gates.md      # Release gate criteria
-├── memory/
-│   └── template/     # 13 memory templates
-│       ├── initial-prompt.md  # Anti-drift task baseline
-│       ├── context-snapshot.md # Canonical compaction artifact
-│       ├── progress.md        # Task progress tracking
-│       ├── decisions.md       # Key decision log
-│       ├── features.md        # Feature inventory
-│       ├── todo-map.md        # Frontier & TODO tracking
-│       ├── completion-gate.md # Completion checklist
-│       ├── positive.md        # Positive findings pool
-│       ├── negative.md        # Negative findings pool
-│       ├── relation.md        # Agent relationship graph
-│       ├── memory.md          # Persistent memory
-│       ├── dir.md             # Directory structure
-│       └── evolution-log.md   # Skill gap pipeline
-└── .gitignore
+aion/
+├── src/
+│   ├── index.ts              # Plugin definition and V2 hooks
+│   ├── create-managers.ts    # Governance, trace, and phase state
+│   ├── create-tools.ts       # AION tool registry
+│   ├── create-hooks.ts       # OpenCode lifecycle hooks
+│   ├── workspace-bootstrap.ts # Runtime workspace initialization
+│   ├── agents/               # 8 specialized agent factories
+│   ├── tools/                # 20 runtime tools
+│   ├── prompts/              # Governance, protocols, and agent prompts
+│   ├── scheduling/           # Adaptive dispatch and no-progress handling
+│   ├── shared/               # Plan graph, logger, toasts, and utilities
+│   └── tui/index.tsx         # Native V2 AION board
+├── bin/aion-init.js          # aion-ts installer
+├── scripts/                  # Build, install, and release tooling
+├── test/                     # Unit, CLI, and integration tests
+└── .opencode/
+    ├── skills/               # 17 native OpenCode skills
+    └── themes/aion.json      # AION TUI theme
 ```
+
+After `aion-ts init .`, OpenCode discovers `.opencode/plugins/aion/server.js` and `tui.js` directly from the project. Runtime memory and trace files are created under `.opencode/memory/` and `.opencode/trace.md`.
 
 ---
 
@@ -134,20 +104,21 @@ AION requires a standard Linux/macOS environment with these system commands avai
 
 | Command         | Used by                                   | Notes                 |
 | --------------- | ----------------------------------------- | --------------------- |
-| `git`           | Clone .opencode, local checkpoint history | Usually pre-installed |
+| `node`          | Run the aion-ts installer                 | ≥ 18 recommended      |
+| `git`           | Local checkpoint history                  | Usually pre-installed |
 | `curl`          | Download AION, web search fallback        | Usually pre-installed |
-| `tar` / `unzip` | Extract archives                          | Usually pre-installed |
+| `tar`           | Extract release archives                  | Usually pre-installed |
 | `python3`       | Python toolchain, validators              | ≥ 3.10 recommended    |
 | `bash`          | cli.sh and skill scripts                  | ≥ 4.0                 |
 
-Some commands (e.g. installing `git`, `curl`, or `unzip` via package manager) may require **root/sudo** access. On minimal containers or CI images, install them before proceeding:
+Some commands (e.g. installing `git` or `curl` via package manager) may require **root/sudo** access. On minimal containers or CI images, install them before proceeding:
 
 ```bash
 # Debian / Ubuntu
-sudo apt-get update && sudo apt-get install -y git curl unzip tar python3
+sudo apt-get update && sudo apt-get install -y git curl tar python3
 
 # RHEL / CentOS / Fedora
-sudo dnf install -y git curl unzip tar python3
+sudo dnf install -y git curl tar python3
 
 # macOS (usually pre-installed; if not)
 brew install git curl python3
@@ -173,35 +144,43 @@ opencode    # launch the TUI, then pick a provider and authenticate when prompte
 
 Supports **Claude / OpenAI / Codex / Copilot / Gemini** and any compatible endpoint.
 
-### 3. Add AION to Your Project
+### 3. Install the AION CLI
 
 ```bash
-# Option A: Clone into your project root
-cd your-project
-git clone https://github.com/ztxtech/aion.git .opencode
-
-# Option B: Download and extract
-curl -fsSL https://github.com/ztxtech/aion/archive/refs/heads/main.tar.gz | tar xz --strip-components=1
-mv aion-main/.opencode .opencode
-rm -rf aion-main
+curl -fsSL https://raw.githubusercontent.com/ztxtech/aion/master/scripts/install.sh | bash
 ```
 
-### 4. Run
+If `~/.local/bin` is not on your `PATH`, add it to your shell profile:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+### 4. Add AION to Your Project
+
+```bash
+cd your-project
+aion-ts init .
+```
+
+The installer writes only inside the target project. It does not modify a global OpenCode configuration.
+
+### 5. Run
 
 ```bash
 # Interactive TUI mode
 opencode
 
 # Non-interactive run mode
-opencode run --agent agent "Your task description here"
+opencode run --agent aion "Your task description here"
 
 # With a specific model
-opencode run --agent agent -m anthropic/claude-sonnet-4 "Analyze this time-series dataset"
+opencode run --agent aion -m anthropic/claude-sonnet-4 "Analyze this time-series dataset"
 ```
 
-### 5. Goal Mode (Optional)
+### 6. Goal Mode (Optional)
 
-AION ships with [`@prevalentware/opencode-goal-plugin`](https://github.com/prevalentWare/opencode-goal-plugin) preconfigured in `.opencode/opencode.json`. The plugin adds a `/goal` slash command, persistent goal state, auto-continue on idle, and a goal sidebar indicator.
+AION configures [`@prevalentware/opencode-goal-plugin`](https://github.com/prevalentWare/opencode-goal-plugin) in the project-level `opencode.json`. The plugin adds a `/goal` slash command, persistent goal state, auto-continue on idle, and a goal sidebar indicator.
 
 ```bash
 # In TUI, start a goal that iterates task.md using the AION harness
@@ -234,7 +213,7 @@ For Python environments, the default decision tree is:
 
 In `autonomous`, the agent should follow that tree directly unless there is a real conflict. In `interactive`, the agent should still do the same local detection first, and only ask the user when multiple equally reasonable environment choices remain and those choices materially affect dependencies or implementation.
 
-### 6. CLI Run Mode (Advanced)
+### 7. CLI Run Mode (Advanced)
 
 Use `cli.sh` for automated, auto-continuing experiment runs:
 
@@ -257,9 +236,9 @@ bash cli.sh --max-continues 10
 
 ### Prompting For Autonomous vs Interactive Use
 
-The native OpenCode entry point is `.opencode/agents/agent.md`; load skills through OpenCode's `skill` tool and run the current CLI runner with `opencode run --agent agent`.
+The native primary agent is `aion`; it is registered by the local plugin and dispatches work to the bounded specialist agents.
 
-If you write your own prompt instead of using the default `cli.sh` prompt, make the intended execution strategy explicit and refer to the native `.opencode/agents/agent.md` entry point:
+If you write your own prompt instead of using the default `cli.sh` prompt, make the intended execution strategy explicit and address the `aion` agent:
 
 - For non-interactive autonomous execution, read the root task files and `.opencode` contract first and declare the mode:
 
@@ -315,10 +294,12 @@ See [`example/aion-medical-demo/README.md`](example/aion-medical-demo/README.md)
 
 | Agent | Role |
 |-------|------|
-| **agent** | Main orchestrator — dispatches subagents, enforces review gates, drives to close |
+| **aion** | Main orchestrator — dispatches subagents, enforces review gates, drives to close |
 | **requirements-analyst** | Reads tasks & workspace materials, extracts goals, inputs & constraints |
 | **information-collector** | Supplements SOTA, top-venue papers, official implementations & domain knowledge |
+| **search-scout** | Single-axis retrieval helper for focused evidence collection |
 | **coder** | Implementation, experiments, delivery & visualization |
+| **experiment-runner** | Runs one fixed experiment package and preserves its artifacts |
 | **ts-critic** | Time-series method review + Pareto stop/governance — highest governance gate before `c-critic` |
 | **c-critic** | Final minimal-context cold-start critique — ultimate governance authority |
 
@@ -342,13 +323,13 @@ Each component has one concrete responsibility and follows OpenCode's native dis
 
 | Component | Path | Responsibility |
 |--------|-------------|-------------|
-| **Main agent** | `agents/agent.md` | Classifies task level, routes work, compacts context, and enforces gates |
-| **Specialist agents** | `agents/*.md` | Requirements, evidence collection, coding, time-series review, and final critique |
-| **Native skills** | `skills/<name>/SKILL.md` | On-demand capabilities discovered by OpenCode's `skill` tool |
-| **Runtime protocols** | `protocols/*.md` | Dispatch, reportback, rebuttal, compaction, memory sync, and stop/go rules |
-| **Memory and trace** | `memory/template/`, `trace.md` | Per-run evidence, snapshots, decisions, and reusable findings |
-| **Evaluation contracts** | `evals/*.md` | Test suites, graders, scorecards, regression, and release gates |
-| **CLI entry point** | `cli.sh` | Launches OpenCode in run or TUI mode with an explicit prompt and optional session export |
+| **Plugin definition** | `src/index.ts` | Registers V2 hooks, tools, agents, permissions, and board state |
+| **Specialist agents** | `src/agents/` | Requirements, evidence, coding, focused retrieval, experiments, and critiques |
+| **Native skills** | `.opencode/skills/<name>/SKILL.md` | On-demand capabilities discovered by OpenCode's `skill` tool |
+| **Runtime protocols** | `src/prompts/` | Dispatch, reportback, rebuttal, compaction, memory sync, and stop/go rules |
+| **Memory and trace** | `.opencode/memory/`, `.opencode/trace.md` | Per-run evidence, snapshots, decisions, and reusable findings |
+| **Native board** | `.opencode/plugins/aion/tui.js` | Plan DAG, call graph, phases, and toasts in the V2 session panel |
+| **CLI entry point** | `bin/aion-init.js` | Installs the self-contained plugin into a target project |
 
 ### Task Level Classification
 
@@ -399,7 +380,23 @@ Memory and git serve different purposes: memory handles abstract experience and 
 
 ## 📡 CLI Reference
 
-`cli.sh` provides the public CLI entry point for OpenCode run or TUI execution with optional auto-continue.
+### `aion-ts` — Plugin Installer
+
+`aion-ts` is the primary project installer:
+
+```bash
+aion-ts init [target-dir] [--force]
+```
+
+| Flag | Default | Description |
+| ---- | ------- | ----------- |
+| `target-dir` | `.` | Project directory to initialize |
+| `--force`, `-f` | off | Overwrite the installed AION bundle |
+| `--help`, `-h` | — | Show help |
+
+### `cli.sh` — OpenCode Launcher (Legacy)
+
+`cli.sh` remains an optional convenience launcher for OpenCode run or TUI execution with auto-continue.
 
 ```bash
 bash cli.sh [OPTIONS]

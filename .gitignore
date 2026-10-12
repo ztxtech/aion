@@ -1,6 +1,3 @@
-.waylog
-.omx
-
 # macOS
 .DS_Store
 .AppleDouble
@@ -10,10 +7,42 @@ Icon
 .Spotlight-V100
 .Trashes
 .fseventsd
-tmp/
-# Example runtime state
-example/kaggle/server/runtime/
-node_modules/
+
+# local agent preferences (not for commit)
+AGENTS.md
+
+# build
 dist/
+.opencode/plugins/aion/
+.opencode/agents/
+
+# runtime state
+.aion/
+.opencode/trace.md
+.opencode/memory/
+.opencode/images/
+.opencode/package.json
+.opencode/package-lock.json
+.opencode/node_modules/
+.opencode/repos-cache.jsonc
+
+# dependencies
+node_modules/
 bun.lock
-.opencode/plugins/aion.js
+bun.lockb
+
+# trash / backups
+_trash_*/
+dist.old/
+dist.backup/
+.tmp-tests/
+zod-v3-backup/
+
+# temp
+tmp/
+example/kaggle/server/runtime/
+
+# release artifacts (tarballs are attached to GitHub Releases, not committed)
+*.tgz
+*.tar.gz
+release/
