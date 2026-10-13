@@ -11,6 +11,7 @@ import type { Tool } from "@opencode/schema/tool"
 type ToolDefinitionInput<Args extends Record<string, z.ZodTypeAny> = Record<string, z.ZodTypeAny>> = {
   description: string
   args?: Args
+  schema?: z.ZodType<z.output<z.ZodObject<Args>>>
   execute: (args: z.output<z.ZodObject<Args>>, context: unknown) => Promise<string> | string
 }
 
@@ -27,7 +28,7 @@ export function tool<Args extends Record<string, z.ZodTypeAny>>(
 ): AionToolBody {
   return {
     description: definition.description,
-    input: z.object(definition.args ?? {}),
+    input: definition.schema ?? z.object(definition.args ?? {}),
     options: { permission: "aion", codemode: false },
     async execute(input, context) {
       const result = await definition.execute(input as z.output<z.ZodObject<Args>>, context)

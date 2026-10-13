@@ -1,7 +1,7 @@
 /**
  * Tool name union and record type for all AION tools.
  *
- * The 20 tools (prefixed `aion_`) cover governance, memory, safety,
+ * The 22 tools (prefixed `aion_`) cover governance, memory, safety,
  * workspace lifecycle, critic dispatch, experiment management (ztxexp),
  * interactive-mode control, language, and Hugging Face dataset access.
  */
@@ -27,6 +27,7 @@ export type AionToolName =
   | "aion_set_interactive_mode"
   | "aion_set_language"
   | "aion_set_complexity"
+  | "aion_frontier_report"
   | "aion_hf_search"
   | "aion_hf_info"
   | "aion_hf_ingest"

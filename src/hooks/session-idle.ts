@@ -22,6 +22,7 @@ import type { CreateHooksArgs } from "../create-hooks"
 import type { AionSessionIdleHook } from "./types"
 import type { AionPhase } from "../create-managers"
 import { nowIso } from "../shared/utils"
+import { coerceTier, noProgressThreshold } from "../scheduling/complexity"
 
 const PHASE_INJECTION: Record<AionPhase, string> = {
   init: `[AION PHASE: INIT]
@@ -97,6 +98,16 @@ c-critic has authorized the final delivery. All governance gates have passed. Yo
 5. Present the final result to the user
 This phase is for delivery only — no new work.`,
 }
+
+const FRONTIER_INJECTION = `[AION FRONTIER: APPROACH]
+Continue without presenting options or asking the user to choose among approaches.
+1. Read task.md, todo-map.md, progress.md, and completion-gate.md.
+2. Take exactly one highest-value, measurable action that remains feasible under the current phase and hard safety gates.
+3. If that route fails, preserve the best result and choose the next feasible action. A failed route does not close the objective.
+4. After the action, call aion_frontier_report once with strategy and artifact-level evidence.
+5. Include value plus direction when a metric exists. Without a metric, report materially new evidence rather than renamed or repeated evidence.
+6. Do not mark completed or unmet because of a failed attempt. Set externalDecision only when a decision outside the agent's authority is required.
+7. Continue through the current phase gates; never bypass safety, critic, or evidence requirements.`
 
 export function createSessionIdleHook(args: CreateHooksArgs): AionSessionIdleHook {
   const { managers, personality } = args
@@ -248,6 +259,7 @@ export function createSessionIdleHook(args: CreateHooksArgs): AionSessionIdleHoo
         m.phase.transition("done", "all governance gates passed")
         personality?.onCompletion()
       }
+      if (goalCorrection) m.runtimeControl.resetFrontier()
       m.runtimeControl.checkpoint({
         status: "completed",
         lastAuditAt: nowIso(),
@@ -257,9 +269,61 @@ export function createSessionIdleHook(args: CreateHooksArgs): AionSessionIdleHoo
       return
     }
 
+    const frontierWasInactive = goalCorrection && m.runtimeControl.frontierState().status === "inactive"
+    let frontier = goalCorrection ? m.runtimeControl.activateFrontier() : m.runtimeControl.frontierState()
+    if (goalCorrection && frontier.status === "active" && !frontierWasInactive) {
+      const threshold = noProgressThreshold(coerceTier(m.runtimeControl.effectiveTier()))
+      frontier = m.runtimeControl.advanceFrontier(threshold)
+    }
+
+    if (goalCorrection && frontier.externalDecision) {
+      m.runtimeControl.checkpoint({
+        status: "awaiting-review",
+        lastAuditAt: nowIso(),
+        lastAudit: `${audit} External decision required: ${frontier.externalDecision}`,
+      })
+      output.continue = false
+      return
+    }
+
+    if (goalCorrection && frontier.status === "exhausted") {
+      const threshold = noProgressThreshold(coerceTier(m.runtimeControl.effectiveTier()))
+      const exhaustedAudit = [
+        audit,
+        `Frontier exhausted after ${frontier.stagnantRounds} stagnant rounds at threshold ${threshold}.`,
+        `best value=${frontier.bestValue ?? "none"} (${frontier.direction}).`,
+        `gap=${frontier.gap ?? "unknown"}.`,
+        `remaining condition=${frontier.remainingCondition ?? "unknown"}.`,
+        `attempted strategies=${frontier.attemptedStrategies.join(" | ") || "none"}.`,
+      ].join(" ")
+      m.trace.appendEvent(
+        "no-progress.breaker",
+        `frontier exhausted at threshold ${threshold}`,
+        {
+          threshold,
+          stagnantRounds: frontier.stagnantRounds,
+          bestValue: frontier.bestValue,
+          gap: frontier.gap,
+          remainingCondition: frontier.remainingCondition,
+          attemptedStrategies: frontier.attemptedStrategies,
+        },
+        "main-agent",
+      )
+      m.runtimeControl.checkpoint({
+        status: "blocked",
+        lastAuditAt: nowIso(),
+        lastAudit: exhaustedAudit,
+      })
+      output.continue = false
+      return
+    }
+
     // Phase-aware auto-continue
     const nextRound = m.rounds.next()
-    const phaseInjection = PHASE_INJECTION[currentPhase] ?? PHASE_INJECTION.init
+    const frontierActive = goalCorrection && frontier.status === "active"
+    const phaseInjection = frontierActive
+      ? `${PHASE_INJECTION[currentPhase] ?? PHASE_INJECTION.init}\n\n${FRONTIER_INJECTION}`
+      : PHASE_INJECTION[currentPhase] ?? PHASE_INJECTION.init
 
     const blockerList = m.governance.listBlockers().map((b) => `[${b.id}] ${b.description}`).join("\n  ")
 
@@ -281,14 +345,19 @@ export function createSessionIdleHook(args: CreateHooksArgs): AionSessionIdleHoo
       "main-agent",
     )
 
+    const auditSteps = [
+      "Before taking action, audit the previous turn against the objective and real artifacts:",
+      "1. Re-read task.md, .opencode/memory/todo-map.md, progress.md, and completion-gate.md.",
+      "2. Identify exactly one highest-value unfinished action with file-level evidence.",
+      "3. Do not mark the goal complete or unmet merely because a turn ended, a gate blocked, or an approach failed.",
+      goalCorrection
+        ? `4. The external Goal was closed as ${task.externalGoalStatus}, but AION completion gates are not satisfied. Audit that closure against the artifacts before accepting it.`
+        : "4. If the objective is genuinely unattainable, record a concrete blocker and request the smallest external decision instead of silently closing.",
+      "5. Continue the AION loop below. Do not end with prose only.",
+    ].join("\n")
+
     const prompt = `${goalCorrection ? "[AION EXTERNAL GOAL CLOSE AUDIT]" : "[AION TASK KEEPER ROUND AUDIT]"}
-Before taking action, audit the previous turn against the objective and real artifacts:
-1. Re-read task.md, .opencode/memory/todo-map.md, progress.md, and completion-gate.md.
-2. Identify exactly one highest-value unfinished action with file-level evidence.
-3. Do not mark the goal complete or unmet merely because a turn ended, a gate blocked, or an approach failed.
-4. If the objective is genuinely unattainable, record a concrete blocker and request the smallest external decision instead of silently closing.
-5. Continue the AION phase loop below. Do not end with prose only.
-${goalCorrection ? `6. The external Goal was closed as ${task.externalGoalStatus}, but AION completion gates are not satisfied. Audit that closure against the artifacts before accepting it.` : ""}
+${auditSteps}
 
 ${phaseInjection}
 
@@ -299,6 +368,8 @@ Hard gates from the aion plugin:
 - Stop signal: ${stopSignal}
 - ts-critic last signal: ${tsCriticSignal}
 - c-critic last verdict: ${cCriticVerdict}
+- Frontier status: ${frontier.status}
+- Frontier stagnant rounds: ${frontier.stagnantRounds}
 - Governance: c-critic > ts-critic > main agent > other subagents
 - Only call aion_critic_verdict from inside ts-critic or c-critic subagent dispatches.
 - To dispatch a subagent, use: subagent(agent="<name>", description="<desc>", prompt="<prompt>")`

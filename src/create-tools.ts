@@ -18,6 +18,7 @@ import { createInteractiveModeTool } from "./tools/user-check"
 import { createLanguageTool } from "./tools/language"
 import { createComplexityTool } from "./tools/complexity"
 import { createHfDatasetsTools } from "./tools/hf-datasets"
+import { createFrontierTool } from "./tools/frontier"
 import type { PluginContext, ToolsRecord } from "./plugin/types"
 import type { AionConfig } from "./config/types"
 import type { AionToolName, AionToolMap } from "./tools/types"
@@ -45,6 +46,7 @@ export function createAllAionTools(args: CreateToolsArgs): CreatedTools {
     ...createLanguageTool({ ctx, config, managers }),
     ...createComplexityTool({ ctx, config, managers }),
     ...createHfDatasetsTools({ ctx, config, managers }),
+    ...createFrontierTool({ ctx, config, managers }),
   }
 
   const tools: Partial<AionTools> = {}

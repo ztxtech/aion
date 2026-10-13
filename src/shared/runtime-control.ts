@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto"
+import { createHash, randomUUID } from "node:crypto"
 import { mkdirSync, readFileSync, renameSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 
@@ -47,6 +47,41 @@ export type TaskKeeperState = {
     | "cancelled"
     | "budgetLimited"
     | "usageLimited"
+}
+
+export type FrontierState = {
+  status: "inactive" | "active" | "exhausted"
+  bestValue: number | null
+  direction: "maximize" | "minimize" | "unchanged"
+  baselineValue: number | null
+  stagnantRounds: number
+  roundsSinceNewStrategy: number
+  lastStrategyHash: string | null
+  attemptedStrategies: string[]
+  lastEvidenceHash: string | null
+  bestEvidence: string | null
+  gap: string | null
+  remainingCondition: string | null
+  externalDecision: string | null
+  reportedForRound: boolean
+  activatedAt: string | null
+}
+
+export type FrontierReport = {
+  strategy: string
+  evidence: string
+  value?: number
+  direction?: "maximize" | "minimize"
+  gap?: string
+  remainingCondition?: string
+  externalDecision?: string
+}
+
+export type FrontierReportResult = {
+  accepted: boolean
+  progress: boolean
+  reason?: string
+  state: FrontierState
 }
 
 export type PersistedBlocker = {
@@ -113,6 +148,7 @@ export type SessionRuntimeState = {
   branches: PersistedBranch[]
   intent: string
   task: TaskKeeperState
+  frontier: FrontierState
   updatedAt: string | null
 }
 
@@ -213,6 +249,8 @@ const LANGUAGE_MODES: readonly PersistedGovernance["languageResolved"][] = [
   "bilingual",
 ]
 const BRANCH_STATUSES: readonly PersistedBranch["status"][] = ["alive", "merged", "dropped", "leading"]
+const FRONTIER_STATUSES: readonly FrontierState["status"][] = ["inactive", "active", "exhausted"]
+const FRONTIER_DIRECTIONS: readonly FrontierState["direction"][] = ["maximize", "minimize", "unchanged"]
 
 const BLOCKER_SOURCES: readonly PersistedBlocker["source"][] = [
   "ts-critic",
@@ -266,6 +304,7 @@ export function defaultSessionRuntimeState(): SessionRuntimeState {
     branches: [],
     intent: "general",
     task: defaultTaskKeeperState(),
+    frontier: defaultFrontierState(),
     updatedAt: null,
   }
 }
@@ -282,6 +321,26 @@ export function defaultTaskKeeperState(): TaskKeeperState {
     pendingContinuationEventID: null,
     goalCorrectionCount: 0,
     externalGoalStatus: "none",
+  }
+}
+
+export function defaultFrontierState(): FrontierState {
+  return {
+    status: "inactive",
+    bestValue: null,
+    direction: "unchanged",
+    baselineValue: null,
+    stagnantRounds: 0,
+    roundsSinceNewStrategy: 0,
+    lastStrategyHash: null,
+    attemptedStrategies: [],
+    lastEvidenceHash: null,
+    bestEvidence: null,
+    gap: null,
+    remainingCondition: null,
+    externalDecision: null,
+    reportedForRound: false,
+    activatedAt: null,
   }
 }
 
@@ -402,8 +461,232 @@ export function normalizeSessionRuntimeState(raw: unknown): SessionRuntimeState 
         ? task.externalGoalStatus
         : fallback.task.externalGoalStatus,
     },
+    frontier: normalizeFrontierState(source.frontier),
     updatedAt: typeof source.updatedAt === "string" ? source.updatedAt : null,
   }
+}
+
+export function normalizeFrontierState(raw: unknown): FrontierState {
+  const fallback = defaultFrontierState()
+  if (typeof raw !== "object" || raw === null) return fallback
+
+  const source = raw as Partial<FrontierState>
+  const attemptedStrategies = Array.isArray(source.attemptedStrategies)
+    ? source.attemptedStrategies
+      .filter((value): value is string => typeof value === "string")
+      .map((value) => value.trim())
+      .filter(Boolean)
+      .slice(0, 32)
+    : []
+
+  return {
+    status: FRONTIER_STATUSES.includes(source.status as FrontierState["status"])
+      ? source.status as FrontierState["status"]
+      : fallback.status,
+    bestValue: cleanFiniteNumber(source.bestValue),
+    direction: FRONTIER_DIRECTIONS.includes(source.direction as FrontierState["direction"])
+      ? source.direction as FrontierState["direction"]
+      : fallback.direction,
+    baselineValue: cleanFiniteNumber(source.baselineValue),
+    stagnantRounds: cleanNonNegativeInt(source.stagnantRounds),
+    roundsSinceNewStrategy: cleanNonNegativeInt(source.roundsSinceNewStrategy),
+    lastStrategyHash: cleanText(source.lastStrategyHash, 64),
+    attemptedStrategies,
+    lastEvidenceHash: cleanText(source.lastEvidenceHash, 64),
+    bestEvidence: cleanText(source.bestEvidence, 2000),
+    gap: cleanText(source.gap, 2000),
+    remainingCondition: cleanText(source.remainingCondition, 2000),
+    externalDecision: cleanText(source.externalDecision, 2000),
+    reportedForRound: source.reportedForRound === true,
+    activatedAt: cleanText(source.activatedAt, 100),
+  }
+}
+
+export function activateFrontierState(current: FrontierState, now: string): FrontierState {
+  if (current.status !== "inactive") return current
+  return {
+    ...defaultFrontierState(),
+    status: "active",
+    baselineValue: current.bestValue,
+    bestValue: current.bestValue,
+    direction: current.direction,
+    bestEvidence: current.bestEvidence,
+    activatedAt: now,
+  }
+}
+
+export function resetFrontierState(): FrontierState {
+  return defaultFrontierState()
+}
+
+export function applyFrontierReport(
+  current: FrontierState,
+  report: FrontierReport,
+  now: string,
+): FrontierReportResult {
+  if (current.status !== "active") {
+    return {
+      accepted: false,
+      progress: false,
+      reason: current.status === "exhausted"
+        ? "Frontier budget is exhausted; restart only after a new objective or explicit user direction."
+        : "Frontier mode is not active.",
+      state: current,
+    }
+  }
+
+  const strategy = report.strategy.trim().slice(0, 200)
+  const evidence = report.evidence.trim().slice(0, 2000)
+  if (!strategy || !evidence) {
+    return {
+      accepted: false,
+      progress: false,
+      reason: "strategy and evidence are required.",
+      state: current,
+    }
+  }
+  if (report.value !== undefined && !report.direction) {
+    return {
+      accepted: false,
+      progress: false,
+      reason: "direction=maximize|minimize is required when value is provided.",
+      state: current,
+    }
+  }
+  if (current.reportedForRound) {
+    return {
+      accepted: false,
+      progress: false,
+      reason: "One frontier report is allowed per round.",
+      state: current,
+    }
+  }
+  if (
+    report.value !== undefined &&
+    current.direction !== "unchanged" &&
+    report.direction !== current.direction
+  ) {
+    return {
+      accepted: false,
+      progress: false,
+      reason: `direction must remain ${current.direction}.`,
+      state: current,
+    }
+  }
+
+  const strategyHash = stableHash(strategy)
+  const evidenceHash = stableHash(evidence)
+  const strategyIsNew = strategyHash !== current.lastStrategyHash
+    && !current.attemptedStrategies.includes(strategy)
+  const attemptedStrategies = strategyIsNew
+    ? [...current.attemptedStrategies, strategy].slice(-32)
+    : current.attemptedStrategies
+  const roundsSinceNewStrategy = strategyIsNew
+    ? 0
+    : current.roundsSinceNewStrategy + 1
+
+  let next: FrontierState = {
+    ...current,
+    lastStrategyHash: strategyHash,
+    attemptedStrategies,
+    roundsSinceNewStrategy,
+    gap: report.gap?.trim().slice(0, 2000) || current.gap,
+    remainingCondition: report.remainingCondition?.trim().slice(0, 2000) || current.remainingCondition,
+    reportedForRound: true,
+  }
+  let progress = false
+  let reason = ""
+
+  if (report.value !== undefined) {
+    const value = report.value
+    if (!Number.isFinite(value)) {
+      return {
+        accepted: false,
+        progress: false,
+        reason: "value must be finite.",
+        state: current,
+      }
+    }
+    if (current.bestValue === null || current.direction === "unchanged") {
+      next = {
+        ...next,
+        bestValue: value,
+        baselineValue: current.baselineValue ?? value,
+        direction: report.direction ?? "unchanged",
+        bestEvidence: evidence,
+        lastEvidenceHash: evidenceHash,
+        stagnantRounds: 0,
+      }
+      progress = true
+      reason = "baseline metric established"
+    } else {
+      const improved = current.direction === "maximize"
+        ? value > current.bestValue
+        : value < current.bestValue
+      if (improved) {
+        next = {
+          ...next,
+          bestValue: value,
+          bestEvidence: evidence,
+          lastEvidenceHash: evidenceHash,
+          stagnantRounds: 0,
+        }
+        progress = true
+        reason = "metric improved"
+      } else {
+        next = { ...next, stagnantRounds: current.stagnantRounds + 1 }
+        reason = "metric did not improve"
+      }
+    }
+  } else {
+    const evidenceChanged = evidenceHash !== current.lastEvidenceHash
+    if (evidenceChanged) {
+      next = {
+        ...next,
+        lastEvidenceHash: evidenceHash,
+        stagnantRounds: 0,
+        bestEvidence: current.bestValue === null ? evidence : current.bestEvidence,
+      }
+      progress = true
+      reason = current.lastEvidenceHash === null
+        ? "baseline evidence established"
+        : "new evidence established"
+    } else {
+      next = { ...next, stagnantRounds: current.stagnantRounds + 1 }
+      reason = "evidence did not change"
+    }
+  }
+
+  const externalDecision = report.externalDecision?.trim().slice(0, 2000) || null
+  next = {
+    ...next,
+    externalDecision: externalDecision ?? (progress ? null : current.externalDecision),
+    activatedAt: current.activatedAt ?? now,
+  }
+  return { accepted: true, progress, reason, state: next }
+}
+
+export function advanceFrontierState(current: FrontierState, threshold: number): FrontierState {
+  if (current.status !== "active") return current
+
+  const stagnantRounds = current.reportedForRound
+    ? current.stagnantRounds
+    : current.stagnantRounds + 1
+  const roundsSinceNewStrategy = current.reportedForRound
+    ? current.roundsSinceNewStrategy
+    : current.roundsSinceNewStrategy + 1
+  const exhausted = !current.externalDecision && stagnantRounds >= Math.max(1, threshold)
+  return {
+    ...current,
+    stagnantRounds,
+    roundsSinceNewStrategy,
+    reportedForRound: false,
+    status: exhausted ? "exhausted" : "active",
+  }
+}
+
+function stableHash(value: string): string {
+  return createHash("sha256").update(value).digest("hex").slice(0, 32)
 }
 
 export function readRuntimeState(root: string): RuntimeState {
@@ -625,6 +908,10 @@ function cleanText(value: unknown, maxLength = 500): string | null {
 
 function cleanNonNegativeInt(value: unknown): number {
   return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : 0
+}
+
+function cleanFiniteNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null
 }
 
 function normalizeBlockers(value: unknown): PersistedBlocker[] {

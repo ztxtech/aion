@@ -162,6 +162,8 @@ describe("V2 AION task keeper", () => {
       await settle(result, "failed-session", "session.execution.failed", "failed-exec");
       assert.equal(result.promptCalls.length, 1);
       assert.match(result.promptCalls[0].text, /\[AION TASK KEEPER ROUND AUDIT\]/);
+      assert.match(result.promptCalls[0].text, /4\. If the objective is genuinely unattainable/);
+      assert.match(result.promptCalls[0].text, /5\. Continue the AION loop below/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

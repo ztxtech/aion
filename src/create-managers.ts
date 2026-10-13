@@ -31,7 +31,15 @@ import {
   updateRuntimeState,
   updateSessionRuntimeState,
   updateSessionTaskState,
+  activateFrontierState,
+  applyFrontierReport,
+  advanceFrontierState,
+  defaultFrontierState,
+  resetFrontierState,
   type ExecutionMode,
+  type FrontierReport,
+  type FrontierReportResult,
+  type FrontierState,
   type TaskKeeperState,
 } from "./shared/runtime-control"
 
@@ -245,6 +253,11 @@ export type AionManagers = {
     recordContinuation(sessionID: string, eventID?: string): void
     releaseContinuation(sessionID: string, eventID?: string): void
     taskState(): TaskKeeperState
+    frontierState(): FrontierState
+    activateFrontier(): FrontierState
+    resetFrontier(): FrontierState
+    reportFrontier(report: FrontierReport): FrontierReportResult
+    advanceFrontier(threshold: number): FrontierState
     setExternalGoalStatus(status: TaskKeeperState["externalGoalStatus"]): void
     resumeContext(): {
       lastPhase: AionPhase | null
@@ -770,6 +783,47 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
         externalGoalStatus: "none",
       }
     },
+    frontierState(): FrontierState {
+      const session = sessionRuntimeState(runtimeState, activeRuntimeSessionID)
+      return session?.frontier ?? defaultFrontierState()
+    },
+    activateFrontier(): FrontierState {
+      const sessionID = activeRuntimeSessionID
+      if (!sessionID || !runtimeState.preferences.preserveAcrossSessions) {
+        return runtimeControl.frontierState()
+      }
+      const next = activateFrontierState(runtimeControl.frontierState(), nowIso())
+      runtimeState = updateSessionRuntimeState(ctx.directory, sessionID, { frontier: next })
+      return next
+    },
+    resetFrontier(): FrontierState {
+      const sessionID = activeRuntimeSessionID
+      if (!sessionID || !runtimeState.preferences.preserveAcrossSessions) {
+        return defaultFrontierState()
+      }
+      const next = resetFrontierState()
+      runtimeState = updateSessionRuntimeState(ctx.directory, sessionID, { frontier: next })
+      return next
+    },
+    reportFrontier(report: FrontierReport): FrontierReportResult {
+      const result = applyFrontierReport(runtimeControl.frontierState(), report, nowIso())
+      if (result.accepted) {
+        const sessionID = activeRuntimeSessionID
+        if (sessionID && runtimeState.preferences.preserveAcrossSessions) {
+          runtimeState = updateSessionRuntimeState(ctx.directory, sessionID, { frontier: result.state })
+        }
+      }
+      return result
+    },
+    advanceFrontier(threshold: number): FrontierState {
+      const sessionID = activeRuntimeSessionID
+      if (!sessionID || !runtimeState.preferences.preserveAcrossSessions) {
+        return runtimeControl.frontierState()
+      }
+      const next = advanceFrontierState(runtimeControl.frontierState(), threshold)
+      runtimeState = updateSessionRuntimeState(ctx.directory, sessionID, { frontier: next })
+      return next
+    },
     setExternalGoalStatus(status: TaskKeeperState["externalGoalStatus"]): void {
       checkpointRuntimeState({ externalGoalStatus: status })
     },
@@ -794,6 +848,14 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
     if (!sessionID || !runtimeState.preferences.preserveAcrossSessions) return
 
     const previous = sessionRuntimeState(runtimeState, sessionID)?.task
+    const previousGoalStatus = previous?.externalGoalStatus ?? "none"
+    const nextGoalStatus = taskPatch?.externalGoalStatus ?? previousGoalStatus
+    if (
+      nextGoalStatus !== previousGoalStatus &&
+      ["none", "active", "cancelled"].includes(nextGoalStatus)
+    ) {
+      runtimeControl.resetFrontier()
+    }
     runtimeState = updateSessionRuntimeState(ctx.directory, sessionID, {
       lastPhase: state.governance.phase,
       phaseReason: state.governance.phaseReason,
@@ -847,6 +909,7 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
         ...previous,
         ...taskPatch,
       },
+      frontier: runtimeControl.frontierState(),
     })
   }
 

@@ -222,6 +222,7 @@ const AION_SAFETY_TOOLS = new Set([
   "aion_todo_update",
   "aion_set_interactive_mode",
   "aion_set_language",
+  "aion_frontier_report",
 ])
 
 const ZTXEXP_BOUNDARY_DIRS = new Set(["data", "evaluation", "exp", "model", "module", "scripts", "outputs"])
