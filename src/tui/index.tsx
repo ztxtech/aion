@@ -246,14 +246,14 @@ function Board(props: {
         paddingLeft={1}
         paddingRight={1}
       >
-        <text fg={props.palette.success} wrapMode="none">
-          {done()} done
-        </text>
         <text fg={props.palette.active} wrapMode="none">
           {active()} active
         </text>
         <text fg={props.palette.muted} wrapMode="none" flexGrow={1}>
           {graph().items.length - done() - active()} queued
+        </text>
+        <text fg={props.palette.success} wrapMode="none">
+          {done()} done
         </text>
       </box>
 

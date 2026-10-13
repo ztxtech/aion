@@ -19,6 +19,13 @@ function planState(state: PlanState): BoardState {
   return state === "in-progress" ? "active" : state
 }
 
+function executionStateOrder(state: BoardState) {
+  if (state === "active") return 0
+  if (state === "todo") return 1
+  if (state === "done") return 2
+  return 3
+}
+
 function activeIcon(tick: number) {
   return ["●", "◆", "●", "◇"][Math.abs(tick) % 4]
 }
@@ -43,7 +50,7 @@ function orderedIds(graph: PlanGraph) {
 
 export function executionListItems(graph: PlanGraph): BoardListItem[] {
   const byId = new Map(graph.items.map((item) => [item.id, item]))
-  return orderedIds(graph).flatMap((id) => {
+  const items = orderedIds(graph).flatMap((id) => {
     const item = byId.get(id)
     if (!item) return []
     const dependencies = item.dependsOn.length > 0
@@ -56,6 +63,11 @@ export function executionListItems(graph: PlanGraph): BoardListItem[] {
       detail: `${item.owner || "unassigned"} · w${item.wave || 1}${dependencies}`,
     }]
   })
+
+  // Keep the dependency-derived order stable within each status group.
+  return items.sort(
+    (left, right) => executionStateOrder(left.state) - executionStateOrder(right.state),
+  )
 }
 
 export function executionListLine(item: BoardListItem, tick = 0) {

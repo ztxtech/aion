@@ -12,23 +12,31 @@ describe("execution plan list", () => {
       { id: "TODO-002", planStep: "rerun the pipeline", owner: "coder", wave: 2, state: "in-progress", dependsOn: ["TODO-001"] },
       { id: "TODO-001", planStep: "audit baselines", owner: "analyst", wave: 1, state: "done", dependsOn: [] },
       { id: "TODO-003", planStep: "review results", owner: "ts-critic", wave: 3, state: "todo", dependsOn: ["TODO-002"] },
+      { id: "TODO-004", planStep: "check second branch", owner: "coder", wave: 2, state: "in-progress", dependsOn: ["TODO-001"] },
+      { id: "TODO-005", planStep: "compare branches", owner: "ts-critic", wave: 3, state: "todo", dependsOn: ["TODO-004"] },
     ],
-    layers: [["TODO-001"], ["TODO-002"], ["TODO-003"]],
+    layers: [["TODO-001"], ["TODO-002", "TODO-004"], ["TODO-003", "TODO-005"]],
     invalidDependencies: [],
     hasCycle: false,
   };
 
-  it("keeps dependency order and exposes compact metadata", () => {
+  it("prioritizes active and queued work while preserving order within each state", () => {
     const items = boardView.executionListItems(graph);
-    assert.deepEqual(items.map((item) => item.id), ["TODO-001", "TODO-002", "TODO-003"]);
+    assert.deepEqual(items.map((item) => item.id), [
+      "TODO-002",
+      "TODO-004",
+      "TODO-003",
+      "TODO-005",
+      "TODO-001",
+    ]);
     assert.equal(
-      boardView.executionListLine(items[1], 0),
+      boardView.executionListLine(items[0], 0),
       "● TODO-002 rerun the pipeline · coder · w2 · after TODO-001",
     );
   });
 
   it("uses a bounded active-state animation", () => {
-    const item = boardView.executionListItems(graph)[1];
+    const item = boardView.executionListItems(graph)[0];
     assert.match(boardView.executionListLine(item, 0), /^● /);
     assert.match(boardView.executionListLine(item, 1), /^◆ /);
     assert.match(boardView.executionListLine(item, 3), /^◇ /);
@@ -39,7 +47,13 @@ describe("execution plan list", () => {
       ...graph,
       layers: [["TODO-001"], ["TODO-002"], ["TODO-003"], ["TODO-999"]],
     });
-    assert.deepEqual(items.map((item) => item.id), ["TODO-001", "TODO-002", "TODO-003"]);
+    assert.deepEqual(items.map((item) => item.id), [
+      "TODO-002",
+      "TODO-004",
+      "TODO-003",
+      "TODO-005",
+      "TODO-001",
+    ]);
   });
 });
 
