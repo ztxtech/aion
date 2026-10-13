@@ -29,17 +29,39 @@ export type CreateHooksArgs = {
 
 export function createAionHooks(args: CreateHooksArgs): AionHooks {
   const { ctx, config, managers, personality } = args
+  function scoped<Input, Output>(
+    hook: (input: Input, output: Output) => Promise<void> | void,
+    sessionIDFrom: (input: Input) => string | undefined = (input) =>
+      (input as { sessionID?: string }).sessionID,
+  ) {
+    return async (input: Input, output: Output) => {
+      const sessionID = sessionIDFrom(input)
+      await managers.runtimeControl.withSession(sessionID, async () => {
+        try {
+          await hook(input, output)
+        } finally {
+          if (sessionID) managers.runtimeControl.checkpoint()
+        }
+      })
+    }
+  }
 
   return {
-    "tool.execute.before": createToolGuardBeforeHook({ ctx, config, managers }),
-    "tool.execute.after": createToolGuardAfterHook({ ctx, config, managers, personality }),
-    "experimental.session.compacting": createCompactionHook({ ctx, config, managers }),
-    "session.idle": createSessionIdleHook({ ctx, config, managers }),
-    "chat.message": createChatMessageHook({ ctx, config, managers, personality }),
-    "chat.params": createChatParamsHook({ ctx, config, managers }),
-    "experimental.chat.system.transform": createSystemTransformHook({ ctx, config, managers, personality }),
-    "experimental.chat.messages.transform": createMessagesTransformHook({ ctx, config, managers }),
-    "tool.definition": createToolDefinitionHook({ ctx, config, managers }),
+    "tool.execute.before": scoped(createToolGuardBeforeHook({ ctx, config, managers })),
+    "tool.execute.after": scoped(createToolGuardAfterHook({ ctx, config, managers, personality })),
+    "experimental.session.compacting": scoped(createCompactionHook({ ctx, config, managers })),
+    "session.idle": scoped(createSessionIdleHook({ ctx, config, managers })),
+    "chat.message": scoped(createChatMessageHook({ ctx, config, managers, personality })),
+    "chat.params": scoped(createChatParamsHook({ ctx, config, managers })),
+    "experimental.chat.system.transform": scoped(
+      createSystemTransformHook({ ctx, config, managers, personality }),
+    ),
+    "experimental.chat.messages.transform": scoped(
+      createMessagesTransformHook({ ctx, config, managers }),
+      (input) => (input as { sessionID?: string; info?: { sessionID?: string } }).sessionID
+        ?? (input as { info?: { sessionID?: string } }).info?.sessionID,
+    ),
+    "tool.definition": scoped(createToolDefinitionHook({ ctx, config, managers }), () => undefined),
     event: createEventHook({ ctx, config, managers, personality }),
   }
 }

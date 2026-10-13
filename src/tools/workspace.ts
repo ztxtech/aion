@@ -15,6 +15,7 @@ import type { AionToolMap } from "./types"
 import { ensureDir, readIfExists, writeFileEnsuringDir } from "../shared/logger"
 import { nowIso } from "../shared/utils"
 import { notifyFromCtx } from "../shared/notify-tui"
+import { isAbsolute, resolve } from "node:path"
 
 export function createWorkspaceTools(args: CreateToolsArgs): AionToolMap {
   const { managers } = args
@@ -132,7 +133,8 @@ export function createWorkspaceTools(args: CreateToolsArgs): AionToolMap {
           const { existsSync } = await import("node:fs")
           for (const p of filePathsChecked) {
             if (typeof p !== "string") continue
-            if (!existsSync(p)) missingPaths.push(p)
+            const absolutePath = isAbsolute(p) ? p : resolve(m.ctx.directory, p)
+            if (!existsSync(absolutePath)) missingPaths.push(p)
           }
         }
 

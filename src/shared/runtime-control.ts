@@ -21,12 +21,98 @@ export type RuntimePreferences = {
   preserveAcrossSessions: boolean
 }
 
+export type TaskKeeperStatus =
+  | "idle"
+  | "active"
+  | "awaiting-review"
+  | "completed"
+  | "blocked"
+
+export type TaskKeeperState = {
+  objective: string | null
+  status: TaskKeeperStatus
+  lastAuditAt: string | null
+  lastAudit: string | null
+  continuationCount: number
+  lastContinuationAt: string | null
+  lastContinuationEventID: string | null
+  pendingContinuationEventID: string | null
+  goalCorrectionCount: number
+  externalGoalStatus:
+    | "none"
+    | "active"
+    | "paused"
+    | "completed"
+    | "unmet"
+    | "cancelled"
+    | "budgetLimited"
+    | "usageLimited"
+}
+
+export type PersistedBlocker = {
+  id: string
+  source:
+    | "ts-critic"
+    | "c-critic"
+    | "main-agent"
+    | "information-collector"
+    | "requirements-analyst"
+    | "coder"
+  description: string
+  evidence: string
+  unblockCondition: string
+  forbiddenAction: string
+  raisedAt: string
+}
+
+export type PersistedGovernance = {
+  stopSignal: "allow-stop" | "absolutely-cannot-stop-now" | "rebuttal-mode" | "rollback" | "unset"
+  blockers: PersistedBlocker[]
+  lastCCriticVerdict: "approve-stop" | "reject-stop" | "unset"
+  lastTsCriticSignal: "allow-stop" | "absolutely-cannot-stop-now" | "rebuttal-mode" | "rollback" | "unset"
+  lastPreStopGate: { allowStop: boolean; blockers: string[]; recordedAt: string } | null
+  rebuttalMode: boolean
+  visualTestLoopPending: boolean
+  lastReadImageFile: string | null
+  blindOptimismFlag: boolean
+  lastDispatchTarget: string | null
+  userContinueDecision: "continue" | "stop" | "unset"
+  userComment: string | null
+  userCheckedAt: string | null
+  interactiveModeResolved: "unset" | "interactive" | "autonomous"
+  interactiveModeGranularity: "autonomous" | "round-checkpoint" | "always-interactive" | "custom"
+  interactiveModeCustomTriggers: string[]
+  interactiveModeConfirmedAt: string | null
+  interactiveModeSource: "session-start" | "user-toggle" | "config-default" | null
+  languageResolved: "unset" | "en" | "zh-reason-en-deliver" | "zh-deliver" | "bilingual"
+  languageSource: "session-start" | "user-toggle" | "config-default" | null
+  pendingNextCall: string | null
+  pendingNextCallReason: string | null
+  pendingUnresolvedIssues: string[]
+  pendingNextCallIgnoredRounds: number
+  lastInjectedNextCall: string | null
+}
+
+export type PersistedBranch = {
+  branchId: string
+  wave: number
+  status: "alive" | "merged" | "dropped" | "leading"
+  currentValue: number
+  evidenceCount: number
+  startedAt: string
+}
+
 export type SessionRuntimeState = {
   lastPhase: RuntimePhase | null
   phaseReason: string | null
   resumeHint: string | null
   interrupted: boolean
   complexityTier: "unset" | "LIGHT" | "MEDIUM" | "FULL"
+  rounds: { current: number; max: number }
+  governance: PersistedGovernance
+  branches: PersistedBranch[]
+  intent: string
+  task: TaskKeeperState
   updatedAt: string | null
 }
 
@@ -63,6 +149,78 @@ const COMPLEXITY_TIERS: readonly SessionRuntimeState["complexityTier"][] = [
   "LIGHT",
   "MEDIUM",
   "FULL",
+]
+
+const TASK_STATUSES: readonly TaskKeeperStatus[] = [
+  "idle",
+  "active",
+  "awaiting-review",
+  "completed",
+  "blocked",
+]
+
+const EXTERNAL_GOAL_STATUSES: readonly TaskKeeperState["externalGoalStatus"][] = [
+  "none",
+  "active",
+  "paused",
+  "completed",
+  "unmet",
+  "cancelled",
+  "budgetLimited",
+  "usageLimited",
+]
+
+const STOP_SIGNALS: readonly PersistedGovernance["stopSignal"][] = [
+  "allow-stop",
+  "absolutely-cannot-stop-now",
+  "rebuttal-mode",
+  "rollback",
+  "unset",
+]
+
+const CRITIC_VERDICTS: readonly PersistedGovernance["lastCCriticVerdict"][] = [
+  "approve-stop",
+  "reject-stop",
+  "unset",
+]
+
+const TS_CRITIC_SIGNALS: readonly PersistedGovernance["lastTsCriticSignal"][] = [
+  "allow-stop",
+  "absolutely-cannot-stop-now",
+  "rebuttal-mode",
+  "rollback",
+  "unset",
+]
+
+const USER_DECISIONS: readonly PersistedGovernance["userContinueDecision"][] = ["continue", "stop", "unset"]
+const INTERACTIVE_MODES: readonly PersistedGovernance["interactiveModeResolved"][] = ["unset", "interactive", "autonomous"]
+const INTERACTIVE_GRANULARITIES: readonly PersistedGovernance["interactiveModeGranularity"][] = [
+  "autonomous",
+  "round-checkpoint",
+  "always-interactive",
+  "custom",
+]
+const MODE_SOURCES: readonly NonNullable<PersistedGovernance["interactiveModeSource"]>[] = [
+  "session-start",
+  "user-toggle",
+  "config-default",
+]
+const LANGUAGE_MODES: readonly PersistedGovernance["languageResolved"][] = [
+  "unset",
+  "en",
+  "zh-reason-en-deliver",
+  "zh-deliver",
+  "bilingual",
+]
+const BRANCH_STATUSES: readonly PersistedBranch["status"][] = ["alive", "merged", "dropped", "leading"]
+
+const BLOCKER_SOURCES: readonly PersistedBlocker["source"][] = [
+  "ts-critic",
+  "c-critic",
+  "main-agent",
+  "information-collector",
+  "requirements-analyst",
+  "coder",
 ]
 
 const MAX_SESSIONS = 32
@@ -103,7 +261,57 @@ export function defaultSessionRuntimeState(): SessionRuntimeState {
     resumeHint: null,
     interrupted: false,
     complexityTier: "unset",
+    rounds: { current: 0, max: 0 },
+    governance: defaultPersistedGovernance(),
+    branches: [],
+    intent: "general",
+    task: defaultTaskKeeperState(),
     updatedAt: null,
+  }
+}
+
+export function defaultTaskKeeperState(): TaskKeeperState {
+  return {
+    objective: null,
+    status: "idle",
+    lastAuditAt: null,
+    lastAudit: null,
+    continuationCount: 0,
+    lastContinuationAt: null,
+    lastContinuationEventID: null,
+    pendingContinuationEventID: null,
+    goalCorrectionCount: 0,
+    externalGoalStatus: "none",
+  }
+}
+
+export function defaultPersistedGovernance(): PersistedGovernance {
+  return {
+    stopSignal: "unset",
+    blockers: [],
+    lastCCriticVerdict: "unset",
+    lastTsCriticSignal: "unset",
+    lastPreStopGate: null,
+    rebuttalMode: false,
+    visualTestLoopPending: false,
+    lastReadImageFile: null,
+    blindOptimismFlag: false,
+    lastDispatchTarget: null,
+    userContinueDecision: "unset",
+    userComment: null,
+    userCheckedAt: null,
+    interactiveModeResolved: "unset",
+    interactiveModeGranularity: "autonomous",
+    interactiveModeCustomTriggers: [],
+    interactiveModeConfirmedAt: null,
+    interactiveModeSource: null,
+    languageResolved: "unset",
+    languageSource: null,
+    pendingNextCall: null,
+    pendingNextCallReason: null,
+    pendingUnresolvedIssues: [],
+    pendingNextCallIgnoredRounds: 0,
+    lastInjectedNextCall: null,
   }
 }
 
@@ -163,6 +371,8 @@ export function normalizeSessionRuntimeState(raw: unknown): SessionRuntimeState 
   if (typeof raw !== "object" || raw === null) return fallback
 
   const source = raw as Partial<SessionRuntimeState>
+  const rounds = source.rounds ?? fallback.rounds
+  const task = source.task ?? fallback.task
   return {
     lastPhase: PHASES.includes(source.lastPhase as RuntimePhase) ? source.lastPhase as RuntimePhase : null,
     phaseReason: cleanText(source.phaseReason),
@@ -171,6 +381,27 @@ export function normalizeSessionRuntimeState(raw: unknown): SessionRuntimeState 
     complexityTier: COMPLEXITY_TIERS.includes(source.complexityTier as SessionRuntimeState["complexityTier"])
       ? source.complexityTier as SessionRuntimeState["complexityTier"]
       : fallback.complexityTier,
+    rounds: {
+      current: cleanNonNegativeInt(rounds.current),
+      max: cleanNonNegativeInt(rounds.max),
+    },
+    governance: normalizePersistedGovernance(source.governance),
+    branches: normalizeBranches(source.branches),
+    intent: cleanText(source.intent, 100) ?? fallback.intent,
+    task: {
+      objective: cleanText(task.objective, 4000),
+      status: TASK_STATUSES.includes(task.status) ? task.status : fallback.task.status,
+      lastAuditAt: cleanText(task.lastAuditAt),
+      lastAudit: cleanText(task.lastAudit, 2000),
+      continuationCount: cleanNonNegativeInt(task.continuationCount),
+      lastContinuationAt: cleanText(task.lastContinuationAt),
+      lastContinuationEventID: cleanText(task.lastContinuationEventID, 200),
+      pendingContinuationEventID: cleanText(task.pendingContinuationEventID, 200),
+      goalCorrectionCount: cleanNonNegativeInt(task.goalCorrectionCount),
+      externalGoalStatus: EXTERNAL_GOAL_STATUSES.includes(task.externalGoalStatus)
+        ? task.externalGoalStatus
+        : fallback.task.externalGoalStatus,
+    },
     updatedAt: typeof source.updatedAt === "string" ? source.updatedAt : null,
   }
 }
@@ -233,6 +464,35 @@ export function updateSessionRuntimeState(
 
     return {
       activeSessionID: key,
+      sessions: {
+        ...current.sessions,
+        [key]: session,
+      },
+    }
+  })
+}
+
+export function updateSessionTaskState(
+  root: string,
+  sessionID: string,
+  patch: Partial<TaskKeeperState>,
+): RuntimeState {
+  const key = cleanID(sessionID)
+  if (!key) throw new Error("AION runtime state requires a session ID")
+
+  return mutateRuntimeState(root, (current) => {
+    const existing = current.sessions[key] ?? defaultSessionRuntimeState()
+    const session: SessionRuntimeState = {
+      ...existing,
+      task: {
+        ...defaultTaskKeeperState(),
+        ...existing.task,
+        ...patch,
+      },
+      updatedAt: new Date().toISOString(),
+    }
+
+    return {
       sessions: {
         ...current.sessions,
         [key]: session,
@@ -361,4 +621,122 @@ function cleanText(value: unknown, maxLength = 500): string | null {
   if (typeof value !== "string") return null
   const trimmed = value.trim()
   return trimmed.length === 0 ? null : trimmed.slice(0, maxLength)
+}
+
+function cleanNonNegativeInt(value: unknown): number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : 0
+}
+
+function normalizeBlockers(value: unknown): PersistedBlocker[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((item): PersistedBlocker[] => {
+    if (typeof item !== "object" || item === null) return []
+    const source = item as Partial<PersistedBlocker>
+    const id = cleanText(source.id, 64)
+    const description = cleanText(source.description, 1000)
+    if (!id || !description) return []
+    return [{
+      id,
+      source: BLOCKER_SOURCES.includes(source.source as PersistedBlocker["source"])
+        ? source.source as PersistedBlocker["source"]
+        : "main-agent",
+      description,
+      evidence: cleanText(source.evidence, 2000) ?? "",
+      unblockCondition: cleanText(source.unblockCondition, 2000) ?? "",
+      forbiddenAction: cleanText(source.forbiddenAction, 2000) ?? "",
+      raisedAt: cleanText(source.raisedAt) ?? nowIso(),
+    }]
+  }).slice(0, 100)
+}
+
+function normalizePersistedGovernance(raw: unknown): PersistedGovernance {
+  const fallback = defaultPersistedGovernance()
+  const source = typeof raw === "object" && raw !== null
+    ? raw as Partial<PersistedGovernance>
+    : {}
+  const gate = source.lastPreStopGate
+  return {
+    stopSignal: STOP_SIGNALS.includes(source.stopSignal) ? source.stopSignal : fallback.stopSignal,
+    blockers: normalizeBlockers(source.blockers),
+    lastCCriticVerdict: CRITIC_VERDICTS.includes(source.lastCCriticVerdict)
+      ? source.lastCCriticVerdict
+      : fallback.lastCCriticVerdict,
+    lastTsCriticSignal: TS_CRITIC_SIGNALS.includes(source.lastTsCriticSignal)
+      ? source.lastTsCriticSignal
+      : fallback.lastTsCriticSignal,
+    lastPreStopGate: gate && typeof gate === "object"
+      ? {
+          allowStop: gate.allowStop === true,
+          blockers: Array.isArray(gate.blockers)
+            ? gate.blockers.filter((item): item is string => typeof item === "string").slice(0, 100)
+            : [],
+          recordedAt: typeof gate.recordedAt === "string" ? gate.recordedAt : nowIso(),
+        }
+      : null,
+    rebuttalMode: source.rebuttalMode === true,
+    visualTestLoopPending: source.visualTestLoopPending === true,
+    lastReadImageFile: cleanText(source.lastReadImageFile, 1000),
+    blindOptimismFlag: source.blindOptimismFlag === true,
+    lastDispatchTarget: cleanText(source.lastDispatchTarget, 100),
+    userContinueDecision: USER_DECISIONS.includes(source.userContinueDecision)
+      ? source.userContinueDecision
+      : fallback.userContinueDecision,
+    userComment: cleanText(source.userComment, 2000),
+    userCheckedAt: cleanText(source.userCheckedAt),
+    interactiveModeResolved: INTERACTIVE_MODES.includes(source.interactiveModeResolved)
+      ? source.interactiveModeResolved
+      : fallback.interactiveModeResolved,
+    interactiveModeGranularity: INTERACTIVE_GRANULARITIES.includes(source.interactiveModeGranularity)
+      ? source.interactiveModeGranularity
+      : fallback.interactiveModeGranularity,
+    interactiveModeCustomTriggers: normalizeStringList(source.interactiveModeCustomTriggers, 50, 200),
+    interactiveModeConfirmedAt: cleanText(source.interactiveModeConfirmedAt),
+    interactiveModeSource: source.interactiveModeSource && MODE_SOURCES.includes(source.interactiveModeSource)
+      ? source.interactiveModeSource
+      : null,
+    languageResolved: LANGUAGE_MODES.includes(source.languageResolved)
+      ? source.languageResolved
+      : fallback.languageResolved,
+    languageSource: source.languageSource && MODE_SOURCES.includes(source.languageSource)
+      ? source.languageSource
+      : null,
+    pendingNextCall: cleanText(source.pendingNextCall, 100),
+    pendingNextCallReason: cleanText(source.pendingNextCallReason, 2000),
+    pendingUnresolvedIssues: normalizeStringList(source.pendingUnresolvedIssues, 100, 2000),
+    pendingNextCallIgnoredRounds: cleanNonNegativeInt(source.pendingNextCallIgnoredRounds),
+    lastInjectedNextCall: cleanText(source.lastInjectedNextCall, 100),
+  }
+}
+
+function normalizeBranches(value: unknown): PersistedBranch[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((item): PersistedBranch[] => {
+    if (typeof item !== "object" || item === null) return []
+    const source = item as Partial<PersistedBranch>
+    const branchId = cleanText(source.branchId, 100)
+    if (!branchId) return []
+    return [{
+      branchId,
+      wave: cleanNonNegativeInt(source.wave),
+      status: BRANCH_STATUSES.includes(source.status) ? source.status : "alive",
+      currentValue: typeof source.currentValue === "number" && Number.isFinite(source.currentValue)
+        ? source.currentValue
+        : 0,
+      evidenceCount: cleanNonNegativeInt(source.evidenceCount),
+      startedAt: cleanText(source.startedAt) ?? nowIso(),
+    }]
+  }).slice(0, 100)
+}
+
+function normalizeStringList(value: unknown, maxItems: number, maxLength: number): string[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim().slice(0, maxLength))
+    .filter(Boolean)
+    .slice(0, maxItems)
+}
+
+function nowIso(): string {
+  return new Date().toISOString()
 }

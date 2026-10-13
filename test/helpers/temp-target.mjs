@@ -78,11 +78,9 @@ export function runOpencodeRun(target, prompt, options = {}) {
     "--format", format,
     "--model", model,
     "--agent", agent,
-    "--dir", target.repoDir,
-    "--port", "0",
   ];
   if (dangerouslySkipPermissions) {
-    args.push("--dangerously-skip-permissions");
+    args.push("--auto");
   }
   args.push(prompt);
 

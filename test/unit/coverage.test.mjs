@@ -447,6 +447,17 @@ describe("coverage: aion_pre_stop_gate — exhaustive branches", async () => {
     assert.equal(out.missingPaths.length, 0);
   });
 
+  it("resolves relative completion paths from the project root", async () => {
+    mkdirSync(join(tmp, "scratch"), { recursive: true });
+    writeFileSync(join(tmp, "scratch", "report.md"), "evidence");
+    const out = JSON.parse(await result.tool.aion_pre_stop_gate.execute({
+      ...allTrue,
+      file_paths_checked: ["scratch/report.md"],
+    }, {}));
+    assert.deepEqual(out.missingPaths, []);
+    assert.equal(out.allowStop, true);
+  });
+
   it("blocks when c_critic verdict=reject-stop", async () => {
     const out = JSON.parse(await result.tool.aion_pre_stop_gate.execute({
       ...allTrue,

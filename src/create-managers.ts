@@ -30,7 +30,9 @@ import {
   runtimeStatePath,
   updateRuntimeState,
   updateSessionRuntimeState,
+  updateSessionTaskState,
   type ExecutionMode,
+  type TaskKeeperState,
 } from "./shared/runtime-control"
 
 // matchGlob — minimal glob matcher supporting `*` (any chars except `/`),
@@ -227,6 +229,7 @@ export type AionManagers = {
     isSet(): boolean
   }
   runtimeControl: {
+    withSession<T>(sessionID: string | undefined, operation: () => Promise<T> | T): Promise<T>
     current(): ExecutionMode
     effectiveTier(): "unset" | "LIGHT" | "MEDIUM" | "FULL"
     setMode(mode: ExecutionMode, source: "user-toggle" | "startup"): void
@@ -235,8 +238,14 @@ export type AionManagers = {
     currentSession(): string | null
     setSessionComplexityTier(tier: "LIGHT" | "MEDIUM" | "FULL"): void
     markPhase(phase: AionPhase, reason: string): void
-    markInterrupted(reason: string): void
+    markInterrupted(reason: string, interrupt?: boolean): void
     clearResume(): void
+    checkpoint(taskPatch?: Partial<TaskKeeperState>): void
+    reserveContinuation(sessionID: string, eventID?: string): void
+    recordContinuation(sessionID: string, eventID?: string): void
+    releaseContinuation(sessionID: string, eventID?: string): void
+    taskState(): TaskKeeperState
+    setExternalGoalStatus(status: TaskKeeperState["externalGoalStatus"]): void
     resumeContext(): {
       lastPhase: AionPhase | null
       resumeHint: string | null
@@ -281,6 +290,39 @@ export type CreateManagersArgs = {
   onPhaseChange?: (prev: AionPhase, next: AionPhase, reason: string) => void
 }
 
+function createDefaultGovernanceState(): GovernanceState {
+  return {
+    stopSignal: "unset",
+    blockers: [],
+    lastCCriticVerdict: "unset",
+    lastTsCriticSignal: "unset",
+    phase: "init",
+    phaseReason: "task started",
+    rebuttalMode: false,
+    visualTestLoopPending: false,
+    lastReadImageFile: null,
+    blindOptimismFlag: false,
+    lastDispatchTarget: null,
+    userContinueDecision: "unset",
+    userComment: null,
+    userCheckedAt: null,
+    interactiveModeResolved: "unset",
+    interactiveModeGranularity: "autonomous",
+    interactiveModeCustomTriggers: [],
+    interactiveModeConfirmedAt: null,
+    interactiveModeSource: null,
+    languageResolved: "unset",
+    languageSource: null,
+    pendingNextCall: null,
+    pendingNextCallReason: null,
+    pendingUnresolvedIssues: [],
+    pendingNextCallIgnoredRounds: 0,
+    lastInjectedNextCall: null,
+    lastPreStopGate: null,
+    complexityTier: "unset",
+  }
+}
+
 export function createAionManagers(args: CreateManagersArgs): AionManagers {
   const { ctx, config, onPhaseChange } = args
 
@@ -291,36 +333,7 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
       delaySeconds: config.autoContinue.delaySeconds,
       enabled: config.autoContinue.enabled,
     },
-    governance: {
-      stopSignal: "unset",
-      blockers: [],
-      lastCCriticVerdict: "unset",
-      lastTsCriticSignal: "unset",
-      phase: "init" as AionPhase,
-      phaseReason: "task started",
-      rebuttalMode: false,
-      visualTestLoopPending: false,
-      lastReadImageFile: null,
-      blindOptimismFlag: false,
-      lastDispatchTarget: null,
-      userContinueDecision: "unset",
-      userComment: null,
-      userCheckedAt: null,
-      interactiveModeResolved: "unset",
-      interactiveModeGranularity: "autonomous",
-      interactiveModeCustomTriggers: [],
-      interactiveModeConfirmedAt: null,
-      interactiveModeSource: null,
-      languageResolved: "unset",
-      languageSource: null,
-      pendingNextCall: null,
-      pendingNextCallReason: null,
-      pendingUnresolvedIssues: [],
-      pendingNextCallIgnoredRounds: 0,
-      lastInjectedNextCall: null,
-      lastPreStopGate: null,
-      complexityTier: "unset",
-    },
+    governance: createDefaultGovernanceState(),
     branches: new Map(),
     _lastIntent: "general",
     _lastSessionID: undefined,
@@ -359,6 +372,7 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
         { signal, source },
         source,
       )
+      runtimeControl.checkpoint()
     },
     recordBlocker(b: Omit<UnresolvedBlocker, "id" | "raisedAt">): UnresolvedBlocker {
       blockerCounter += 1
@@ -374,6 +388,7 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
         { ...blocker },
         b.source,
       )
+      runtimeControl.checkpoint()
       return blocker
     },
     resolveBlocker(id: string): boolean {
@@ -386,6 +401,7 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
         { id, description: removed.description },
         "main-agent",
       )
+      runtimeControl.checkpoint()
       return true
     },
     hasOpenBlockers(): boolean {
@@ -396,6 +412,7 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
     },
     recordCCriticVerdict(verdict: GovernanceState["lastCCriticVerdict"]): void {
       state.governance.lastCCriticVerdict = verdict
+      runtimeControl.checkpoint()
       // Note: trace event is emitted by the caller (src/tools/critic.ts:195)
       // so we do not double-emit here. Keeping this setter pure-state
       // makes the trace event source single and easier to read.
@@ -406,6 +423,7 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
         blockers: [...blockers],
         recordedAt: nowIso(),
       }
+      runtimeControl.checkpoint()
     },
     getLastPreStopGate(): GovernanceState["lastPreStopGate"] {
       return state.governance.lastPreStopGate
@@ -560,7 +578,17 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
     }
   }
 
+  let operationTail: Promise<void> = Promise.resolve()
   const runtimeControl = {
+    withSession<T>(sessionID: string | undefined, operation: () => Promise<T> | T): Promise<T> {
+      const run = async () => {
+        if (sessionID) runtimeControl.activateSession(sessionID)
+        return await operation()
+      }
+      const result = operationTail.then(run, run)
+      operationTail = result.then(() => undefined, () => undefined)
+      return result
+    },
     current(): ExecutionMode {
       return runtimeState.executionMode
     },
@@ -590,18 +618,8 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
       const previousID = activeSessionActivated ? activeRuntimeSessionID : runtimeState.activeSessionID
       if (activeSessionActivated && previousID === sessionID) return
 
-      if (runtimeState.preferences.preserveAcrossSessions && previousID && previousID !== sessionID) {
-        const previousSession = sessionRuntimeState(runtimeState, previousID)
-        if (
-          previousSession?.lastPhase &&
-          previousSession.lastPhase !== "done" &&
-          !previousSession.interrupted
-        ) {
-          runtimeState = updateSessionRuntimeState(ctx.directory, previousID, {
-            interrupted: true,
-            resumeHint: `Review .opencode/memory/todo-map.md and .opencode/memory/progress.md, then resume from ${previousSession.lastPhase}.`,
-          })
-        }
+      if (activeSessionActivated && previousID && previousID !== sessionID) {
+        checkpointRuntimeState()
       }
 
       runtimeState = updateRuntimeState(ctx.directory, { activeSessionID: sessionID })
@@ -611,6 +629,51 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
       state.governance.phase = session?.lastPhase ?? "init"
       state.governance.phaseReason = session?.phaseReason ?? "new runtime session"
       state.governance.complexityTier = session?.complexityTier ?? "unset"
+      state.rounds.current = session?.rounds.current ?? 0
+      state.rounds.max = session?.rounds.max ?? state.rounds.max
+      state.branches = new Map((session?.branches ?? []).map((branch) => [branch.branchId, { ...branch }]))
+      state._lastIntent = session?.intent ?? "general"
+      const defaults = createDefaultGovernanceState()
+      const governance = session?.governance
+      state.governance = {
+        ...defaults,
+        phase: state.governance.phase,
+        phaseReason: state.governance.phaseReason,
+        complexityTier: state.governance.complexityTier,
+        ...(governance ? {
+          stopSignal: governance.stopSignal,
+          blockers: governance.blockers.map((blocker) => ({ ...blocker })),
+          lastCCriticVerdict: governance.lastCCriticVerdict,
+          lastTsCriticSignal: governance.lastTsCriticSignal,
+          lastPreStopGate: governance.lastPreStopGate
+            ? { ...governance.lastPreStopGate, blockers: [...governance.lastPreStopGate.blockers] }
+            : null,
+          rebuttalMode: governance.rebuttalMode,
+          visualTestLoopPending: governance.visualTestLoopPending,
+          lastReadImageFile: governance.lastReadImageFile,
+          blindOptimismFlag: governance.blindOptimismFlag,
+          lastDispatchTarget: governance.lastDispatchTarget,
+          userContinueDecision: governance.userContinueDecision,
+          userComment: governance.userComment,
+          userCheckedAt: governance.userCheckedAt,
+          interactiveModeResolved: governance.interactiveModeResolved,
+          interactiveModeGranularity: governance.interactiveModeGranularity,
+          interactiveModeCustomTriggers: [...governance.interactiveModeCustomTriggers],
+          interactiveModeConfirmedAt: governance.interactiveModeConfirmedAt,
+          interactiveModeSource: governance.interactiveModeSource,
+          languageResolved: governance.languageResolved,
+          languageSource: governance.languageSource,
+          pendingNextCall: governance.pendingNextCall,
+          pendingNextCallReason: governance.pendingNextCallReason,
+          pendingUnresolvedIssues: [...governance.pendingUnresolvedIssues],
+          pendingNextCallIgnoredRounds: governance.pendingNextCallIgnoredRounds,
+          lastInjectedNextCall: governance.lastInjectedNextCall,
+        } : {}),
+      }
+      for (const blocker of state.governance.blockers) {
+        const number = Number(/^BLK-(\d+)$/.exec(blocker.id)?.[1] ?? 0)
+        if (Number.isInteger(number)) blockerCounter = Math.max(blockerCounter, number)
+      }
     },
     currentSession(): string | null {
       return activeRuntimeSessionID
@@ -640,20 +703,19 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
         complexityTier: state.governance.complexityTier,
       })
     },
-    markInterrupted(reason: string): void {
+    markInterrupted(reason: string, interrupt = true): void {
       const sessionID = activeRuntimeSessionID ?? state._lastSessionID
       if (
         !sessionID ||
-        !runtimeState.preferences.preserveAcrossSessions ||
-        sessionRuntimeState(runtimeState, sessionID)?.interrupted
+        !runtimeState.preferences.preserveAcrossSessions
       ) return
 
       const phase = state.governance.phase
       runtimeState = updateSessionRuntimeState(ctx.directory, sessionID, {
         lastPhase: phase,
         phaseReason: reason,
-        interrupted: phase !== "done",
-        resumeHint: phase === "done"
+        interrupted: interrupt && phase !== "done",
+        resumeHint: !interrupt || phase === "done"
           ? null
           : `Review .opencode/memory/todo-map.md and .opencode/memory/progress.md, then resume from ${phase}.`,
       })
@@ -665,6 +727,51 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
         interrupted: false,
         resumeHint: null,
       })
+    },
+    checkpoint(taskPatch?: Partial<TaskKeeperState>): void {
+      checkpointRuntimeState(taskPatch)
+    },
+    reserveContinuation(sessionID: string, eventID?: string): void {
+      runtimeState = updateSessionTaskState(ctx.directory, sessionID, {
+        pendingContinuationEventID: eventID || null,
+      })
+    },
+    recordContinuation(sessionID: string, eventID?: string): void {
+      const persisted = readRuntimeState(ctx.directory)
+      const continuationCount = sessionRuntimeState(persisted, sessionID)?.task.continuationCount ?? 0
+      runtimeState = updateSessionTaskState(ctx.directory, sessionID, {
+        continuationCount: continuationCount + 1,
+        lastContinuationAt: nowIso(),
+        lastContinuationEventID: eventID || null,
+        pendingContinuationEventID: null,
+      })
+    },
+    releaseContinuation(sessionID: string, eventID?: string): void {
+      const persisted = readRuntimeState(ctx.directory)
+      const pending = sessionRuntimeState(persisted, sessionID)?.task.pendingContinuationEventID ?? null
+      if (pending && pending === (eventID || null)) {
+        runtimeState = updateSessionTaskState(ctx.directory, sessionID, {
+          pendingContinuationEventID: null,
+        })
+      }
+    },
+    taskState(): TaskKeeperState {
+      const session = sessionRuntimeState(runtimeState, activeRuntimeSessionID)
+      return session?.task ?? {
+        objective: null,
+        status: "idle",
+        lastAuditAt: null,
+        lastAudit: null,
+        continuationCount: 0,
+        lastContinuationAt: null,
+        lastContinuationEventID: null,
+        pendingContinuationEventID: null,
+        goalCorrectionCount: 0,
+        externalGoalStatus: "none",
+      }
+    },
+    setExternalGoalStatus(status: TaskKeeperState["externalGoalStatus"]): void {
+      checkpointRuntimeState({ externalGoalStatus: status })
     },
     resumeContext() {
       const session = sessionRuntimeState(runtimeState, activeRuntimeSessionID)
@@ -681,6 +788,67 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
 
   let activeRuntimeSessionID: string | null = runtimeState.activeSessionID
   let activeSessionActivated = false
+
+  function checkpointRuntimeState(taskPatch?: Partial<TaskKeeperState>): void {
+    const sessionID = activeRuntimeSessionID ?? state._lastSessionID
+    if (!sessionID || !runtimeState.preferences.preserveAcrossSessions) return
+
+    const previous = sessionRuntimeState(runtimeState, sessionID)?.task
+    runtimeState = updateSessionRuntimeState(ctx.directory, sessionID, {
+      lastPhase: state.governance.phase,
+      phaseReason: state.governance.phaseReason,
+      complexityTier: state.governance.complexityTier,
+      rounds: {
+        current: state.rounds.current,
+        max: state.rounds.max,
+      },
+      governance: {
+        stopSignal: state.governance.stopSignal,
+        blockers: state.governance.blockers.map((blocker) => ({ ...blocker })),
+        lastCCriticVerdict: state.governance.lastCCriticVerdict,
+        lastTsCriticSignal: state.governance.lastTsCriticSignal,
+        lastPreStopGate: state.governance.lastPreStopGate
+          ? { ...state.governance.lastPreStopGate, blockers: [...state.governance.lastPreStopGate.blockers] }
+          : null,
+        rebuttalMode: state.governance.rebuttalMode,
+        visualTestLoopPending: state.governance.visualTestLoopPending,
+        lastReadImageFile: state.governance.lastReadImageFile,
+        blindOptimismFlag: state.governance.blindOptimismFlag,
+        lastDispatchTarget: state.governance.lastDispatchTarget,
+        userContinueDecision: state.governance.userContinueDecision,
+        userComment: state.governance.userComment,
+        userCheckedAt: state.governance.userCheckedAt,
+        interactiveModeResolved: state.governance.interactiveModeResolved,
+        interactiveModeGranularity: state.governance.interactiveModeGranularity,
+        interactiveModeCustomTriggers: [...state.governance.interactiveModeCustomTriggers],
+        interactiveModeConfirmedAt: state.governance.interactiveModeConfirmedAt,
+        interactiveModeSource: state.governance.interactiveModeSource,
+        languageResolved: state.governance.languageResolved,
+        languageSource: state.governance.languageSource,
+        pendingNextCall: state.governance.pendingNextCall,
+        pendingNextCallReason: state.governance.pendingNextCallReason,
+        pendingUnresolvedIssues: [...state.governance.pendingUnresolvedIssues],
+        pendingNextCallIgnoredRounds: state.governance.pendingNextCallIgnoredRounds,
+        lastInjectedNextCall: state.governance.lastInjectedNextCall,
+      },
+      branches: [...state.branches.values()].map((branch) => ({ ...branch })),
+      intent: state._lastIntent ?? "general",
+      task: {
+        objective: null,
+        status: "idle",
+        lastAuditAt: null,
+        lastAudit: null,
+        continuationCount: 0,
+        lastContinuationAt: null,
+        lastContinuationEventID: null,
+        pendingContinuationEventID: null,
+        goalCorrectionCount: 0,
+        externalGoalStatus: "none",
+        ...previous,
+        ...taskPatch,
+      },
+    })
+  }
 
   const phaseManager = {
     current(): AionPhase {
@@ -707,6 +875,7 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
     reset(): void {
       state.governance.phase = "init"
       state.governance.phaseReason = "reset"
+      runtimeControl.markPhase("init", "reset")
     },
   }
 
@@ -723,6 +892,7 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
         startedAt: nowIso(),
       }
       state.branches.set(branchId, branch)
+      runtimeControl.checkpoint()
       trace.appendEvent(
         "branch.merged",
         `registered branch ${branchId} wave=${wave}`,
@@ -734,6 +904,7 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
       const branch = state.branches.get(branchId)
       if (!branch) return
       branch.status = status
+      runtimeControl.checkpoint()
       trace.appendEvent(
         "branch.merged",
         `branch ${branchId} -> ${status}`,
@@ -748,6 +919,7 @@ export function createAionManagers(args: CreateManagersArgs): AionManagers {
   const rounds = {
     next(): number {
       state.rounds.current += 1
+      runtimeControl.checkpoint()
       return state.rounds.current
     },
     remaining(): number {

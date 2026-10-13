@@ -19,6 +19,7 @@
 import type { CreateHooksArgs } from "../create-hooks"
 import type { AionSessionIdleHook } from "./types"
 import type { AionPhase } from "../create-managers"
+import { nowIso } from "../shared/utils"
 
 const PHASE_INJECTION: Record<AionPhase, string> = {
   init: `[AION PHASE: INIT]
@@ -99,8 +100,22 @@ export function createSessionIdleHook(args: CreateHooksArgs): AionSessionIdleHoo
   const { managers, personality } = args
   const m = managers
 
-  return async function onSessionIdle(_input, output) {
+  return async function onSessionIdle(input, output) {
+    m.runtimeControl.activateSession(input.sessionID)
+    const task = m.runtimeControl.taskState()
+    const audit = `Round self-audit required: phase=${m.phase.current()}, open blockers=${m.governance.hasOpenBlockers() ? "yes" : "no"}, external goal=${task.externalGoalStatus}.`
+
+    if (input.eventID && task.lastContinuationEventID === input.eventID) {
+      output.continue = false
+      return
+    }
+
     if (!m.config.autoContinue.enabled) {
+      m.runtimeControl.checkpoint({
+        status: task.externalGoalStatus === "active" ? "active" : "awaiting-review",
+        lastAuditAt: nowIso(),
+        lastAudit: audit,
+      })
       output.continue = false
       return
     }
@@ -111,6 +126,21 @@ export function createSessionIdleHook(args: CreateHooksArgs): AionSessionIdleHoo
         { rounds: m.state.rounds.current, max: m.state.rounds.max },
         "main-agent",
       )
+      m.runtimeControl.checkpoint({
+        status: "blocked",
+        lastAuditAt: nowIso(),
+        lastAudit: `${audit} Max AION rounds reached; manual review required.`,
+      })
+      output.continue = false
+      return
+    }
+
+    if (m.runtimeControl.resumeContext().interrupted) {
+      m.runtimeControl.checkpoint({
+        status: "awaiting-review",
+        lastAuditAt: nowIso(),
+        lastAudit: `${audit} Session was interrupted; do not auto-continue until user progress resumes it.`,
+      })
       output.continue = false
       return
     }
@@ -133,6 +163,11 @@ export function createSessionIdleHook(args: CreateHooksArgs): AionSessionIdleHoo
           { phase, cCriticVerdict, userDecision },
           "main-agent",
         )
+        m.runtimeControl.checkpoint({
+          status: "awaiting-review",
+          lastAuditAt: nowIso(),
+          lastAudit: `${audit} Waiting for the user's continue/stop decision.`,
+        })
         output.continue = false
         return
       }
@@ -145,6 +180,11 @@ export function createSessionIdleHook(args: CreateHooksArgs): AionSessionIdleHoo
         )
         m.phase.transition("done", "user chose to stop in interactive mode")
         personality?.onCompletion()
+        m.runtimeControl.checkpoint({
+          status: "completed",
+          lastAuditAt: nowIso(),
+          lastAudit: `${audit} User explicitly chose to stop.`,
+        })
         output.continue = false
         return
       }
@@ -165,7 +205,9 @@ export function createSessionIdleHook(args: CreateHooksArgs): AionSessionIdleHoo
     }
 
     // Terminal condition: all gates passed
-    if (phase === "done" || (stopSignal === "allow-stop" && !hasBlockers && cCriticVerdict === "approve-stop")) {
+    const aionComplete = phase === "done" ||
+      (stopSignal === "allow-stop" && !hasBlockers && cCriticVerdict === "approve-stop")
+    if (aionComplete) {
       m.trace.appendEvent(
         "auto-continue",
         `real stop conditions met; phase=${phase}`,
@@ -176,9 +218,36 @@ export function createSessionIdleHook(args: CreateHooksArgs): AionSessionIdleHoo
         m.phase.transition("done", "all governance gates passed")
         personality?.onCompletion()
       }
+      m.runtimeControl.checkpoint({
+        status: "completed",
+        lastAuditAt: nowIso(),
+        lastAudit: `${audit} Governance terminal conditions are satisfied.`,
+      })
       output.continue = false
       return
     }
+
+    if (task.externalGoalStatus === "active") {
+      m.runtimeControl.checkpoint({
+        status: "active",
+        lastAuditAt: nowIso(),
+        lastAudit: `${audit} Goal plugin owns the next continuation; AION state is checkpointed.`,
+      })
+      output.continue = false
+      return
+    }
+
+    if (["paused", "cancelled", "budgetLimited", "usageLimited"].includes(task.externalGoalStatus)) {
+      m.runtimeControl.checkpoint({
+        status: "awaiting-review",
+        lastAuditAt: nowIso(),
+        lastAudit: `${audit} External goal is explicitly stopped or limited; AION will not override it.`,
+      })
+      output.continue = false
+      return
+    }
+
+    const goalCorrection = task.externalGoalStatus === "completed" || task.externalGoalStatus === "unmet"
 
     // Phase-aware auto-continue
     const nextRound = m.rounds.next()
@@ -204,7 +273,16 @@ export function createSessionIdleHook(args: CreateHooksArgs): AionSessionIdleHoo
       "main-agent",
     )
 
-    const prompt = `${phaseInjection}
+    const prompt = `${goalCorrection ? "[AION EXTERNAL GOAL CLOSE AUDIT]" : "[AION TASK KEEPER ROUND AUDIT]"}
+Before taking action, audit the previous turn against the objective and real artifacts:
+1. Re-read task.md, .opencode/memory/todo-map.md, progress.md, and completion-gate.md.
+2. Identify exactly one highest-value unfinished action with file-level evidence.
+3. Do not mark the goal complete or unmet merely because a turn ended, a gate blocked, or an approach failed.
+4. If the objective is genuinely unattainable, record a concrete blocker and request the smallest external decision instead of silently closing.
+5. Continue the AION phase loop below. Do not end with prose only.
+${goalCorrection ? `6. The external Goal was closed as ${task.externalGoalStatus}, but AION completion gates are not satisfied. Audit that closure against the artifacts before accepting it.` : ""}
+
+${phaseInjection}
 
 ---
 Hard gates from the aion plugin:
@@ -217,6 +295,12 @@ Hard gates from the aion plugin:
 - Only call aion_critic_verdict from inside ts-critic or c-critic subagent dispatches.
 - To dispatch a subagent, use: subagent(agent="<name>", description="<desc>", prompt="<prompt>")`
 
+    m.runtimeControl.checkpoint({
+      status: "active",
+      lastAuditAt: nowIso(),
+      lastAudit: audit,
+      goalCorrectionCount: task.goalCorrectionCount + (goalCorrection ? 1 : 0),
+    })
     output.continue = true
     output.prompt = prompt
   }

@@ -52,7 +52,7 @@ export type AionToolExecuteAfterHook = (
 ) => Promise<void> | void
 
 export type AionSessionIdleHook = (
-  input: { sessionID: string },
+  input: { sessionID: string; eventID?: string },
   output: { continue?: boolean; prompt?: string },
 ) => Promise<void> | void
 

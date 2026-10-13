@@ -12,10 +12,20 @@ export async function importBundle() {
     const root = context.directory;
     const tools = {};
     const hooks = { tool: {}, permission: {}, session: {}, sessionAll: {} };
+    const promptCalls = [];
+    const eventQueue = [];
+    const eventWaiters = [];
 
     const setupContext = {
       app: { version: "test" },
-      location: { directory: root },
+      location: {
+        directory: root,
+        project: {
+          id: context.projectID ?? "test-project",
+          directory: context.projectDirectory ?? root,
+          canonical: context.projectCanonical ?? context.projectDirectory ?? root,
+        },
+      },
       client: context.client,
       options: context.options ?? {},
       agent: {
@@ -59,14 +69,44 @@ export async function importBundle() {
           hooks.sessionAll[name] = [...(hooks.sessionAll[name] ?? []), callback];
           return { dispose: async () => {} };
         },
-        get: async ({ sessionID }) => ({
-          id: sessionID,
-          agent: context.sessionAgents?.[sessionID] ?? "aion",
-        }),
+        get: async ({ sessionID }) => {
+          if (context.sessionErrors?.[sessionID]) throw context.sessionErrors[sessionID];
+          return {
+            id: sessionID,
+            agent: context.sessionAgents?.[sessionID] ?? "aion",
+            parentID: context.sessionParents?.[sessionID],
+            projectID: context.sessionProjects?.[sessionID] ?? context.projectID ?? "test-project",
+            location: {
+              directory: context.sessionDirectories?.[sessionID] ?? root,
+            },
+          };
+        },
+        prompt: async (input) => {
+          await context.beforePrompt?.(input);
+          if (context.promptFailures?.[input.sessionID] > 0) {
+            context.promptFailures[input.sessionID] -= 1;
+            throw new Error(`prompt failed for ${input.sessionID}`);
+          }
+          promptCalls.push(input);
+          return { id: `inbox-${promptCalls.length}`, sessionID: input.sessionID };
+        },
       },
       event: {
-        // An empty subscription is sufficient for setup-time smoke tests.
-        subscribe: async function * () {},
+        subscribe() {
+          return {
+            [Symbol.asyncIterator]() {
+              return {
+                next() {
+                  if (eventQueue.length > 0) return Promise.resolve({ done: false, value: eventQueue.shift() });
+                  return new Promise((resolve) => eventWaiters.push(resolve));
+                },
+                return() {
+                  return Promise.resolve({ done: true, value: undefined });
+                },
+              };
+            },
+          };
+        },
       },
     };
 
@@ -83,6 +123,19 @@ export async function importBundle() {
       event: cleanup.event,
       defaultAgent: hooks.defaultAgent,
       cleanup,
+      promptCalls,
+      async emitEvent(event) {
+        const payload = {
+          location: { directory: root },
+          ...event,
+          data: event.data ? { ...event.data } : undefined,
+        };
+        const waiter = eventWaiters.shift();
+        if (waiter) waiter({ done: false, value: payload });
+        else eventQueue.push(payload);
+        await new Promise((resolve) => setImmediate(resolve));
+        await new Promise((resolve) => setImmediate(resolve));
+      },
     };
   };
   return bundle;

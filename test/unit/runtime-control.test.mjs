@@ -68,6 +68,111 @@ describe("AION runtime control state", () => {
     assert.equal(state.sessions.session.complexityTier, "unset");
   });
 
+  it("persists and restores task keeper governance state per session", () => {
+    const root = createProject();
+    try {
+      runtime.updateSessionRuntimeState(root, "session-task", {
+        lastPhase: "implement",
+        rounds: { current: 7, max: 50 },
+        governance: {
+          stopSignal: "absolutely-cannot-stop-now",
+          blockers: [{
+            id: "BLK-004",
+            source: "c-critic",
+            description: "missing validation",
+            evidence: "tests absent",
+            unblockCondition: "tests pass",
+            forbiddenAction: "claim completion",
+            raisedAt: "2026-10-13T00:00:00.000Z",
+          }],
+          lastCCriticVerdict: "reject-stop",
+          lastTsCriticSignal: "rebuttal-mode",
+          lastPreStopGate: {
+            allowStop: false,
+            blockers: ["missing validation"],
+            recordedAt: "2026-10-13T00:00:01.000Z",
+          },
+        },
+        task: {
+          objective: "finish task.md",
+          status: "active",
+          lastAuditAt: "2026-10-13T00:00:02.000Z",
+          lastAudit: "one action remains",
+          continuationCount: 3,
+          lastContinuationAt: "2026-10-13T00:00:03.000Z",
+          lastContinuationEventID: "event-3",
+          goalCorrectionCount: 1,
+          externalGoalStatus: "unmet",
+        },
+      });
+
+      const restored = runtime.readRuntimeState(root).sessions["session-task"];
+      assert.equal(restored.rounds.current, 7);
+      assert.equal(restored.governance.blockers[0].source, "c-critic");
+      assert.equal(restored.governance.lastCCriticVerdict, "reject-stop");
+      assert.equal(restored.task.objective, "finish task.md");
+      assert.equal(restored.task.continuationCount, 3);
+      assert.equal(restored.task.lastContinuationEventID, "event-3");
+      assert.equal(restored.task.externalGoalStatus, "unmet");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("persists the complete governance decision state per session", () => {
+    const root = createProject();
+    try {
+      runtime.updateSessionRuntimeState(root, "session-full", {
+        governance: {
+          stopSignal: "rebuttal-mode",
+          blockers: [],
+          lastCCriticVerdict: "reject-stop",
+          lastTsCriticSignal: "rebuttal-mode",
+          lastPreStopGate: null,
+          rebuttalMode: true,
+          visualTestLoopPending: true,
+          lastReadImageFile: "plot.png",
+          blindOptimismFlag: true,
+          lastDispatchTarget: "coder",
+          userContinueDecision: "continue",
+          userComment: "keep going",
+          userCheckedAt: "2026-10-13T00:00:00.000Z",
+          interactiveModeResolved: "interactive",
+          interactiveModeGranularity: "custom",
+          interactiveModeCustomTriggers: ["dispatch"],
+          interactiveModeConfirmedAt: "2026-10-13T00:00:01.000Z",
+          interactiveModeSource: "user-toggle",
+          languageResolved: "zh-deliver",
+          languageSource: "user-toggle",
+          pendingNextCall: "coder",
+          pendingNextCallReason: "fix regression",
+          pendingUnresolvedIssues: ["missing test"],
+          pendingNextCallIgnoredRounds: 2,
+          lastInjectedNextCall: "coder",
+        },
+        branches: [{
+          branchId: "B1",
+          wave: 2,
+          status: "leading",
+          currentValue: 0.9,
+          evidenceCount: 4,
+          startedAt: "2026-10-13T00:00:02.000Z",
+        }],
+        intent: "implement",
+      });
+
+      const restored = runtime.readRuntimeState(root).sessions["session-full"];
+      assert.equal(restored.governance.interactiveModeGranularity, "custom");
+      assert.deepEqual(restored.governance.interactiveModeCustomTriggers, ["dispatch"]);
+      assert.equal(restored.governance.languageResolved, "zh-deliver");
+      assert.equal(restored.governance.pendingNextCallIgnoredRounds, 2);
+      assert.equal(restored.branches[0].branchId, "B1");
+      assert.equal(restored.intent, "implement");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("migrates V1 phase state into a non-adoptable legacy session", () => {
     const state = runtime.normalizeRuntimeState({
       executionMode: "FULL",
@@ -183,7 +288,7 @@ describe("AION runtime mode server integration", () => {
     }
   });
 
-  it("scopes interruptions by session and clears a hint after progress", async () => {
+  it("does not interrupt one session when another becomes active", async () => {
     const root = createProject();
     const result = await createPlugin(root);
 
@@ -197,9 +302,14 @@ describe("AION runtime mode server integration", () => {
 
       const sessionBSystem = await transform(result, "session-b");
       assert.doesNotMatch(sessionBSystem, /AION RESUME PROTOCOL/);
-      assert.equal(sessionState(root, "session-b"), undefined);
-      assert.equal(sessionState(root, "session-a").interrupted, true);
+      assert.equal(sessionState(root, "session-b").lastPhase, "init");
+      assert.equal(sessionState(root, "session-b").interrupted, false);
+      assert.equal(sessionState(root, "session-a").interrupted, false);
 
+      runtime.updateSessionRuntimeState(root, "session-a", {
+        interrupted: true,
+        resumeHint: "Review todo-map.md and resume from gather.",
+      });
       const resumedSystem = await transform(result, "session-a");
       assert.match(resumedSystem, /previous session stopped at gather/);
 
@@ -254,6 +364,131 @@ describe("AION runtime mode server integration", () => {
       assert.equal(sessionState(root, "session-restart").interrupted, true);
       const system = await transform(result, "session-restart");
       assert.match(system, /previous session stopped at implement/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("preserves the loaded session before the first runtime session switch", async () => {
+    const root = createProject();
+    try {
+      runtime.updateSessionRuntimeState(root, "session-b", {
+        lastPhase: "gather",
+        phaseReason: "persisted B",
+        resumeHint: "Resume B without resetting its state.",
+        interrupted: true,
+        complexityTier: "FULL",
+        rounds: { current: 2, max: 8 },
+        governance: {
+          stopSignal: "absolutely-cannot-stop-now",
+          blockers: [],
+          lastCCriticVerdict: "reject-stop",
+          lastTsCriticSignal: "absolutely-cannot-stop-now",
+          lastPreStopGate: null,
+          languageResolved: "zh-deliver",
+          languageSource: "user-toggle",
+        },
+      });
+      runtime.updateSessionRuntimeState(root, "session-a", {
+        lastPhase: "implement",
+        phaseReason: "persisted A",
+        resumeHint: "Resume A without resetting its state.",
+        interrupted: true,
+        complexityTier: "MEDIUM",
+        rounds: { current: 7, max: 12 },
+        governance: {
+          stopSignal: "rebuttal-mode",
+          blockers: [],
+          lastCCriticVerdict: "reject-stop",
+          lastTsCriticSignal: "rebuttal-mode",
+          lastPreStopGate: null,
+          pendingNextCall: "coder",
+          pendingNextCallReason: "finish implementation",
+        },
+        task: {
+          objective: "preserve A",
+          status: "active",
+          continuationCount: 4,
+          externalGoalStatus: "active",
+        },
+      });
+
+      const result = await createPlugin(root);
+      const loadedA = sessionState(root, "session-a");
+
+      const systemB = await transform(result, "session-b");
+      assert.match(systemB, /previous session stopped at gather/);
+      assert.deepEqual(sessionState(root, "session-a"), loadedA);
+
+      const systemA = await transform(result, "session-a");
+      assert.match(systemA, /previous session stopped at implement/);
+      assert.equal(sessionState(root, "session-a").governance.pendingNextCall, "coder");
+      assert.equal(sessionState(root, "session-a").task.objective, "preserve A");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps rounds.max=0 unlimited across runtime merges and session restores", async () => {
+    const root = createProject();
+    try {
+      runtime.updateSessionRuntimeState(root, "session-limited", {
+        rounds: { current: 1, max: 6 },
+      });
+      runtime.updateSessionRuntimeState(root, "session-unlimited", {
+        lastPhase: "implement",
+        phaseReason: "unlimited continuation",
+        rounds: { current: 4, max: 0 },
+      });
+
+      const result = await createPlugin(root);
+      const unlimitedContext = { context: [] };
+      await transform(result, "session-unlimited");
+      await result["experimental.session.compacting"](
+        { sessionID: "session-unlimited", messages: [] },
+        unlimitedContext,
+      );
+      assert.match(unlimitedContext.context.join("\n"), /Round 4 \/ ∞/);
+
+      const limitedContext = { context: [] };
+      await result["experimental.session.compacting"](
+        { sessionID: "session-limited", messages: [] },
+        limitedContext,
+      );
+      assert.match(limitedContext.context.join("\n"), /Round 1 \/ 6/);
+
+      const restoredContext = { context: [] };
+      await result["experimental.session.compacting"](
+        { sessionID: "session-unlimited", messages: [] },
+        restoredContext,
+      );
+      assert.match(restoredContext.context.join("\n"), /Round 4 \/ ∞/);
+      assert.equal(sessionState(root, "session-unlimited").rounds.max, 0);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("isolates concurrent AION tool state by tool context session", async () => {
+    const root = createProject();
+    const result = await createPlugin(root);
+
+    try {
+      await Promise.all([
+        result.tool.aion_set_interactive_mode.execute(
+          { enabled: true, granularity: "always-interactive", reason: "session A" },
+          { sessionID: "session-a" },
+        ),
+        result.tool.aion_set_interactive_mode.execute(
+          { enabled: false, reason: "session B" },
+          { sessionID: "session-b" },
+        ),
+      ]);
+
+      assert.equal(sessionState(root, "session-a").governance.interactiveModeResolved, "interactive");
+      assert.equal(sessionState(root, "session-a").governance.interactiveModeGranularity, "always-interactive");
+      assert.equal(sessionState(root, "session-b").governance.interactiveModeResolved, "autonomous");
+      assert.equal(sessionState(root, "session-b").governance.interactiveModeGranularity, "autonomous");
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

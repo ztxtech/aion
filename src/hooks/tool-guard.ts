@@ -114,6 +114,73 @@ function normalizeToolName(name: string): string {
   return n
 }
 
+const GOAL_LIFECYCLE_TOOLS = new Set([
+  "get_goal",
+  "create_goal",
+  "set_goal",
+  "update_goal",
+  "update_goal_objective",
+  "update_goal_status",
+  "stop_goal",
+  "replace_goal",
+  "clear_goal",
+])
+
+function goalStatusValue(value: unknown): import("../shared/runtime-control").TaskKeeperState["externalGoalStatus"] | null {
+  const raw = typeof value === "string" ? value.trim().toLowerCase() : ""
+  if (raw === "active") return "active"
+  if (raw === "paused") return "paused"
+  if (raw === "complete" || raw === "completed") return "completed"
+  if (raw === "unmet" || raw === "blocked") return "unmet"
+  if (raw === "cancelled" || raw === "canceled") return "cancelled"
+  if (raw === "budgetlimited") return "budgetLimited"
+  if (raw === "usagelimited") return "usageLimited"
+  return null
+}
+
+function goalResultObject(outputText: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(outputText) as unknown
+    return typeof parsed === "object" && parsed !== null ? parsed as Record<string, unknown> : {}
+  } catch {
+    return {}
+  }
+}
+
+function syncExternalGoal(
+  managers: CreateHooksArgs["managers"],
+  toolName: string,
+  toolArgs: Record<string, unknown>,
+  outputText: string,
+): void {
+  const normalized = toolName.toLowerCase()
+  if (!GOAL_LIFECYCLE_TOOLS.has(normalized)) return
+
+  const result = goalResultObject(outputText)
+  const goal = typeof result.goal === "object" && result.goal !== null
+    ? result.goal as Record<string, unknown>
+    : result
+  const objective = typeof toolArgs.objective === "string"
+    ? toolArgs.objective
+    : typeof goal.objective === "string"
+      ? goal.objective
+      : null
+
+  let status = goalStatusValue(toolArgs.status) ?? goalStatusValue(goal.status)
+  if (normalized === "create_goal" || normalized === "set_goal" || normalized === "replace_goal") {
+    status ??= result.plan_mode_notice ? "paused" : "active"
+  } else if (normalized === "stop_goal") {
+    status = "cancelled"
+  } else if (normalized === "clear_goal") {
+    status = "none"
+  }
+
+  managers.runtimeControl.checkpoint({
+    ...(objective ? { objective } : {}),
+    ...(status ? { externalGoalStatus: status } : {}),
+  })
+}
+
 function findActiveZtxexpRoots(cwd: string): string[] {
   const expRoot = join(cwd, "exp")
   if (!existsSync(expRoot)) return []
@@ -163,6 +230,7 @@ export function createToolGuardBeforeHook(args: CreateHooksArgs): AionToolExecut
   const m = managers
 
   return async function toolGuardBefore(input, output) {
+    if (input.sessionID) m.runtimeControl.activateSession(input.sessionID)
     const rawName = input.tool
     const toolName = normalizeToolName(rawName)
     const cwd = m.ctx.directory
@@ -748,9 +816,11 @@ export function createToolGuardAfterHook(args: CreateHooksArgs): AionToolExecute
   const m = managers
 
   return async function toolGuardAfter(input, output) {
+    if (input.sessionID) m.runtimeControl.activateSession(input.sessionID)
     const toolName = normalizeToolName(input.tool)
     const toolArgs = (output as { args?: Record<string, unknown> }).args ?? {}
     const outputText = String((output as { output?: string }).output ?? "")
+    syncExternalGoal(m, toolName, toolArgs, outputText)
 
     // Phase transitions from tool calls
     const prevPhase = m.phase.current()

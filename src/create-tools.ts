@@ -50,7 +50,17 @@ export function createAllAionTools(args: CreateToolsArgs): CreatedTools {
   const tools: Partial<AionTools> = {}
   for (const [name, body] of Object.entries(bodies)) {
     if (!body) continue
-    tools[name as AionToolName] = { ...body, name } as AionTools[AionToolName]
+    const execute: AionTools[AionToolName]["execute"] = async (input, context) => {
+      const sessionID = (context as { sessionID?: string } | undefined)?.sessionID
+      return managers.runtimeControl.withSession(sessionID, async () => {
+        try {
+          return await body.execute(input, context)
+        } finally {
+          if (sessionID) managers.runtimeControl.checkpoint()
+        }
+      })
+    }
+    tools[name as AionToolName] = { ...body, execute, name } as AionTools[AionToolName]
   }
   return tools as AionTools
 }

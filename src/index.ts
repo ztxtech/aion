@@ -6,12 +6,13 @@
  * translation layer.
  */
 import { Plugin } from "@opencode/plugin"
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
-import { join } from "node:path"
+import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs"
+import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path"
 import { loadAionConfig } from "./config/load-config"
 import { createAionManagers } from "./create-managers"
 import { createAllAionTools } from "./create-tools"
 import { createAionHooks } from "./create-hooks"
+import { createV2TaskKeeper, type V2TaskKeeperEvent } from "./hooks/v2-task-keeper"
 import { bootstrapWorkspace } from "./workspace-bootstrap"
 import { buildAionAgents } from "./agents/registry"
 import { isAionAgent } from "./agents/scope"
@@ -20,6 +21,23 @@ import { info } from "./shared/logger"
 import type { AionConfig } from "./config/types"
 
 const managedAgentMarker = "<!-- aion-plugin:managed -->"
+
+function canonicalPath(path: string): string {
+  const resolved = resolve(path)
+  try {
+    return realpathSync(resolved)
+  } catch {
+    const parent = dirname(resolved)
+    return parent === resolved ? resolved : join(canonicalPath(parent), basename(resolved))
+  }
+}
+
+function isPathWithin(root: string, candidate: string): boolean {
+  const from = canonicalPath(root)
+  const to = canonicalPath(candidate)
+  const rel = relative(from, to)
+  return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel))
+}
 
 type PermissionEvaluation = {
   action: string
@@ -268,16 +286,98 @@ const aionPlugin = Plugin.define({
       }))
     }
 
-    if (hooks.event) {
+    const projectID = context.location.project?.id
+    const projectRoot = context.location.project?.canonical
+      ?? context.location.project?.directory
+      ?? context.location.directory
+    const sessionInfo = async (sessionID: string) =>
+      await context.session.get({ sessionID }).catch(() => undefined)
+    const isTopLevelAionSession = (
+      sessionID: string,
+      session: Awaited<ReturnType<typeof sessionInfo>>,
+    ) =>
+      session?.id === sessionID &&
+      session.parentID == null &&
+      typeof projectID === "string" && projectID.length > 0 &&
+      session.projectID === projectID &&
+      typeof session.location?.directory === "string" &&
+      isPathWithin(projectRoot, session.location.directory) &&
+      session.agent !== undefined && isAionAgent(session.agent)
+    const taskKeeper = createV2TaskKeeper({
+      eligible: async (sessionID) => isTopLevelAionSession(sessionID, await sessionInfo(sessionID)),
+      idle: async ({ sessionID, eventID }) => {
+        const session = await sessionInfo(sessionID)
+        if (!isTopLevelAionSession(sessionID, session)) return { continue: false }
+
+        const output: { continue?: boolean; prompt?: string } = {}
+        await hooks["session.idle"]?.({ sessionID, eventID }, output)
+        return { continue: output.continue === true, prompt: output.prompt }
+      },
+      continueSession: async ({ sessionID, prompt, eventID }) => {
+        const session = await sessionInfo(sessionID)
+        if (!isTopLevelAionSession(sessionID, session)) return
+
+        managers.runtimeControl.activateSession(sessionID)
+        managers.runtimeControl.reserveContinuation(sessionID, eventID)
+        try {
+          await context.session.prompt({
+            sessionID,
+            text: prompt,
+            agents: [{ name: session.agent }],
+            metadata: {
+              source: "aion-task-keeper",
+              continuationEventID: eventID ?? null,
+            },
+          })
+          managers.runtimeControl.recordContinuation(sessionID, eventID)
+        } catch (error) {
+          managers.runtimeControl.releaseContinuation(sessionID, eventID)
+          throw error
+        }
+      },
+      markInterrupted: (sessionID, reason, interrupt = true) => {
+        managers.runtimeControl.activateSession(sessionID)
+        managers.runtimeControl.markInterrupted(reason, interrupt)
+      },
+      clearResume: (sessionID) => {
+        managers.runtimeControl.activateSession(sessionID)
+        managers.runtimeControl.clearResume()
+      },
+    })
+
+    if (hooks.event || taskKeeper) {
       const hook = hooks.event
       const controller = new AbortController()
-      void (async () => {
+      const localEvent = async (event: V2TaskKeeperEvent): Promise<boolean> => {
+        const directory = event.location?.directory
+        return typeof directory === "string" && isPathWithin(projectRoot, directory)
+      }
+      const handleSafely = async (operation: () => Promise<unknown>, label: string) => {
         try {
-          for await (const event of context.event.subscribe({ signal: controller.signal })) {
-            await hook({ event: { type: event.type, properties: event } })
-          }
+          await operation()
         } catch (error) {
-          if (!controller.signal.aborted) console.warn("[aion] event subscription error", error)
+          if (!controller.signal.aborted) console.warn(`[aion] ${label} error`, error)
+        }
+      }
+      void (async () => {
+        while (!controller.signal.aborted) {
+          try {
+            for await (const rawEvent of context.event.subscribe({ signal: controller.signal })) {
+              const event = rawEvent as V2TaskKeeperEvent
+              if (controller.signal.aborted) break
+              if (!(await localEvent(event))) continue
+              await handleSafely(() => taskKeeper.handle(event), "task keeper event")
+              await handleSafely(
+                async () => hook?.({ event: { type: event.type, properties: rawEvent } }),
+                "event hook",
+              )
+            }
+          } catch (error) {
+            if (!controller.signal.aborted) console.warn("[aion] event subscription error", error)
+          }
+          if (!controller.signal.aborted) {
+            await new Promise((resolveDelay) => setTimeout(resolveDelay, 250))
+          }
         }
       })()
       registrations.push({ dispose: async () => controller.abort() })
