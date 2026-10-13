@@ -102,6 +102,7 @@ export type AionChatParamsHook = (
 export type AionSystemTransformHook = (
   input: {
     sessionID?: string
+    agent?: string
     model: { id: string; name?: string }
   },
   output: { system: string[] },

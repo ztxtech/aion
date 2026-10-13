@@ -11,7 +11,7 @@ export async function importBundle() {
   bundle.default.server = async (context = {}) => {
     const root = context.directory;
     const tools = {};
-    const hooks = { tool: {}, permission: {}, session: {} };
+    const hooks = { tool: {}, permission: {}, session: {}, sessionAll: {} };
 
     const setupContext = {
       app: { version: "test" },
@@ -56,8 +56,13 @@ export async function importBundle() {
       session: {
         hook: async (name, callback) => {
           hooks.session[name] = callback;
+          hooks.sessionAll[name] = [...(hooks.sessionAll[name] ?? []), callback];
           return { dispose: async () => {} };
         },
+        get: async ({ sessionID }) => ({
+          id: sessionID,
+          agent: context.sessionAgents?.[sessionID] ?? "aion",
+        }),
       },
       event: {
         // An empty subscription is sufficient for setup-time smoke tests.
@@ -69,6 +74,9 @@ export async function importBundle() {
     return {
       tool: tools,
       ...hooks.tool,
+      toolHooks: hooks.tool,
+      sessionHooks: hooks.sessionAll,
+      "session.prompt": hooks.session.prompt,
       ...cleanup,
       "permission.ask": hooks.permission.evaluate,
       "experimental.compaction.autocontinue": hooks.session.context,

@@ -14,6 +14,7 @@ import { createAllAionTools } from "./create-tools"
 import { createAionHooks } from "./create-hooks"
 import { bootstrapWorkspace } from "./workspace-bootstrap"
 import { buildAionAgents } from "./agents/registry"
+import { isAionAgent } from "./agents/scope"
 import { createPersonality, DEFAULT_PERSONALITY_CONFIG, type PersonalityConfig } from "./hooks/personality"
 import { info } from "./shared/logger"
 import type { AionConfig } from "./config/types"
@@ -146,6 +147,7 @@ const aionPlugin = Plugin.define({
       onPhaseChange: (_previous, next) => personality.onPhaseTransition(next),
     })
     const tools = createAllAionTools({ ctx: { directory, client, options: context.options }, config, managers })
+    const aionToolIds = new Set(Object.keys(tools))
     const hooks = createAionHooks({ ctx: { directory, client, options: context.options }, config, managers, personality })
     const registrations: Array<{ dispose: () => Promise<void> }> = []
 
@@ -164,6 +166,7 @@ const aionPlugin = Plugin.define({
     if (hooks["tool.execute.before"]) {
       const hook = hooks["tool.execute.before"]
       registrations.push(await context.tool.hook("execute.before", async (event) => {
+        if (event.agent !== undefined && !isAionAgent(event.agent)) return
         const output = { args: event.input as Record<string, unknown>, metadata: {} }
         await hook({ tool: event.tool, sessionID: event.sessionID, callID: event.id, agent: event.agent }, output)
         if (output.args) event.input = output.args
@@ -173,6 +176,7 @@ const aionPlugin = Plugin.define({
     if (hooks["tool.execute.after"]) {
       const hook = hooks["tool.execute.after"]
       registrations.push(await context.tool.hook("execute.after", async (event) => {
+        if (event.agent !== undefined && !isAionAgent(event.agent)) return
         if (event.status !== "completed") return
         await hook(
           { tool: event.tool, sessionID: event.sessionID, callID: event.id, agent: event.agent },
@@ -183,6 +187,7 @@ const aionPlugin = Plugin.define({
 
     registrations.push(await context.permission.hook("evaluate", async (event) => {
       try {
+        if (event.agent !== undefined && !isAionAgent(event.agent)) return
         evaluateAionPermission(event, config)
       } catch (error) {
         console.warn("[aion] permission.evaluate error", error)
@@ -192,17 +197,21 @@ const aionPlugin = Plugin.define({
     if (hooks["chat.message"]) {
       const hook = hooks["chat.message"]
       registrations.push(await context.session.hook("prompt", async (event) => {
+        const session = await context.session.get({ sessionID: event.sessionID }).catch(() => undefined)
+        const activeAgent = session?.agent ?? config.defaultAgent ?? "aion"
+        if (!isAionAgent(activeAgent)) return
+
         await hook({
           sessionID: event.sessionID,
           messageID: event.messageID,
-          agent: config.defaultAgent ?? "aion",
+          agent: activeAgent,
           model: { providerID: "", modelID: "" },
         }, {
           message: {
             id: event.messageID,
             sessionID: event.sessionID,
             role: "user",
-            agent: config.defaultAgent ?? "aion",
+            agent: activeAgent,
             model: { providerID: "", modelID: "" },
           },
           parts: [{ type: "text", text: event.prompt.text }],
@@ -211,6 +220,11 @@ const aionPlugin = Plugin.define({
     }
 
     registrations.push(await context.session.hook("context", async (event) => {
+      if (!isAionAgent(event.agent)) {
+        for (const id of aionToolIds) delete event.tools[id]
+        return
+      }
+
       if (hooks["chat.params"]) {
         const output = {
           temperature: undefined,
@@ -234,7 +248,10 @@ const aionPlugin = Plugin.define({
 
       if (hooks["experimental.chat.system.transform"]) {
         const output = { system: event.system.map((part) => part.text ?? "") }
-        await hooks["experimental.chat.system.transform"]({ sessionID: event.sessionID, model: event.model }, output)
+        await hooks["experimental.chat.system.transform"](
+          { sessionID: event.sessionID, agent: event.agent, model: event.model },
+          output,
+        )
         event.system = output.system.map((text) => ({ type: "text" as const, text }))
       }
     }))
@@ -244,6 +261,7 @@ const aionPlugin = Plugin.define({
       registrations.push(await context.session.hook("context", async (event) => {
         const requestKind = (event as { kind?: string }).kind
         if (requestKind !== "compaction" && event.agent !== "compaction") return
+        if (event.agent !== undefined && event.agent !== "compaction" && !isAionAgent(event.agent)) return
         const output = { context: [] as string[], prompt: undefined }
         await hook({ sessionID: event.sessionID, messages: event.messages }, output)
         for (const text of output.context) event.system.push({ type: "text", text })

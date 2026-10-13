@@ -24,6 +24,7 @@ import { AION_SKILLS, TS_BOUND_SKILLS } from "../prompts/skill-registry"
 import { resetWorkerProgress } from "../scheduling/state-machine"
 import { COMPLEXITY_CLASSIFIER_PROMPT } from "../scheduling/complexity"
 import { MAX_EVIDENCE_PROMPT } from "../shared/runtime-control"
+import { isAionAgent } from "../agents/scope"
 
 const PHASE_SYSTEM_HINTS: Record<AionPhase, string> = {
   init: `[AION PHASE HINT: INIT] You are in the initialization phase. Your MANDATORY first actions, in this exact order:
@@ -222,7 +223,9 @@ export function createSystemTransformHook(args: CreateHooksArgs): AionSystemTran
   }
 
   return async function onSystemTransform(input, output) {
-    const { sessionID, model } = input
+    const { sessionID, model, agent } = input
+    if (agent !== undefined && !isAionAgent(agent)) return
+
     const intent: AionIntent = (managers.state._lastIntent as AionIntent) ?? "general"
     const modelId = model?.id ?? "unknown"
     const round = managers.state.rounds.current
