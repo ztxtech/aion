@@ -47,7 +47,7 @@ export type AionToolExecuteBeforeHook = (
 ) => Promise<void> | void
 
 export type AionToolExecuteAfterHook = (
-  input: { tool: string; sessionID?: string; callID?: string; agent?: string },
+  input: { tool: string; sessionID?: string; callID?: string; agent?: string; status?: string },
   output: { args?: Record<string, unknown>; title?: string; output?: string; metadata?: Record<string, unknown> },
 ) => Promise<void> | void
 

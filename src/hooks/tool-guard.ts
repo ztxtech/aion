@@ -152,9 +152,10 @@ function syncExternalGoal(
   toolName: string,
   toolArgs: Record<string, unknown>,
   outputText: string,
+  succeeded: boolean,
 ): void {
   const normalized = toolName.toLowerCase()
-  if (!GOAL_LIFECYCLE_TOOLS.has(normalized)) return
+  if (!succeeded || !GOAL_LIFECYCLE_TOOLS.has(normalized)) return
 
   const result = goalResultObject(outputText)
   const goal = typeof result.goal === "object" && result.goal !== null
@@ -820,7 +821,9 @@ export function createToolGuardAfterHook(args: CreateHooksArgs): AionToolExecute
     const toolName = normalizeToolName(input.tool)
     const toolArgs = (output as { args?: Record<string, unknown> }).args ?? {}
     const outputText = String((output as { output?: string }).output ?? "")
-    syncExternalGoal(m, toolName, toolArgs, outputText)
+    const toolStatus = String(input.status ?? "").toLowerCase()
+    const succeeded = toolStatus === "" || ["ok", "success", "succeeded", "completed"].includes(toolStatus)
+    syncExternalGoal(m, toolName, toolArgs, outputText, succeeded)
 
     // Phase transitions from tool calls
     const prevPhase = m.phase.current()

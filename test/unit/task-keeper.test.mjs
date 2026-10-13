@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { importBundle } from "../helpers/load-bundle.mjs";
@@ -285,6 +285,71 @@ describe("V2 AION task keeper", () => {
 
       assert.equal(result.promptCalls.length, 1);
       assert.match(result.promptCalls[0].text, /\[AION EXTERNAL GOAL CLOSE AUDIT\]/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("resumes done state when an external Goal closes unmet", async () => {
+    const root = mkdtempSync(join(tmpdir(), `aion-task-keeper-${counter++}-`));
+    mkdirSync(join(root, ".opencode", "memory"), { recursive: true });
+    writeFileSync(join(root, ".opencode", "memory", "runtime-state.json"), JSON.stringify({
+      version: 2,
+      executionMode: "AUTO",
+      activeSessionID: "done-unmet-session",
+      sessions: {
+        "done-unmet-session": {
+          lastPhase: "done",
+          phaseReason: "premature close",
+          rounds: { current: 3, max: 0 },
+          task: {
+            externalGoalStatus: "unmet",
+            goalCorrectionCount: 1,
+          },
+        },
+      },
+    }));
+    const { result } = await createPlugin({}, { root });
+    try {
+      await settle(result, "done-unmet-session", "session.idle", "done-unmet");
+
+      assert.equal(result.promptCalls.length, 1);
+      assert.match(result.promptCalls[0].text, /\[AION EXTERNAL GOAL CLOSE AUDIT\]/);
+      assert.match(result.promptCalls[0].text, /\[AION PHASE: LOOP-BACK\]/);
+      assert.equal(taskState(root, "done-unmet-session").externalGoalStatus, "unmet");
+      assert.equal(
+        JSON.parse(readFileSync(join(root, ".opencode/memory/runtime-state.json"), "utf8"))
+          .sessions["done-unmet-session"].lastPhase,
+        "loop-back",
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("does not change Goal state after a failed status update", async () => {
+    const { root, result } = await createPlugin();
+    try {
+      await result.toolHooks["execute.after"]({
+        tool: "create_goal",
+        sessionID: "failed-goal-update",
+        id: "goal-create",
+        agent: "aion",
+        status: "completed",
+        input: { objective: "finish task.md" },
+        result: { content: [{ text: JSON.stringify({ goal: { objective: "finish task.md", status: "active" } }) }] },
+      });
+      await result.toolHooks["execute.after"]({
+        tool: "update_goal_status",
+        sessionID: "failed-goal-update",
+        id: "goal-status-failed",
+        agent: "aion",
+        status: "failed",
+        input: { status: "paused" },
+        result: { content: [{ text: "cannot update goal status because this goal is closed" }] },
+      });
+
+      assert.equal(taskState(root, "failed-goal-update").externalGoalStatus, "active");
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

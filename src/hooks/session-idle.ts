@@ -6,9 +6,11 @@
  *  1. Guard: if auto-continue is off or max rounds exhausted → stop.
  *  2. Interactive gate: after c-critic approve-stop in interactive mode,
  *     hold for the user's continue/stop decision (via the question tool).
- *  3. Terminal condition: phase=done OR (allow-stop + no blockers +
+ *  3. Closed external Goal audit: completed/unmet Goals require artifact
+ *     review before AION accepts the closure, even from phase=done.
+ *  4. Terminal condition: phase=done OR (allow-stop + no blockers +
  *     c-critic approve-stop) → transition to done, fire completion quip.
- *  4. Otherwise: advance the round counter and inject a phase-specific
+ *  5. Otherwise: advance the round counter and inject a phase-specific
  *     prompt from {@link PHASE_INJECTION} so the agent knows exactly what
  *     to do next.
  *
@@ -103,7 +105,7 @@ export function createSessionIdleHook(args: CreateHooksArgs): AionSessionIdleHoo
   return async function onSessionIdle(input, output) {
     m.runtimeControl.activateSession(input.sessionID)
     const task = m.runtimeControl.taskState()
-    const audit = `Round self-audit required: phase=${m.phase.current()}, open blockers=${m.governance.hasOpenBlockers() ? "yes" : "no"}, external goal=${task.externalGoalStatus}.`
+    let audit = `Round self-audit required: phase=${m.phase.current()}, open blockers=${m.governance.hasOpenBlockers() ? "yes" : "no"}, external goal=${task.externalGoalStatus}.`
 
     if (input.eventID && task.lastContinuationEventID === input.eventID) {
       output.continue = false
@@ -204,29 +206,6 @@ export function createSessionIdleHook(args: CreateHooksArgs): AionSessionIdleHoo
       }
     }
 
-    // Terminal condition: all gates passed
-    const aionComplete = phase === "done" ||
-      (stopSignal === "allow-stop" && !hasBlockers && cCriticVerdict === "approve-stop")
-    if (aionComplete) {
-      m.trace.appendEvent(
-        "auto-continue",
-        `real stop conditions met; phase=${phase}`,
-        { phase, stopSignal, hasBlockers, cCriticVerdict },
-        "main-agent",
-      )
-      if (phase !== "done") {
-        m.phase.transition("done", "all governance gates passed")
-        personality?.onCompletion()
-      }
-      m.runtimeControl.checkpoint({
-        status: "completed",
-        lastAuditAt: nowIso(),
-        lastAudit: `${audit} Governance terminal conditions are satisfied.`,
-      })
-      output.continue = false
-      return
-    }
-
     if (task.externalGoalStatus === "active") {
       m.runtimeControl.checkpoint({
         status: "active",
@@ -248,15 +227,44 @@ export function createSessionIdleHook(args: CreateHooksArgs): AionSessionIdleHoo
     }
 
     const goalCorrection = task.externalGoalStatus === "completed" || task.externalGoalStatus === "unmet"
+    let currentPhase = m.phase.current()
+    if (goalCorrection && currentPhase === "done") {
+      m.phase.transition("loop-back", `external Goal closed as ${task.externalGoalStatus} before AION completion gates passed`)
+      currentPhase = "loop-back"
+      audit = `Round self-audit required: phase=${currentPhase}, open blockers=${m.governance.hasOpenBlockers() ? "yes" : "no"}, external goal=${task.externalGoalStatus}.`
+    }
+
+    // Terminal condition: all gates passed
+    const aionComplete = currentPhase === "done" ||
+      (stopSignal === "allow-stop" && !hasBlockers && cCriticVerdict === "approve-stop")
+    if (aionComplete) {
+      m.trace.appendEvent(
+        "auto-continue",
+        `real stop conditions met; phase=${currentPhase}`,
+        { phase: currentPhase, stopSignal, hasBlockers, cCriticVerdict },
+        "main-agent",
+      )
+      if (currentPhase !== "done") {
+        m.phase.transition("done", "all governance gates passed")
+        personality?.onCompletion()
+      }
+      m.runtimeControl.checkpoint({
+        status: "completed",
+        lastAuditAt: nowIso(),
+        lastAudit: `${audit} Governance terminal conditions are satisfied.`,
+      })
+      output.continue = false
+      return
+    }
 
     // Phase-aware auto-continue
     const nextRound = m.rounds.next()
-    const phaseInjection = PHASE_INJECTION[phase] ?? PHASE_INJECTION.init
+    const phaseInjection = PHASE_INJECTION[currentPhase] ?? PHASE_INJECTION.init
 
     const blockerList = m.governance.listBlockers().map((b) => `[${b.id}] ${b.description}`).join("\n  ")
 
     const reasonParts: string[] = [
-      `phase=${phase}`,
+      `phase=${currentPhase}`,
       `round=${nextRound}/${m.state.rounds.max}`,
     ]
     if (hasBlockers) reasonParts.push(`open blockers: ${blockerList || "(none)"}`)
@@ -269,7 +277,7 @@ export function createSessionIdleHook(args: CreateHooksArgs): AionSessionIdleHoo
     m.trace.appendEvent(
       "auto-continue",
       `continuing to round ${nextRound}: ${reason}`,
-      { nextRound, phase, reason },
+      { nextRound, phase: currentPhase, reason },
       "main-agent",
     )
 
@@ -286,7 +294,7 @@ ${phaseInjection}
 
 ---
 Hard gates from the aion plugin:
-- Phase: ${phase}
+- Phase: ${currentPhase}
 - Open blockers: ${blockerList || "(none)"}
 - Stop signal: ${stopSignal}
 - ts-critic last signal: ${tsCriticSignal}
